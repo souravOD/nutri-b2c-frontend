@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
+// import { X } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { Input } from "@/components/ui/input"
@@ -45,6 +46,7 @@ export default function SearchPage() {
   const { settings } = useSettings()
 
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || filters.q || "")
+  const inputRef = useRef<HTMLInputElement>(null);
   const [sortBy, setSortBy] = useState<SortOption>(settings.behavior.defaultSort || "time")
   const [filtersOpen, setFiltersOpen] = useState(false)
 
@@ -80,23 +82,48 @@ export default function SearchPage() {
     )
   }, [filters])
 
+  // const activeFilterCount = useMemo(() => {
+  //   let count = 0
+  //   if (filters.dietaryRestrictions.length > 0) count++
+  //   if (filters.allergens.length > 0) count++
+  //   if (filters.cuisines.length > 0) count++
+  //   if (filters.majorConditions.length > 0) count++
+  //   if (filters.calories[0] > 0 || filters.calories[1] < 1200) count++
+  //   if (filters.proteinMin > 0) count++
+  //   if (filters.carbsMin > 0) count++
+  //   if (filters.fatMin > 0) count++
+  //   if (filters.fiberMin > 0) count++
+  //   if (filters.sugarMax < 100) count++
+  //   if (filters.sodiumMax < 4000) count++
+  //   if (filters.maxTime < 120) count++
+  //   if (filters.mealType) count++
+  //   return count
+  // }, [filters])
   const activeFilterCount = useMemo(() => {
-    let count = 0
-    if (filters.dietaryRestrictions.length > 0) count++
-    if (filters.allergens.length > 0) count++
-    if (filters.cuisines.length > 0) count++
-    if (filters.majorConditions.length > 0) count++
-    if (filters.calories[0] > 0 || filters.calories[1] < 1200) count++
-    if (filters.proteinMin > 0) count++
-    if (filters.carbsMin > 0) count++
-    if (filters.fatMin > 0) count++
-    if (filters.fiberMin > 0) count++
-    if (filters.sugarMax < 100) count++
-    if (filters.sodiumMax < 4000) count++
-    if (filters.maxTime < 120) count++
-    if (filters.mealType) count++
-    return count
-  }, [filters])
+    let count = 0;
+
+  // Sum all selected array filters
+    count += filters.dietaryRestrictions.length;
+    count += filters.allergens.length;
+    count += filters.cuisines.length;
+    count += filters.majorConditions.length;
+
+    // Range and min/max filters
+    if (filters.calories[0] > 0) count++; // Min calories
+    if (filters.calories[1] < 1200) count++; // Max calories
+    if (filters.proteinMin > 0) count++;
+    if (filters.carbsMin > 0) count++;
+    if (filters.fatMin > 0) count++;
+    if (filters.fiberMin > 0) count++;
+    if (filters.sugarMax < 100) count++;
+    if (filters.sodiumMax < 4000) count++;
+    if (filters.maxTime < 120) count++;
+    
+    // Single-value selection
+    if (filters.mealType) count++;
+
+    return count;
+  }, [filters]);
 
   const {
     data: searchResults = [],
@@ -118,6 +145,16 @@ export default function SearchPage() {
     },
     enabled: !!(searchQuery || hasActiveFilters),
   })
+  const handleSearchInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape" && searchQuery) {
+      setSearchQuery("");
+      inputRef.current?.focus();
+    }
+    if (e.key === "Enter") {
+      handleSearch(searchQuery);
+    }
+  };
+
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
@@ -187,7 +224,7 @@ export default function SearchPage() {
           <h1 className="text-3xl font-bold">Search Recipes</h1>
 
           {/* Search Input */}
-          <div className="relative">
+          {/* <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               role="search"
@@ -197,7 +234,44 @@ export default function SearchPage() {
               onKeyDown={(e) => e.key === "Enter" && handleSearch(searchQuery)}
               className="pl-10 pr-4 h-12 text-lg"
             />
+          </div> */}
+          <div style={{ position: "relative", display: "inline-block", width: "100%" }}>
+            <Search style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", height: "1rem", width: "1rem", color: "gray" }} />
+            <Input
+              role="search"
+              ref={inputRef}
+              placeholder="Search recipes, ingredients, cuisines..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearchInputKeyDown}
+              style={{ paddingRight: searchQuery ? "2rem" : undefined, width: "100%" }}
+              className="pl-10 pr-4 h-12 text-lg"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                style={{
+                  position: "absolute",
+                  right: "0.75rem",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 0,
+                  color: "gray",
+                }}
+                aria-label="Clear search"
+                onClick={() => {
+                  setSearchQuery("");
+                  inputRef.current?.focus();
+              }}
+              >
+                <X size={20} />
+            </button>
+          )}
           </div>
+
 
           {/* Search Actions */}
           <div className="flex items-center gap-2">
