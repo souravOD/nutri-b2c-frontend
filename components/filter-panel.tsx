@@ -63,25 +63,48 @@ export function FilterPanel({ open, onOpenChange, initialValues, onApply, onRese
     form.reset(schema.parse(initialValues ?? {}));
   }, [open, initialValues, form]);
 
+  // function getActiveFiltersCount(): number {
+  //   const values = form.getValues()
+  //   let count = 0
+  //   if ((values.dietaryRestrictions || []).length > 0) count++
+  //   if ((values.allergens || []).length > 0) count++
+  //   if ((values.cuisines || []).length > 0) count++
+  //   if ((values.majorConditions || []).length > 0) count++
+  //   if (values.calories && (values.calories[0] > 0 || values.calories[1] < 1200)) count++
+  //   if ((values.proteinMin || 0) > 0) count++
+  //   if ((values.carbsMin || 0) > 0) count++
+  //   if ((values.fatMin || 0) > 0) count++
+  //   if ((values.fiberMin || 0) > 0) count++
+  //   if ((values.sugarMax || 100) < 100) count++
+  //   if ((values.sodiumMax || 4000) < 4000) count++
+  //   if ((values.maxTime || 120) < 120) count++
+  //   if ((values.mealType || "") !== "") count++
+  //   return count
+  // }
   function getActiveFiltersCount(): number {
-    const values = form.getValues()
-    let count = 0
-    if ((values.dietaryRestrictions || []).length > 0) count++
-    if ((values.allergens || []).length > 0) count++
-    if ((values.cuisines || []).length > 0) count++
-    if ((values.majorConditions || []).length > 0) count++
-    if (values.calories && (values.calories[0] > 0 || values.calories[1] < 1200)) count++
-    if ((values.proteinMin || 0) > 0) count++
-    if ((values.carbsMin || 0) > 0) count++
-    if ((values.fatMin || 0) > 0) count++
-    if ((values.fiberMin || 0) > 0) count++
-    if ((values.sugarMax || 100) < 100) count++
-    if ((values.sodiumMax || 4000) < 4000) count++
-    if ((values.maxTime || 120) < 120) count++
-    if ((values.mealType || "") !== "") count++
-    return count
-  }
+    const values = form.getValues();
+    let count = 0;
 
+    // Count all selected array filters individually
+    count += values.dietaryRestrictions.length;
+    count += values.allergens.length;
+    count += values.cuisines.length;
+    count += values.majorConditions.length;
+
+    // Numeric and single-value filters
+    if (values.calories[0] > 0) count++;           // Min calories
+    if (values.calories[1] < 1200) count++;        // Max calories
+    if (values.proteinMin > 0) count++;
+    if (values.carbsMin > 0) count++;
+    if (values.fatMin > 0) count++;
+    if (values.fiberMin > 0) count++;
+    if (values.sugarMax < 100) count++;
+    if (values.sodiumMax < 4000) count++;
+    if (values.maxTime < 120) count++;
+    if (values.mealType) count++;
+
+    return count;
+  }
   function handleApply() {
     const values = schema.parse(form.getValues())
     onApply(values)
