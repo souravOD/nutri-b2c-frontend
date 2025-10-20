@@ -493,6 +493,12 @@ export async function apiGetRecentlyViewed(limit = 20) {
   return res.json() as Promise<Array<{ history: any; recipe: any }>>;
 }
 
+export async function apiClearHistory(): Promise<void> {
+  await authFetch(`/api/v1/me/history`, {
+    method: "DELETE",
+  });
+}
+
 export type UserProfile = {
   user_id: string;
   display_name: string | null;

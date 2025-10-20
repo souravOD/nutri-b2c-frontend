@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from "react"
 import type { Recipe } from "@/lib/types"
-import { apiGetRecentlyViewed, apiLogHistoryView } from "@/lib/api";
+import { apiGetRecentlyViewed, apiLogHistoryView, apiClearHistory } from "@/lib/api";
 import { useUser } from "@/hooks/use-user";
 
 interface HistoryItem {
@@ -13,8 +13,8 @@ interface HistoryItem {
 interface HistoryContextType {
   history: HistoryItem[]
   recentRecipes: Recipe[]
-  addToHistory: (recipeId: string) => void
-  clearHistory: () => void
+  addToHistory: (recipeId: string | { id?: string }) => void
+  clearHistory: () => Promise<void>
   loadRecentRecipes: () => Promise<void>
 }
 
@@ -48,7 +48,7 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
   const historyRef = useRef(history)
   historyRef.current = history
 
-  const loadRecentRecipes = async () => {
+  const loadRecentRecipes = useCallback(async () => {
     if (!isAuthed) {
       setRecentRecipes([])
       return
@@ -101,7 +101,7 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
       console.error("Failed to load recent recipes:", e);
       setRecentRecipes([]);
     }
-  };
+  }, [isAuthed]);
 
   useEffect(() => {
     if (!isAuthed) {
@@ -109,47 +109,58 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
       return
     }
     if (history.length > 0) {
-      loadRecentRecipes()
+      void loadRecentRecipes()
     } else {
       setRecentRecipes([])
     }
-  }, [history.length, isAuthed]) // include auth state so logout clears safely
+  }, [history.length, isAuthed, loadRecentRecipes]) // include auth state so logout clears safely
 
-const addToHistory = useCallback((entry: string | { id?: string }) => {
-  const id = typeof entry === "string" ? entry : entry?.id;
-  if (!id) return;
+  const addToHistory = useCallback((entry: string | { id?: string }) => {
+    const id = typeof entry === "string" ? entry : entry?.id;
+    if (!id) return;
 
-  // Optimistic local update
-  const now = new Date().toISOString();
-  setHistory(prev => {
-    const filtered = prev.filter(i => i.recipeId !== id);
-    return [{ recipeId: id, viewedAt: now }, ...filtered].slice(0, 50);
-  });
+    // Optimistic local update
+    const now = new Date().toISOString();
+    setHistory((prev) => {
+      const filtered = prev.filter((i) => i.recipeId !== id);
+      return [{ recipeId: id, viewedAt: now }, ...filtered].slice(0, 50);
+    });
 
-  // Fire-and-forget server log only if authed
-  if (isAuthed) {
-    void apiLogHistoryView(id);
-  }
-}, [isAuthed]);
+    // Fire-and-forget server log only if authed
+    if (isAuthed) {
+      void apiLogHistoryView(id);
+    }
+  }, [isAuthed]);
 
-  const clearHistory = useCallback(() => {
+  const clearHistory = useCallback(async () => {
+    const previous = historyRef.current;
+
     setHistory([])
     setRecentRecipes([])
-  }, []) // Memoize clearHistory
+
+    if (!isAuthed) return;
+    try {
+      await apiClearHistory();
+    } catch (error) {
+      console.error("Failed to clear history on server:", error);
+      setHistory(previous);
+      void loadRecentRecipes();
+    }
+  }, [isAuthed, loadRecentRecipes])
 
   return (
     <HistoryContext.Provider
-    value={{
-      history,
-      recentRecipes,
-      addToHistory,         // <— only the original name
-      clearHistory,
-      loadRecentRecipes,
-    }}
-  >
-    {children}
-  </HistoryContext.Provider>
-      )
+      value={{
+        history,
+        recentRecipes,
+        addToHistory,
+        clearHistory,
+        loadRecentRecipes,
+      }}
+    >
+      {children}
+    </HistoryContext.Provider>
+  )
 }
 
 export function useHistory() {

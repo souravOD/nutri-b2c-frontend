@@ -405,7 +405,7 @@ const [ingredients, setIngredients] = React.useState<IngredientRow[]>(seedIngred
         </div>
       </div>
 
-      {/* Servings & Time */}
+      {/* Servings & Time
       <div className="rounded-lg border p-4 space-y-4">
         <h2 className="font-semibold">Servings & Time</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -431,7 +431,57 @@ const [ingredients, setIngredients] = React.useState<IngredientRow[]>(seedIngred
             placeholder="Cook (min)"
           />
         </div>
+      </div> */}
+
+
+
+
+      <div className="rounded-lg border p-4 space-y-4">
+        <h2 className="font-semibold">Servings & Time</h2>
+
+        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
+          {/* Servings */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Servings
+            </p>
+            <Input
+              type="number"
+              min={1}
+              value={servings}
+              onChange={(e) => setServings(Number(e.target.value) || 1)}
+              placeholder="Number of servings"
+            />
+          </div>
+
+          {/* Time */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Time
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <Input
+                type="number"
+                min={0}
+                value={prepMin}
+                onChange={(e) => setPrepMin(Number(e.target.value) || 0)}
+                placeholder="Prep time (mins)"
+              />
+              <Input
+                type="number"
+                min={0}
+                value={cookMin}
+                onChange={(e) => setCookMin(Number(e.target.value) || 0)}
+                placeholder="Cook time (secs)"
+              />
+            </div>
+          </div>
+        </div>
       </div>
+
+
+
+
 
       {/* Diet & Allergens */}
       <div className="rounded-lg border p-4 space-y-4">

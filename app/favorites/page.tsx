@@ -48,11 +48,24 @@ export default function FavoritesPage() {
 
   return (
     <div className="container px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Saved Recipes</h1>
-        <p className="text-muted-foreground">
-          {savedRecipes.length} recipe{savedRecipes.length !== 1 ? "s" : ""} saved
-        </p>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Saved Recipes</h1>
+          <p className="text-muted-foreground">
+            {savedRecipes.length} recipe{savedRecipes.length !== 1 ? "s" : ""} saved
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button asChild>
+            <Link href="/">
+              <BookOpen className="h-4 w-4 mr-2" />
+              Browse Recipes
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/search">Search Recipes</Link>
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

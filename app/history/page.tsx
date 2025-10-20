@@ -60,7 +60,9 @@ export default function HistoryPage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={clearHistory}
+          onClick={() => {
+            void clearHistory()
+          }}
           className="text-destructive hover:text-destructive bg-transparent"
         >
           <Trash2 className="h-4 w-4 mr-2" />

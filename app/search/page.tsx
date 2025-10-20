@@ -18,6 +18,7 @@ import { apiSearchRecipes } from "@/lib/api"
 import { rank } from "@/lib/recommendation"
 import type { ScoredRecipe } from "@/lib/recommendation"
 import type { SortOption } from "@/lib/types"
+import { useFavorites } from "@/hooks/use-favorites"
 
 const toSortOption = (v: unknown): SortOption =>
   v === "time" || v === "relevance" || v === "popular" ? (v as SortOption) : "time";
@@ -43,6 +44,7 @@ export default function SearchPage() {
   const router = useRouter()
   const { filters, setFilters, resetFilters } = useFilters()
   const { settings } = useSettings()
+  const { isFavorite, toggleFavorite } = useFavorites()
 
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || filters.q || "")
   const [sortBy, setSortBy] = useState<SortOption>(settings.behavior.defaultSort || "time")
@@ -422,11 +424,11 @@ export default function SearchPage() {
                     cookTime={recipe.cookTime}
                     servings={recipe.servings}
                     difficulty={recipe.difficulty}
-                    isSaved={recipe.isSaved}
+                    isSaved={isFavorite(recipe.id)}
                     tags={recipe.tags}
                     score={settings.behavior.showScoreBadge ? recipe.score : undefined}
-                    onSave={() => {
-                      // Handle save/unsave
+                    onSave={(id) => {
+                      void toggleFavorite(id)
                     }}
                   />
                 ))}
