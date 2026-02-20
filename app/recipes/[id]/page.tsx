@@ -9,6 +9,7 @@ import { ArrowLeft } from "lucide-react"
 import { StartCookingOverlay } from "@/components/start-cooking-overlay"
 import { RecipeHero } from "@/components/recipe-hero"
 import { RecipeTabs } from "@/components/recipe-tabs"
+import { RecipeRating } from "@/components/recipe-rating"
 import { useState, useEffect, useRef } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useFavorites } from "@/hooks/use-favorites"
@@ -183,6 +184,12 @@ export default function RecipeDetailPage() {
         {/* Recipe Hero */}
         <RecipeHero recipe={heroRecipe} onToggleSave={() => toggleSave.mutate()} onShare={handleShare} />
 
+        {/* Recipe Rating */}
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-muted-foreground">Rate this recipe:</span>
+          <RecipeRating recipeId={id} />
+        </div>
+
         {/* Recipe Tabs */}
         <RecipeTabs recipe={recipe as any} />
 
@@ -200,6 +207,8 @@ export default function RecipeDetailPage() {
         onOpenChange={setCookingOpen}
         steps={steps}
         recipeTitle={(recipe as any).title}
+        recipeId={id}
+        servings={(recipe as any).servings ?? 1}
       />
     </div>
   )

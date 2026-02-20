@@ -4,7 +4,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ID } from "appwrite"
+import { ID, Permission, Role } from "appwrite"
 import { account, databases } from "@/lib/appwrite"
 import { useUser } from "@/hooks/use-user"
 import { useToast } from "@/hooks/use-toast"
@@ -49,12 +49,20 @@ export default function RegisterPage() {
       // 3) Create a minimal profile document that matches your schema
       try {
         const me = await account.get()
+        const permissions = [
+          Permission.read(Role.user(me.$id)),
+          Permission.update(Role.user(me.$id)),
+          Permission.delete(Role.user(me.$id)),
+        ]
+
         await databases.createDocument(DB_ID, PROFILE_COLL, me.$id, {
           displayName: me.name ?? name.trim(),
+          email: me.email ?? email.trim(),
           image: "",
-        })
+        }, permissions)
         await syncProfile({
           displayName: me.name,
+          email: me.email ?? email.trim(),
           phone: me.phone ?? null,
           country: "USA",
           imageUrl: null,

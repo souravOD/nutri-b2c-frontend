@@ -18,6 +18,8 @@ import {
   Plus,
   FlaskConical,
   BookOpen,
+  UtensilsCrossed,
+  CalendarDays,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/hooks/use-user"
@@ -31,6 +33,8 @@ interface LeftSidebarProps {
 const userNav = [
   { label: "Home", href: "/", icon: Home },
   { label: "Search", href: "/search", icon: Search },
+  { label: "Meal Log", href: "/meal-log", icon: UtensilsCrossed },
+  { label: "Meal Plan", href: "/meal-plan", icon: CalendarDays },
   { label: "Scan", href: "/scan", icon: QrCode },
   { label: "Create Recipe", href: "/create", icon: Plus },
   { label: "My Recipes", href: "/my-recipes", icon: BookOpen },

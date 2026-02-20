@@ -1,11 +1,9 @@
 "use client"
 
-import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clock, Users, ChefHat, Heart, Share2, Star } from "lucide-react"
 import type { Recipe } from "@/lib/types"
-import { DEFAULT_RECIPE_IMAGE } from "@/lib/constants"
 
 interface RecipeHeroProps {
   recipe: Recipe
@@ -17,7 +15,8 @@ interface RecipeHeroProps {
 export function RecipeHero({ recipe, onToggleSave, onShare }: RecipeHeroProps) {
   const totalTime = (recipe.prepTime ?? 0) + (recipe.cookTime ?? 0)
   const title = recipe.title ?? "Untitled"
-  const src = DEFAULT_RECIPE_IMAGE
+  const src = recipe.imageUrl ?? (recipe as any)?.image_url ?? null
+  const hasImage = typeof src === "string" && src.trim().length > 0
   const imageAlt = recipe.imageAlt ?? recipe.title ?? "Recipe image";
   const rating = "rating" in recipe ? (recipe as any).rating ?? 0 : 0;
   const reviewCount =
@@ -50,15 +49,19 @@ const cookMinutes =
   return (
     <div className="space-y-4">
       {/* Hero Image */}
-      <div className="relative w-full">
-        <Image
-          src={src}
-          alt={imageAlt ?? title}
-          width={1280}
-          height={720}
-          className="w-full aspect-[16/9] object-cover rounded-lg"
-          priority
-        />
+      <div className="relative w-full aspect-[16/9] overflow-hidden rounded-lg bg-muted">
+        {hasImage ? (
+          <img
+            src={src as string}
+            alt={imageAlt ?? title}
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">
+            No image available
+          </div>
+        )}
         <div className="absolute top-4 right-4 flex gap-2">
           <Button
             variant="secondary"

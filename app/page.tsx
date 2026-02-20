@@ -124,7 +124,7 @@ export default function HomePage() {
                   key={`${r.id ?? 'no-id'}-${i}`}                   // i is defined
                   id={r.id}
                   title={r.title ?? r.name ?? 'Untitled'}
-                  imageUrl={r.image_url ?? r.imageUrl ?? '/placeholder.svg'}
+                  imageUrl={r.image_url ?? r.imageUrl ?? null}
                   // If your card uses one time field, keep the best you have:
                   prepTime={r.prep_time_minutes ?? r.time_minutes ?? r.total_time_minutes ?? 0}
                   cookTime={r.cook_time_minutes ?? undefined}

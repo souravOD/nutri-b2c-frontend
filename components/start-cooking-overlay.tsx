@@ -1,22 +1,41 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { ChevronLeft, ChevronRight, Play, Pause, RotateCcw } from "lucide-react"
+import { ChevronLeft, ChevronRight, Play, Pause, RotateCcw, UtensilsCrossed } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { apiLogFromCooking } from "@/lib/api"
 
 interface StartCookingOverlayProps {
   open: boolean
   onOpenChange: (v: boolean) => void
   steps: string[]
   recipeTitle?: string
+  recipeId?: string
+  servings?: number
 }
 
-export function StartCookingOverlay({ open, onOpenChange, steps, recipeTitle }: StartCookingOverlayProps) {
+export function StartCookingOverlay({ open, onOpenChange, steps, recipeTitle, recipeId, servings }: StartCookingOverlayProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [timer, setTimer] = useState(0)
   const [isTimerRunning, setIsTimerRunning] = useState(false)
+  const [showLogPrompt, setShowLogPrompt] = useState(false)
+  const [isLogging, setIsLogging] = useState(false)
+  const cookingStartedAt = useRef<string | null>(null)
+  const router = useRouter()
+  const { toast } = useToast()
+
+  useEffect(() => {
+    if (open && !cookingStartedAt.current) {
+      cookingStartedAt.current = new Date().toISOString()
+    }
+    if (!open) {
+      cookingStartedAt.current = null
+    }
+  }, [open])
 
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -50,7 +69,41 @@ export function StartCookingOverlay({ open, onOpenChange, steps, recipeTitle }: 
     setCurrentStep(0)
     setTimer(0)
     setIsTimerRunning(false)
+    setShowLogPrompt(false)
     onOpenChange(false)
+  }
+
+  const handleFinishCooking = () => {
+    setIsTimerRunning(false)
+    if (recipeId) {
+      setShowLogPrompt(true)
+    } else {
+      handleClose()
+    }
+  }
+
+  const handleLogMeal = async () => {
+    if (!recipeId || !cookingStartedAt.current) return
+    setIsLogging(true)
+    try {
+      await apiLogFromCooking({
+        recipeId,
+        servings: servings ?? 1,
+        cookingStartedAt: cookingStartedAt.current,
+        cookingFinishedAt: new Date().toISOString(),
+      })
+      toast({ title: "Meal logged!", description: "Added to your meal log for today." })
+      handleClose()
+      router.push("/meal-log")
+    } catch {
+      toast({ title: "Failed to log meal", variant: "destructive" })
+    } finally {
+      setIsLogging(false)
+    }
+  }
+
+  const handleSkipLog = () => {
+    handleClose()
   }
 
   const progress = ((currentStep + 1) / steps.length) * 100
@@ -111,28 +164,49 @@ export function StartCookingOverlay({ open, onOpenChange, steps, recipeTitle }: 
           </div>
         </div>
 
+        {/* Log Meal Prompt */}
+        {showLogPrompt && (
+          <div className="flex-shrink-0 border-t pt-4 space-y-3">
+            <div className="text-center space-y-2">
+              <UtensilsCrossed className="h-8 w-8 mx-auto text-green-600" />
+              <p className="font-semibold">Cooking complete!</p>
+              <p className="text-sm text-muted-foreground">Would you like to log this meal?</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleSkipLog} className="flex-1">
+                Skip
+              </Button>
+              <Button onClick={handleLogMeal} disabled={isLogging} className="flex-1 bg-green-600 hover:bg-green-700">
+                {isLogging ? "Logging..." : "Log Meal"}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Navigation */}
-        <div className="flex-shrink-0 flex justify-between items-center pt-4 border-t">
-          <Button variant="outline" onClick={handlePrev} disabled={currentStep === 0}>
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            Previous
-          </Button>
-
-          <Button variant="ghost" onClick={handleClose} className="text-muted-foreground">
-            Exit Cooking Mode
-          </Button>
-
-          {currentStep === steps.length - 1 ? (
-            <Button onClick={handleClose} className="bg-green-600 hover:bg-green-700">
-              Finish Cooking
+        {!showLogPrompt && (
+          <div className="flex-shrink-0 flex justify-between items-center pt-4 border-t">
+            <Button variant="outline" onClick={handlePrev} disabled={currentStep === 0}>
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Previous
             </Button>
-          ) : (
-            <Button onClick={handleNext}>
-              Next Step
-              <ChevronRight className="h-4 w-4 ml-2" />
+
+            <Button variant="ghost" onClick={handleClose} className="text-muted-foreground">
+              Exit Cooking Mode
             </Button>
-          )}
-        </div>
+
+            {currentStep === steps.length - 1 ? (
+              <Button onClick={handleFinishCooking} className="bg-green-600 hover:bg-green-700">
+                Finish Cooking
+              </Button>
+            ) : (
+              <Button onClick={handleNext}>
+                Next Step
+                <ChevronRight className="h-4 w-4 ml-2" />
+              </Button>
+            )}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )

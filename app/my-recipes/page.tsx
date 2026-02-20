@@ -63,9 +63,7 @@ export default function MyRecipesPage() {
       isSaved: false, // "My Recipes" are owned; we don’t show saved state here
       onSave: () => {}, // no-op; heart isn’t shown/used here
       tags: [
-        ...(r.diet_tags ?? []),
-        ...(r.cuisines ?? []),
-        ...(r.flags ?? []),
+        ...(r.cuisines ?? (r.cuisine ? [r.cuisine] : [])),
       ],
       // Optional: score
       score: undefined,

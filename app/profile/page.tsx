@@ -15,7 +15,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -29,15 +29,13 @@ import {
   apiDeleteAccount,
   apiUpdateOverview,
   apiUpdateHealth,
+  apiGetAllergens,
+  apiGetDietaryPreferences,
+  apiGetHealthConditions,
 } from "@/lib/api";
 
 // 👉 single source of truth lists
-import {
-  ALL_MAJOR_CONDITIONS,
-  ALL_ALLERGENS,
-  ALL_DIETS,
-  ALL_CUISINES,
-} from "@/lib/data";
+import type { TaxonomyOption } from "@/lib/api";
 
 /* If lib/data.ts already exports these, import them instead of defining here */
 const activityOptions = [
@@ -57,40 +55,39 @@ const goalOptions = [
 
 // ---------- types ----------
 type Overview = {
-  display_name?: string | null;
-  image_url?: string | null;
+  fullName?: string | null;
   email?: string | null;
   phone?: string | null;
-  country?: string | null;
-  profile_diets?: string[] | null;
-  profile_allergens?: string[] | null;
-  preferred_cuisines?: string[] | null;
-  target_calories?: number | null;
-  target_protein_g?: number | null;
-  target_carbs_g?: number | null;
-  target_fat_g?: number | null;
-  created_at?: string | null;
-  updated_at?: string | null;
+  dateOfBirth?: string | null;
+  gender?: string | null;
+  diets?: string[] | null;
+  allergens?: string[] | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
   [k: string]: any;
 };
 
 type Health = {
-  date_of_birth?: string | null;
-  sex?: "male" | "female" | "other" | null;
-  activity_level?: string | null;
-  goal?: string | null;
-  diets?: string[] | null;
-  allergies?: string[] | null;
+  heightCm?: number | null;
+  weightKg?: number | null;
+  activityLevel?: string | null;
+  healthGoal?: string | null;
+  targetWeightKg?: number | null;
+  targetCalories?: number | null;
+  targetProteinG?: number | null;
+  targetCarbsG?: number | null;
+  targetFatG?: number | null;
+  targetFiberG?: number | null;
+  targetSodiumMg?: number | null;
+  targetSugarG?: number | null;
   intolerances?: string[] | null;
-  disliked_ingredients?: string[] | null;
-  onboarding_complete?: boolean | null;
-  height_display?: string | null;
-  weight_display?: string | null;
-  height_cm?: number | null;
-  weight_kg?: number | null;
-  majorConditions?: string[] | null;
-  created_at?: string | null;
-  updated_at?: string | null;
+  dislikedIngredients?: string[] | null;
+  onboardingComplete?: boolean | null;
+  conditions?: string[] | null;
+  dateOfBirth?: string | null;
+  gender?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
   [k: string]: any;
 };
 
@@ -104,46 +101,41 @@ const list = (arr?: string[] | null, fallback = "None specified") =>
 function normalizeOverview(row: any): Overview {
   if (!row) return {};
   return {
-    display_name: row.display_name ?? row.displayName ?? null,
-    image_url: row.image_url ?? row.imageUrl ?? null,
+    fullName: row.fullName ?? row.full_name ?? null,
     email: row.email ?? null,
     phone: row.phone ?? null,
-    country: row.country ?? null,
-    profile_diets: row.profile_diets ?? row.profileDiets ?? [],
-    profile_allergens: row.profile_allergens ?? row.profileAllergens ?? [],
-    preferred_cuisines: row.preferred_cuisines ?? row.preferredCuisines ?? [],
-    target_calories: row.target_calories ?? row.targetCalories ?? null,
-    target_protein_g: row.target_protein_g ?? row.targetProteinG ?? null,
-    target_carbs_g: row.target_carbs_g ?? row.targetCarbsG ?? null,
-    target_fat_g: row.target_fat_g ?? row.targetFatG ?? null,
-    created_at: row.created_at ?? row.createdAt ?? null,
-    updated_at: row.updated_at ?? row.updatedAt ?? null,
+    dateOfBirth: row.dateOfBirth ?? row.date_of_birth ?? null,
+    gender: row.gender ?? row.sex ?? null,
+    diets: row.diets ?? [],
+    allergens: row.allergens ?? [],
+    createdAt: row.createdAt ?? row.created_at ?? null,
+    updatedAt: row.updatedAt ?? row.updated_at ?? null,
   };
 }
 
 function normalizeHealth(row: any): Health {
   if (!row) return {};
-  const height_display =
-    row.height_display ?? row.heightDisplay ?? (row.height_cm ? `${row.height_cm} cm` : null);
-  const weight_display =
-    row.weight_display ?? row.weightDisplay ?? (row.weight_kg ? `${row.weight_kg} kg` : null);
   return {
-    date_of_birth: row.date_of_birth ?? row.dateOfBirth ?? null,
-    sex: row.sex ?? null,
-    activity_level: row.activity_level ?? row.activityLevel ?? null,
-    goal: row.goal ?? null,
-    diets: row.diets ?? [],
-    allergies: row.allergies ?? row.allergens ?? [],
+    heightCm: row.heightCm ?? row.height_cm ?? null,
+    weightKg: row.weightKg ?? row.weight_kg ?? null,
+    activityLevel: row.activityLevel ?? row.activity_level ?? null,
+    healthGoal: row.healthGoal ?? row.health_goal ?? row.goal ?? null,
+    targetWeightKg: row.targetWeightKg ?? row.target_weight_kg ?? null,
+    targetCalories: row.targetCalories ?? row.target_calories ?? null,
+    targetProteinG: row.targetProteinG ?? row.target_protein_g ?? null,
+    targetCarbsG: row.targetCarbsG ?? row.target_carbs_g ?? null,
+    targetFatG: row.targetFatG ?? row.target_fat_g ?? null,
+    targetFiberG: row.targetFiberG ?? row.target_fiber_g ?? null,
+    targetSodiumMg: row.targetSodiumMg ?? row.target_sodium_mg ?? null,
+    targetSugarG: row.targetSugarG ?? row.target_sugar_g ?? null,
     intolerances: row.intolerances ?? [],
-    disliked_ingredients: row.disliked_ingredients ?? row.dislikedIngredients ?? [],
-    onboarding_complete: (row.onboarding_complete ?? row.onboardingComplete) ?? null,
-    height_display,
-    weight_display,
-    height_cm: row.height_cm ?? row.heightCm ?? null,
-    weight_kg: row.weight_kg ?? row.weightKg ?? null,
-    majorConditions: row.majorConditions ?? row.major_conditions ?? [],
-    created_at: row.created_at ?? row.createdAt ?? null,
-    updated_at: row.updated_at ?? row.updatedAt ?? null,
+    dislikedIngredients: row.dislikedIngredients ?? row.disliked_ingredients ?? [],
+    onboardingComplete: row.onboardingComplete ?? row.onboarding_complete ?? null,
+    conditions: row.conditions ?? row.majorConditions ?? row.major_conditions ?? [],
+    dateOfBirth: row.dateOfBirth ?? row.date_of_birth ?? null,
+    gender: row.gender ?? row.sex ?? null,
+    createdAt: row.createdAt ?? row.created_at ?? null,
+    updatedAt: row.updatedAt ?? row.updated_at ?? null,
   };
 }
 
@@ -207,6 +199,10 @@ export default function ProfilePage() {
   const [editOverview, setEditOverview] = React.useState(false);
   const [editHealth, setEditHealth] = React.useState(false);
 
+  const [dietOptions, setDietOptions] = React.useState<string[]>([]);
+  const [allergenOptions, setAllergenOptions] = React.useState<string[]>([]);
+  const [conditionOptions, setConditionOptions] = React.useState<string[]>([]);
+
   // local editable copies (arrays, not CSV)
   const [ovForm, setOvForm] = React.useState<any>({});
   const [hpForm, setHpForm] = React.useState<any>({});
@@ -222,34 +218,31 @@ export default function ProfilePage() {
 
       // seed edit state with arrays & scalars
       setOvForm({
-        display_name: ov.display_name ?? "",
-        image_url: ov.image_url ?? "",
+        fullName: ov.fullName ?? "",
         email: ov.email ?? "",
         phone: ov.phone ?? "",
-        country: ov.country ?? "",
-        preferred_cuisines: ov.preferred_cuisines ?? [],
-        profile_allergens: ov.profile_allergens ?? [],
-        profile_diets: ov.profile_diets ?? [],
-        target_calories: ov.target_calories ?? "",
-        target_protein_g: ov.target_protein_g ?? "",
-        target_carbs_g: ov.target_carbs_g ?? "",
-        target_fat_g: ov.target_fat_g ?? "",
+        diets: ov.diets ?? [],
+        allergens: ov.allergens ?? [],
       });
       setHpForm({
-        date_of_birth: hp.date_of_birth ?? "",
-        sex: hp.sex ?? "",
-        activity_level: hp.activity_level ?? "",
-        goal: hp.goal ?? "",
-        height_display: hp.height_display ?? "",
-        weight_display: hp.weight_display ?? "",
-        height_cm: hp.height_cm ?? "",
-        weight_kg: hp.weight_kg ?? "",
-        diets: hp.diets ?? [],
-        allergies: hp.allergies ?? [],
+        dateOfBirth: hp.dateOfBirth ?? "",
+        gender: hp.gender ?? "",
+        activityLevel: hp.activityLevel ?? "",
+        healthGoal: hp.healthGoal ?? "",
+        heightCm: hp.heightCm ?? "",
+        weightKg: hp.weightKg ?? "",
+        targetWeightKg: hp.targetWeightKg ?? "",
+        targetCalories: hp.targetCalories ?? "",
+        targetProteinG: hp.targetProteinG ?? "",
+        targetCarbsG: hp.targetCarbsG ?? "",
+        targetFatG: hp.targetFatG ?? "",
+        targetFiberG: hp.targetFiberG ?? "",
+        targetSodiumMg: hp.targetSodiumMg ?? "",
+        targetSugarG: hp.targetSugarG ?? "",
         intolerances: hp.intolerances ?? [],
-        disliked_ingredients: hp.disliked_ingredients ?? [],
-        major_conditions: hp.majorConditions ?? [],
-        onboarding_complete: !!hp.onboarding_complete,
+        dislikedIngredients: hp.dislikedIngredients ?? [],
+        conditions: hp.conditions ?? [],
+        onboardingComplete: !!hp.onboardingComplete,
       });
     } catch (e) {
       console.error("profile load error", e);
@@ -259,18 +252,41 @@ export default function ProfilePage() {
     }
   }
 
+  async function loadTaxonomy() {
+    try {
+      const [dietsRes, allergensRes, conditionsRes] = await Promise.all([
+        apiGetDietaryPreferences(),
+        apiGetAllergens(),
+        apiGetHealthConditions(),
+      ]);
+
+      const toNames = (items: TaxonomyOption[]) =>
+        (items || []).map((item) => item.name || item.code).filter(Boolean);
+
+      setDietOptions(toNames(dietsRes));
+      setAllergenOptions(toNames(allergensRes));
+      setConditionOptions(toNames(conditionsRes));
+    } catch (e) {
+      console.error("taxonomy load error", e);
+      setDietOptions([]);
+      setAllergenOptions([]);
+      setConditionOptions([]);
+    }
+  }
+
   React.useEffect(() => {
     load();
+    loadTaxonomy();
   }, []);
 
   const completeness = React.useMemo(() => {
     const fields = [
-      overview?.display_name,
+      overview?.fullName,
       overview?.email,
-      health?.height_display ?? health?.height_cm,
-      health?.weight_display ?? health?.weight_kg,
-      health?.activity_level,
-      health?.goal,
+      health?.heightCm,
+      health?.weightKg,
+      health?.activityLevel,
+      health?.healthGoal,
     ];
     const have = fields.filter((f) => !(f === null || f === undefined || f === "")).length;
     return Math.round((have / fields.length) * 100) || 0;
@@ -303,18 +319,11 @@ export default function ProfilePage() {
   async function saveOverviewInline() {
     try {
       const body = {
-        displayName: ovForm.display_name || null,
-        imageUrl: ovForm.image_url || null,
         email: ovForm.email || null,
         phone: ovForm.phone || null,
-        country: ovForm.country || null,
-        preferredCuisines: ovForm.preferred_cuisines || [],
-        profileAllergens: ovForm.profile_allergens || [],
-        profileDiets: ovForm.profile_diets || [],
-        targetCalories: ovForm.target_calories === "" ? null : Number(ovForm.target_calories),
-        targetProteinG: ovForm.target_protein_g === "" ? null : Number(ovForm.target_protein_g),
-        targetCarbsG: ovForm.target_carbs_g === "" ? null : Number(ovForm.target_carbs_g),
-        targetFatG: ovForm.target_fat_g === "" ? null : Number(ovForm.target_fat_g),
+        fullName: ovForm.fullName || null,
+        diets: ovForm.diets || [],
+        allergens: ovForm.allergens || [],
       };
       const r = await apiUpdateOverview(body);
       if (!r.ok) throw new Error(`overview save ${r.status}`);
@@ -330,20 +339,24 @@ export default function ProfilePage() {
   async function saveHealthInline() {
     try {
       const body = {
-        dateOfBirth: hpForm.date_of_birth || null,
-        sex: hpForm.sex || null,
-        activityLevel: hpForm.activity_level || null,
-        goal: hpForm.goal || null,
-        heightDisplay: hpForm.height_display || null,
-        weightDisplay: hpForm.weight_display || null,
-        heightCm: hpForm.height_cm === "" ? null : Number(hpForm.height_cm),
-        weightKg: hpForm.weight_kg === "" ? null : Number(hpForm.weight_kg),
-        diets: hpForm.diets || [],
-        allergens: hpForm.allergies || [],
+        dateOfBirth: hpForm.dateOfBirth || null,
+        gender: hpForm.gender || null,
+        activityLevel: hpForm.activityLevel || null,
+        healthGoal: hpForm.healthGoal || null,
+        heightCm: hpForm.heightCm === "" ? null : Number(hpForm.heightCm),
+        weightKg: hpForm.weightKg === "" ? null : Number(hpForm.weightKg),
+        targetWeightKg: hpForm.targetWeightKg === "" ? null : Number(hpForm.targetWeightKg),
+        targetCalories: hpForm.targetCalories === "" ? null : Number(hpForm.targetCalories),
+        targetProteinG: hpForm.targetProteinG === "" ? null : Number(hpForm.targetProteinG),
+        targetCarbsG: hpForm.targetCarbsG === "" ? null : Number(hpForm.targetCarbsG),
+        targetFatG: hpForm.targetFatG === "" ? null : Number(hpForm.targetFatG),
+        targetFiberG: hpForm.targetFiberG === "" ? null : Number(hpForm.targetFiberG),
+        targetSodiumMg: hpForm.targetSodiumMg === "" ? null : Number(hpForm.targetSodiumMg),
+        targetSugarG: hpForm.targetSugarG === "" ? null : Number(hpForm.targetSugarG),
         intolerances: hpForm.intolerances || [],
-        dislikedIngredients: hpForm.disliked_ingredients || [],
-        majorConditions: hpForm.major_conditions || [],
-        onboardingComplete: !!hpForm.onboarding_complete,
+        dislikedIngredients: hpForm.dislikedIngredients || [],
+        conditions: hpForm.conditions || [],
+        onboardingComplete: !!hpForm.onboardingComplete,
       };
       const r = await apiUpdateHealth(body);
       if (!r.ok) throw new Error(`health save ${r.status}`);
@@ -358,22 +371,16 @@ export default function ProfilePage() {
 
   // derived display fallbacks
   const dietsDisplay = React.useMemo(() => {
-    const fromOverview = overview?.profile_diets ?? [];
-    return (fromOverview.length ? fromOverview : (health?.diets ?? [])) as string[];
-  }, [overview?.profile_diets, health?.diets]);
+    return (overview?.diets ?? []) as string[];
+  }, [overview?.diets]);
 
   const allergiesDisplay = React.useMemo(() => {
-    const fromOverview = overview?.profile_allergens ?? [];
-    return (fromOverview.length ? fromOverview : (health?.allergies ?? [])) as string[];
-  }, [overview?.profile_allergens, health?.allergies]);
-
-  const cuisinesDisplay = React.useMemo(() => {
-    return (overview?.preferred_cuisines ?? []) as string[];
-  }, [overview?.preferred_cuisines]);
+    return (overview?.allergens ?? []) as string[];
+  }, [overview?.allergens]);
 
   const bmiEdit =
-    hpForm && hpForm.height_cm && hpForm.weight_kg
-      ? bmiFrom(Number(hpForm.height_cm), Number(hpForm.weight_kg))
+    hpForm && hpForm.heightCm && hpForm.weightKg
+      ? bmiFrom(Number(hpForm.heightCm), Number(hpForm.weightKg))
       : undefined;
 
   return (
@@ -411,17 +418,13 @@ export default function ProfilePage() {
             <CardHeader className="pb-4">
               <div className="flex items-center gap-4">
                 <Avatar className="h-14 w-14">
-                  <AvatarImage
-                    src={(editOverview ? ovForm.image_url : overview?.image_url) || undefined}
-                    alt={(overview?.display_name || "User")}
-                  />
                   <AvatarFallback>
-                    {(overview?.display_name || "U").slice(0, 2).toUpperCase()}
+                    {(overview?.fullName || "U").slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
                   <div className="font-semibold text-lg truncate">
-                    {editOverview ? (ovForm.display_name || "") : show(overview?.display_name)}
+                    {editOverview ? (ovForm.fullName || "") : show(overview?.fullName)}
                   </div>
                   <div className="text-sm text-muted-foreground truncate">
                     {editOverview ? (ovForm.email || "") : show(overview?.email)}
@@ -446,10 +449,10 @@ export default function ProfilePage() {
                 <CardTitle className="text-base">Basic Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <div>Age: {ageFromISO(health?.date_of_birth) ?? "Age not set"}</div>
-                <div>Sex: {show(health?.sex, "Not Specified")}</div>
-                <div>Height: {health?.height_display ?? (health?.height_cm ? `${health.height_cm} cm` : "Not set")}</div>
-                <div>Weight: {health?.weight_display ?? (health?.weight_kg ? `${health.weight_kg} kg` : "Not set")}</div>
+                <div>Age: {ageFromISO(health?.dateOfBirth) ?? "Age not set"}</div>
+                <div>Gender: {show(health?.gender, "Not Specified")}</div>
+                <div>Height: {health?.heightCm ? `${health.heightCm} cm` : "Not set"}</div>
+                <div>Weight: {health?.weightKg ? `${health.weightKg} kg` : "Not set"}</div>
               </CardContent>
             </Card>
 
@@ -460,12 +463,12 @@ export default function ProfilePage() {
               <CardContent className="space-y-3 text-sm">
                 <div>
                   {(() => {
-                    const bmi = bmiFrom(health?.height_cm, health?.weight_kg);
+                    const bmi = bmiFrom(health?.heightCm, health?.weightKg);
                     return bmi ? `BMI ${bmi}` : "Complete height and weight to see BMI";
                   })()}
                 </div>
-                <div>Activity Level: {show(health?.activity_level, "Not Set")}</div>
-                <div>Goal: {show(health?.goal, "Not Set")}</div>
+                <div>Activity Level: {show(health?.activityLevel, "Not Set")}</div>
+                <div>Goal: {show(health?.healthGoal, "Not Set")}</div>
               </CardContent>
             </Card>
 
@@ -478,7 +481,6 @@ export default function ProfilePage() {
                   <>
                     <div><span className="font-medium">Diets: </span>{list(dietsDisplay)}</div>
                     <div><span className="font-medium">Allergies: </span>{list(allergiesDisplay)}</div>
-                    <div><span className="font-medium">Preferred cuisines: </span>{list(cuisinesDisplay)}</div>
                   </>
                 )}
                 {editOverview && (
@@ -486,25 +488,17 @@ export default function ProfilePage() {
                     <div>
                       <Label className="mb-1 block">Diets</Label>
                       <ChipGroup
-                        options={ALL_DIETS}
-                        value={ovForm.profile_diets || []}
-                        onChange={(next) => setOvForm((s: any) => ({ ...s, profile_diets: next }))}
+                        options={dietOptions}
+                        value={ovForm.diets || []}
+                        onChange={(next) => setOvForm((s: any) => ({ ...s, diets: next }))}
                       />
                     </div>
                     <div>
                       <Label className="mb-1 block">Allergies</Label>
                       <ChipGroup
-                        options={ALL_ALLERGENS}
-                        value={ovForm.profile_allergens || []}
-                        onChange={(next) => setOvForm((s: any) => ({ ...s, profile_allergens: next }))}
-                      />
-                    </div>
-                    <div>
-                      <Label className="mb-1 block">Preferred cuisines</Label>
-                      <ChipGroup
-                        options={ALL_CUISINES}
-                        value={ovForm.preferred_cuisines || []}
-                        onChange={(next) => setOvForm((s: any) => ({ ...s, preferred_cuisines: next }))}
+                        options={allergenOptions}
+                        value={ovForm.allergens || []}
+                        onChange={(next) => setOvForm((s: any) => ({ ...s, allergens: next }))}
                       />
                     </div>
                   </div>
@@ -514,26 +508,21 @@ export default function ProfilePage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Account & Targets</CardTitle>
+                <CardTitle className="text-base">Account</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 {!editOverview && (
                   <>
-                    <div>Account Name: {show(overview?.display_name)}</div>
+                    <div>Full Name: {show(overview?.fullName)}</div>
                     <div>Email: {show(overview?.email)}</div>
                     <div>Phone: {show(overview?.phone)}</div>
-                    <div>Country: {show(overview?.country)}</div>
-                    <div>Target Calories: {show(overview?.target_calories)}</div>
-                    <div>Target Protein (g): {show(overview?.target_protein_g)}</div>
-                    <div>Target Carbs (g): {show(overview?.target_carbs_g)}</div>
-                    <div>Target Fat (g): {show(overview?.target_fat_g)}</div>
                   </>
                 )}
                 {editOverview && (
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="col-span-2">
-                      <Label htmlFor="ov-display-name">Display name</Label>
-                      <Input id="ov-display-name" value={ovForm.display_name} onChange={(e) => setOvForm((s: any) => ({...s, display_name: e.target.value}))} />
+                      <Label htmlFor="ov-full-name">Full name</Label>
+                      <Input id="ov-full-name" value={ovForm.fullName} onChange={(e) => setOvForm((s: any) => ({...s, fullName: e.target.value}))} />
                     </div>
                     <div>
                       <Label htmlFor="ov-email">Email</Label>
@@ -542,30 +531,6 @@ export default function ProfilePage() {
                     <div>
                       <Label htmlFor="ov-phone">Phone</Label>
                       <Input id="ov-phone" value={ovForm.phone} onChange={(e) => setOvForm((s: any) => ({...s, phone: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="ov-country">Country</Label>
-                      <Input id="ov-country" value={ovForm.country} onChange={(e) => setOvForm((s: any) => ({...s, country: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="ov-img">Image URL</Label>
-                      <Input id="ov-img" value={ovForm.image_url} onChange={(e) => setOvForm((s: any) => ({...s, image_url: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="ov-cal">Target Calories</Label>
-                      <Input id="ov-cal" type="number" value={ovForm.target_calories} onChange={(e) => setOvForm((s: any) => ({...s, target_calories: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="ov-pro">Target Protein (g)</Label>
-                      <Input id="ov-pro" type="number" value={ovForm.target_protein_g} onChange={(e) => setOvForm((s: any) => ({...s, target_protein_g: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="ov-carbs">Target Carbs (g)</Label>
-                      <Input id="ov-carbs" type="number" value={ovForm.target_carbs_g} onChange={(e) => setOvForm((s: any) => ({...s, target_carbs_g: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="ov-fat">Target Fat (g)</Label>
-                      <Input id="ov-fat" type="number" value={ovForm.target_fat_g} onChange={(e) => setOvForm((s: any) => ({...s, target_fat_g: e.target.value}))} />
                     </div>
                     <div className="col-span-2 flex gap-2">
                       <Button onClick={saveOverviewInline}>Save</Button>
@@ -588,28 +553,28 @@ export default function ProfilePage() {
               <CardContent className="space-y-3 text-sm">
                 {!editHealth && (
                   <>
-                    <div>DOB: {show(health?.date_of_birth)}</div>
-                    <div>Sex: {show(health?.sex, "Not Specified")}</div>
-                    <div>Activity Level: {show(health?.activity_level, "Not Set")}</div>
-                    <div>Goal: {show(health?.goal, "Not Set")}</div>
+                    <div>DOB: {show(health?.dateOfBirth)}</div>
+                    <div>Gender: {show(health?.gender, "Not Specified")}</div>
+                    <div>Activity Level: {show(health?.activityLevel, "Not Set")}</div>
+                    <div>Goal: {show(health?.healthGoal, "Not Set")}</div>
                   </>
                 )}
                 {editHealth && (
                   <div className="space-y-3">
                     <div>
                       <Label htmlFor="hp-dob">Date of Birth</Label>
-                      <Input id="hp-dob" type="date" value={hpForm.date_of_birth} onChange={(e) => setHpForm((s: any) => ({...s, date_of_birth: e.target.value}))} />
+                      <Input id="hp-dob" type="date" value={hpForm.dateOfBirth} onChange={(e) => setHpForm((s: any) => ({...s, dateOfBirth: e.target.value}))} />
                     </div>
                     <div>
-                      <Label htmlFor="hp-sex">Sex</Label>
-                      <Input id="hp-sex" placeholder="male | female | other" value={hpForm.sex} onChange={(e) => setHpForm((s: any) => ({...s, sex: e.target.value}))} />
+                      <Label htmlFor="hp-gender">Gender</Label>
+                      <Input id="hp-gender" placeholder="male | female | other" value={hpForm.gender} onChange={(e) => setHpForm((s: any) => ({...s, gender: e.target.value}))} />
                     </div>
 
                     <div>
                       <Label>Activity Level</Label>
                       <Select
-                        value={hpForm.activity_level ?? ""}
-                        onValueChange={(v) => setHpForm((s: any) => ({ ...s, activity_level: v }))}
+                        value={hpForm.activityLevel ?? ""}
+                        onValueChange={(v) => setHpForm((s: any) => ({ ...s, activityLevel: v }))}
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select activity level" />
@@ -627,8 +592,8 @@ export default function ProfilePage() {
                     <div>
                       <Label>Goal</Label>
                       <Select
-                        value={hpForm.goal ?? ""}
-                        onValueChange={(v) => setHpForm((s: any) => ({ ...s, goal: v }))}
+                        value={hpForm.healthGoal ?? ""}
+                        onValueChange={(v) => setHpForm((s: any) => ({ ...s, healthGoal: v }))}
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select goal" />
@@ -654,11 +619,11 @@ export default function ProfilePage() {
               <CardContent className="space-y-3 text-sm">
                 {!editHealth && (
                   <>
-                    <div>Height: {health?.height_display ?? (health?.height_cm ? `${health.height_cm} cm` : "Not set")}</div>
-                    <div>Weight: {health?.weight_display ?? (health?.weight_kg ? `${health.weight_kg} kg` : "Not set")}</div>
+                    <div>Height: {health?.heightCm ? `${health.heightCm} cm` : "Not set"}</div>
+                    <div>Weight: {health?.weightKg ? `${health.weightKg} kg` : "Not set"}</div>
                     <div>
                       BMI: {(() => {
-                        const bmi = bmiFrom(health?.height_cm, health?.weight_kg);
+                        const bmi = bmiFrom(health?.heightCm, health?.weightKg);
                         return bmi ? bmi : "—";
                       })()}
                     </div>
@@ -667,20 +632,12 @@ export default function ProfilePage() {
                 {editHealth && (
                   <div className="grid gap-3 md:grid-cols-2">
                     <div>
-                      <Label htmlFor="hp-hdisp">Height (display)</Label>
-                      <Input id="hp-hdisp" value={hpForm.height_display} onChange={(e) => setHpForm((s: any) => ({...s, height_display: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="hp-wdisp">Weight (display)</Label>
-                      <Input id="hp-wdisp" value={hpForm.weight_display} onChange={(e) => setHpForm((s: any) => ({...s, weight_display: e.target.value}))} />
-                    </div>
-                    <div>
                       <Label htmlFor="hp-hcm">Height (cm)</Label>
-                      <Input id="hp-hcm" type="number" value={hpForm.height_cm} onChange={(e) => setHpForm((s: any) => ({...s, height_cm: e.target.value}))} />
+                      <Input id="hp-hcm" type="number" value={hpForm.heightCm} onChange={(e) => setHpForm((s: any) => ({...s, heightCm: e.target.value}))} />
                     </div>
                     <div>
                       <Label htmlFor="hp-wkg">Weight (kg)</Label>
-                      <Input id="hp-wkg" type="number" value={hpForm.weight_kg} onChange={(e) => setHpForm((s: any) => ({...s, weight_kg: e.target.value}))} />
+                      <Input id="hp-wkg" type="number" value={hpForm.weightKg} onChange={(e) => setHpForm((s: any) => ({...s, weightKg: e.target.value}))} />
                     </div>
                     <div className="col-span-2 text-sm text-muted-foreground">
                       BMI (live): {bmiEdit ?? "—"}
@@ -699,11 +656,7 @@ export default function ProfilePage() {
                   <>
                     <div>
                       <div className="font-medium">Major Health Conditions</div>
-                      <div>{list(health?.majorConditions)}</div>
-                    </div>
-                    <div>
-                      <div className="font-medium">Allergies</div>
-                      <div>{list(health?.allergies)}</div>
+                      <div>{list(health?.conditions)}</div>
                     </div>
                     <div>
                       <div className="font-medium">Intolerances</div>
@@ -711,7 +664,7 @@ export default function ProfilePage() {
                     </div>
                     <div className="md:col-span-3">
                       <div className="font-medium">Disliked Ingredients</div>
-                      <div>{list(health?.disliked_ingredients)}</div>
+                      <div>{list(health?.dislikedIngredients)}</div>
                     </div>
                   </>
                 )}
@@ -720,17 +673,9 @@ export default function ProfilePage() {
                     <div className="md:col-span-3 space-y-2">
                       <Label>Major Health Conditions</Label>
                       <ChipGroup
-                        options={ALL_MAJOR_CONDITIONS}
-                        value={hpForm.major_conditions || []}
-                        onChange={(next) => setHpForm((s: any) => ({ ...s, major_conditions: next }))}
-                      />
-                    </div>
-                    <div className="md:col-span-3 space-y-2">
-                      <Label>Allergies</Label>
-                      <ChipGroup
-                        options={ALL_ALLERGENS}
-                        value={hpForm.allergies || []}
-                        onChange={(next) => setHpForm((s: any) => ({ ...s, allergies: next }))}
+                        options={conditionOptions}
+                        value={hpForm.conditions || []}
+                        onChange={(next) => setHpForm((s: any) => ({ ...s, conditions: next }))}
                       />
                     </div>
                     <div className="md:col-span-3 space-y-2">
@@ -753,11 +698,11 @@ export default function ProfilePage() {
                       <Label>Disliked Ingredients (CSV quick entry)</Label>
                       <Input
                         placeholder="e.g., cilantro, olives"
-                        value={(hpForm.disliked_ingredients || []).join(", ")}
+                        value={(hpForm.dislikedIngredients || []).join(", ")}
                         onChange={(e) =>
                           setHpForm((s: any) => ({
                             ...s,
-                            disliked_ingredients: e.target.value
+                            dislikedIngredients: e.target.value
                               .split(",")
                               .map((x) => x.trim())
                               .filter(Boolean),
@@ -766,7 +711,7 @@ export default function ProfilePage() {
                       />
                     </div>
                     <div className="md:col-span-3 flex items-center gap-2">
-                      <Checkbox id="hp-onboard" checked={!!hpForm.onboarding_complete} onCheckedChange={(v) => setHpForm((s: any) => ({...s, onboarding_complete: !!v}))} />
+                      <Checkbox id="hp-onboard" checked={!!hpForm.onboardingComplete} onCheckedChange={(v) => setHpForm((s: any) => ({...s, onboardingComplete: !!v}))} />
                       <Label htmlFor="hp-onboard">Onboarding Complete</Label>
                     </div>
                     <div className="md:col-span-3 flex gap-2">
@@ -802,3 +747,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+

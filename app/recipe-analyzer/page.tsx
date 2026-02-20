@@ -5,7 +5,9 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { SourceForm } from "@/components/analyzer/source-form"
 import { ResultPanel } from "@/components/analyzer/result-panel"
 import { analyzeRecipe } from "@/lib/analyze"
+import { apiAnalyzeText, apiAnalyzeUrl, apiAnalyzeImage, apiAnalyzeBarcode, apiSaveAnalyzedRecipe } from "@/lib/api"
 import type { AnalyzeResult } from "@/lib/types"
+import { MemberSelector } from "@/components/analyzer/member-selector"
 
 export type SourceType = "paste" | "link" | "photo" | "barcode" | "live"
 
@@ -19,34 +21,75 @@ export interface SourceData {
 const STORAGE_KEY = "recipe_analyzer_state_v1"
 
 export default function RecipeAnalyzerPage() {
+  // Always start with fresh input state
   const [source, setSource] = useState<SourceData>({ type: "paste", rawText: "" })
   const [result, setResult] = useState<AnalyzeResult>()
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [memberId, setMemberId] = useState<string | undefined>()
+  const [showMemberSelector, setShowMemberSelector] = useState(false)
 
   useEffect(() => {
-    // restore previous session
+    // restore previous session (only restore result, not input text)
+    // This allows users to see their last analysis result while starting fresh with input
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
         try {
-          const { source, result } = JSON.parse(saved)
-          if (source) setSource(source)
-          if (result) setResult(result)
-        } catch {}
+          const parsed = JSON.parse(saved)
+          // Only restore the result, not the source input (to allow fresh input)
+          if (parsed?.result) {
+            setResult(parsed.result)
+          }
+        } catch (err) {
+          console.warn("[RecipeAnalyzer] Failed to restore from localStorage:", err)
+        }
       }
     }
   }, [])
 
   const handleAnalyze = async () => {
     const text = (source.rawText || "").trim()
-    if (!text) return
+    const hasImage = !!source.imageUrl
+    const hasBarcode = !!source.barcode
+
+    if (!text && !hasImage && !hasBarcode) return
     setIsAnalyzing(true)
     try {
-      const analyzed = await analyzeRecipe(text)
+      let analyzed: AnalyzeResult
+
+      if (source.type === "photo" && hasImage) {
+        analyzed = await apiAnalyzeImage(source.imageUrl!, memberId)
+      } else if (source.type === "link" && text) {
+        analyzed = await apiAnalyzeUrl(text, memberId)
+      } else if ((source.type === "barcode" || source.type === "live") && hasBarcode) {
+        analyzed = await apiAnalyzeBarcode(source.barcode!, memberId)
+      } else if (text) {
+        analyzed = await analyzeRecipe(text, memberId)
+      } else {
+        throw new Error("No input provided — paste text, upload a photo, or scan a barcode.")
+      }
+
       setResult(analyzed)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ source, result: analyzed }))
+      // Save result to localStorage (but not source input, so input stays fresh on refresh)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ result: analyzed }))
+    } catch (err: any) {
+      console.error("[RecipeAnalyzer] Analysis failed:", err?.message || err)
+      // Show user-friendly error message
+      alert(`Analysis failed: ${err?.message || "Unknown error"}. Check console for details.`)
+      // Error is handled by fallback in analyzeRecipe, but we still show the error
     } finally {
       setIsAnalyzing(false)
+    }
+  }
+
+  const handleSave = async () => {
+    if (!result) return
+    try {
+      const saved = await apiSaveAnalyzedRecipe(result)
+      alert(`Recipe saved! ID: ${saved.id}`)
+    } catch (err) {
+      console.error("Save failed:", err)
+      alert("Failed to save recipe")
     }
   }
 
@@ -59,6 +102,12 @@ export default function RecipeAnalyzerPage() {
     a.download = "recipe-analysis.json"
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  const handleClear = () => {
+    setSource({ type: "paste", rawText: "" })
+    setResult(undefined)
+    localStorage.removeItem(STORAGE_KEY)
   }
 
   const handleOpenInBuilder = () => {
@@ -81,10 +130,31 @@ export default function RecipeAnalyzerPage() {
   return (
     <div className="container mx-auto px-4 py-6 max-w-7xl">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Recipe Analyzer</h1>
-        <p className="text-muted-foreground mt-2">
-          Analyze recipes from text, links, photos, or barcodes to get nutrition, allergens, and tips.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Recipe Analyzer</h1>
+            <p className="text-muted-foreground mt-2">
+              Analyze recipes from text, links, photos, or barcodes to get nutrition, allergens, and tips.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {showMemberSelector && (
+              <MemberSelector value={memberId} onChange={setMemberId} />
+            )}
+            <button
+              onClick={() => setShowMemberSelector(!showMemberSelector)}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              {showMemberSelector ? "Hide" : "Show"} Family Member
+            </button>
+            <button
+              onClick={handleClear}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Clear All
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="h-[calc(100vh-200px)] min-h-[600px]">
@@ -102,6 +172,7 @@ export default function RecipeAnalyzerPage() {
               onEdit={setResult}
               onExport={handleExport}
               onOpenInBuilder={handleOpenInBuilder}
+              onSave={handleSave}
             />
           </ResizablePanel>
         </ResizablePanelGroup>

@@ -24,7 +24,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
   reactStrictMode: true,
 
-  // Only proxy API calls; do NOT rewrite /_next/* (prevents missing CSS/JS)
+  // Proxy API calls to the backend; destinations are baked at build time
+  // into .next/routes-manifest.json (NOT re-evaluated at runtime by `next start`).
+  // In Docker: API_BASE_URL=http://backend:5000 via build arg.
+  // Locally:   falls back to http://127.0.0.1:5000 (see API_BASE above).
   async rewrites() {
     return [
       { source: "/api/v1/:path*", destination: `${API_BASE}/api/v1/:path*` },

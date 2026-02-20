@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react"
 import { account, databases, teams } from "@/lib/appwrite"
-import { Query } from "appwrite"
+import { Permission, Query, Role } from "appwrite"
 import { syncProfile, syncHealth } from "@/lib/api";
 
 type AppwriteUser = any
@@ -205,6 +205,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         intolerances: updates.intolerances !== undefined ? asArray(updates.intolerances) : undefined,
         dislikedIngredients:
           updates.dislikedIngredients !== undefined ? asArray(updates.dislikedIngredients) : undefined,
+        major_conditions:
+          updates.major_conditions !== undefined
+            ? asArray(updates.major_conditions)
+            : updates.majorConditions !== undefined
+              ? asArray(updates.majorConditions)
+              : undefined,
+        diet_codes: updates.diet_codes !== undefined ? asArray(updates.diet_codes) : undefined,
+        diet_ids: updates.diet_ids !== undefined ? asArray(updates.diet_ids) : undefined,
+        allergen_codes: updates.allergen_codes !== undefined ? asArray(updates.allergen_codes) : undefined,
+        allergen_ids: updates.allergen_ids !== undefined ? asArray(updates.allergen_ids) : undefined,
+        condition_codes: updates.condition_codes !== undefined ? asArray(updates.condition_codes) : undefined,
+        condition_ids: updates.condition_ids !== undefined ? asArray(updates.condition_ids) : undefined,
         onboardingComplete: true,
         ...(updates.height
           ? typeof updates.height === "string"
@@ -224,12 +236,21 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       try {
         const updated = await databases.updateDocument(DB_ID, HEALTH_COLL, uid, payload)
         set({ health: updated })
-        void syncHealth(payload, uid)
+        try { await syncHealth(payload, uid) } catch (e) {
+          console.error("[sync] Health sync to Supabase failed:", e)
+        }
         return
       } catch {
-        const created = await databases.createDocument(DB_ID, HEALTH_COLL, uid, payload)
+        const permissions = [
+          Permission.read(Role.user(uid)),
+          Permission.update(Role.user(uid)),
+          Permission.delete(Role.user(uid)),
+        ]
+        const created = await databases.createDocument(DB_ID, HEALTH_COLL, uid, payload, permissions)
         set({ health: created })
-        void syncHealth(payload, uid) // initial write to Supabase on create
+        try { await syncHealth(payload, uid) } catch (e) {
+          console.error("[sync] Health sync to Supabase failed:", e)
+        }
       }
     },
     [state.user],

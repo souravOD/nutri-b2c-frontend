@@ -5,10 +5,24 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Copy, Search, Heart, Camera } from "lucide-react"
+import { Copy, Search, Heart, Camera, AlertTriangle, ShieldAlert } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { NutritionFactsPanel } from "@/components/nutrition-facts-panel"
 import type { Product } from "@/lib/types"
+
+type AllergenWarning = {
+  allergenName: string
+  severity: string | null
+  memberName: string
+  message: string
+}
+
+type HealthWarning = {
+  conditionName: string
+  nutrient: string
+  value: number
+  message: string
+}
 
 type Props = {
   open: boolean
@@ -18,10 +32,19 @@ type Props = {
     value: string
     product?: Product | null
   }
+  allergenWarnings?: AllergenWarning[]
+  healthWarnings?: HealthWarning[]
   onScanAgain: () => void
 }
 
-export function ScanResultSheet({ open, onOpenChange, result, onScanAgain }: Props) {
+export function ScanResultSheet({
+  open,
+  onOpenChange,
+  result,
+  allergenWarnings = [],
+  healthWarnings = [],
+  onScanAgain,
+}: Props) {
   const [copied, setCopied] = useState(false)
   const router = useRouter()
 
@@ -43,9 +66,11 @@ export function ScanResultSheet({ open, onOpenChange, result, onScanAgain }: Pro
   }
 
   const saveProduct = () => {
-    // Mock save functionality
+    // TODO: Implement product save (favorites/pantry)
     console.log("Saving product:", result.product)
   }
+
+  const hasWarnings = allergenWarnings.length > 0 || healthWarnings.length > 0
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -82,7 +107,7 @@ export function ScanResultSheet({ open, onOpenChange, result, onScanAgain }: Pro
                   {result.product.brand && <p className="text-muted-foreground">{result.product.brand}</p>}
                   {result.product.tags && (
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {result.product.tags.map((tag) => (
+                      {result.product.tags.slice(0, 5).map((tag) => (
                         <Badge key={tag} variant="secondary" className="text-xs">
                           {tag}
                         </Badge>
@@ -94,17 +119,65 @@ export function ScanResultSheet({ open, onOpenChange, result, onScanAgain }: Pro
 
               <Separator />
 
-              {/* Nutrition Facts - Show first */}
-              {result.product.nutrition && (
+              {/* Personalized Allergen Warnings */}
+              {allergenWarnings.length > 0 && (
                 <>
-                   <NutritionFactsPanel
-                      nutrition={result.product.nutrition}
-                      servings={1} // or result.product.servings ?? 1 if you have it
-                    />
+                  <div className="rounded-lg border-2 border-red-300 bg-red-50 dark:bg-red-950/30 dark:border-red-800 p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400" />
+                      <h4 className="font-semibold text-red-700 dark:text-red-300">
+                        Allergen Warnings
+                      </h4>
+                    </div>
+                    {allergenWarnings.map((w, i) => (
+                      <div
+                        key={i}
+                        className="flex items-start gap-2 text-sm text-red-700 dark:text-red-300"
+                      >
+                        <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                        <span>{w.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Separator />
                 </>
               )}
 
-              {/* Allergen Info */}
+              {/* Personalized Health Warnings */}
+              {healthWarnings.length > 0 && (
+                <>
+                  <div className="rounded-lg border-2 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                      <h4 className="font-semibold text-amber-700 dark:text-amber-300">
+                        Health Notices
+                      </h4>
+                    </div>
+                    {healthWarnings.map((w, i) => (
+                      <div
+                        key={i}
+                        className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-300"
+                      >
+                        <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                        <span>{w.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Separator />
+                </>
+              )}
+
+              {/* Nutrition Facts - Show first */}
+              {result.product.nutrition && (
+                <>
+                  <NutritionFactsPanel
+                    nutrition={result.product.nutrition}
+                    servings={1}
+                  />
+                </>
+              )}
+
+              {/* Standard Allergen Info (from product data) */}
               {result.product.allergens && result.product.allergens.length > 0 && (
                 <>
                   <div>

@@ -3,7 +3,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Search, Heart, User, LayoutDashboard, Settings } from "lucide-react"
+import { Home, Search, Heart, User, LayoutDashboard, Settings, UtensilsCrossed, CalendarDays } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@/hooks/use-user"
 
@@ -20,6 +20,8 @@ export function BottomNav() {
     : [
         { href: "/", label: "Home", icon: Home },
         { href: "/search", label: "Search", icon: Search },
+        ...(isAuthed ? [{ href: "/meal-log", label: "Meal Log", icon: UtensilsCrossed }] : []),
+        ...(isAuthed ? [{ href: "/meal-plan", label: "Plan", icon: CalendarDays }] : []),
         ...(isAuthed ? [{ href: "/profile", label: "Profile", icon: User }] : []),
       ]
 

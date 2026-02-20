@@ -1,11 +1,11 @@
 // components/analyzer/result-panel.tsx
 "use client"
 
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Download, Wrench, FileText } from "lucide-react"
-import type { AnalyzeResult } from "@/lib/types"
+import { Download, Wrench, FileText, Save, AlertTriangle } from "lucide-react"
+import type { AnalyzeResult, AllergenWarning, HealthWarning } from "@/lib/types"
 
 // result cards (absolute paths so TS resolves consistently)
 import { NutritionCard } from "@/components/analyzer/result-cards/nutrition-card"
@@ -22,6 +22,7 @@ interface Props {
   onEdit?: (r: AnalyzeResult) => void
   onExport?: () => void
   onOpenInBuilder?: () => void
+  onSave?: () => void
 }
 
 export function ResultPanel({
@@ -30,6 +31,7 @@ export function ResultPanel({
   onEdit,
   onExport,
   onOpenInBuilder,
+  onSave,
 }: Props) {
   if (loading) {
     return (
@@ -83,6 +85,12 @@ export function ResultPanel({
   return (
     <div className="h-full p-6 space-y-4">
       <div className="flex items-center justify-end gap-2">
+        {onSave && (
+          <Button onClick={onSave}>
+            <Save className="h-4 w-4 mr-2" />
+            Save to Collection
+          </Button>
+        )}
         {onOpenInBuilder && (
           <Button variant="secondary" onClick={onOpenInBuilder}>
             <Wrench className="h-4 w-4 mr-2" />
@@ -90,12 +98,51 @@ export function ResultPanel({
           </Button>
         )}
         {onExport && (
-          <Button onClick={onExport}>
+          <Button variant="outline" onClick={onExport}>
             <Download className="h-4 w-4 mr-2" />
             Export JSON
           </Button>
         )}
       </div>
+
+      {/* Personalized Warnings */}
+      {(result.allergenWarnings && result.allergenWarnings.length > 0) ||
+      (result.healthWarnings && result.healthWarnings.length > 0) ? (
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Personalized Warnings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {result.allergenWarnings && result.allergenWarnings.length > 0 && (
+              <div>
+                <h4 className="font-semibold mb-2">Allergen Warnings</h4>
+                <ul className="space-y-1">
+                  {result.allergenWarnings.map((warning: AllergenWarning, idx: number) => (
+                    <li key={idx} className="text-sm text-destructive">
+                      {warning.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {result.healthWarnings && result.healthWarnings.length > 0 && (
+              <div>
+                <h4 className="font-semibold mb-2">Health Warnings</h4>
+                <ul className="space-y-1">
+                  {result.healthWarnings.map((warning: HealthWarning, idx: number) => (
+                    <li key={idx} className="text-sm text-destructive">
+                      {warning.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-2">
         <SummaryCard result={mapped as any} onEdit={onEdit} />

@@ -38,6 +38,10 @@ function RecipeDetailsPanel({
   busy?: boolean;
 }) {
   const n = recipe.nutrition || {};
+  const cuisineLabel =
+    typeof recipe.cuisine === "string"
+      ? recipe.cuisine
+      : recipe.cuisine?.name ?? recipe.cuisine?.code ?? null;
 
   return (
     <div className="space-y-6">
@@ -66,7 +70,7 @@ function RecipeDetailsPanel({
             </div>
           )}
           <div className="mt-3 text-sm text-muted-foreground">
-            {recipe.cuisine && <span>• {recipe.cuisine} </span>}
+            {cuisineLabel && <span>• {cuisineLabel} </span>}
             {recipe.course && <span>• {recipe.course} </span>}
             {recipe.difficulty && <span>• {recipe.difficulty}</span>}
           </div>
@@ -76,7 +80,7 @@ function RecipeDetailsPanel({
           <section>
             <h3 className="font-medium">Summary</h3>
             <p className="text-sm text-muted-foreground">
-              A {recipe.cuisine || ""} {recipe.course || "dish"} for{" "}
+              A {cuisineLabel || ""} {recipe.course || "dish"} for{" "}
               {recipe.servings || 1} serving(s), about{" "}
               {(recipe.time?.prepMin ?? 0) + (recipe.time?.cookMin ?? 0)} minutes
               total. Fits your preferences.
@@ -605,3 +609,4 @@ const [ingredients, setIngredients] = React.useState<IngredientRow[]>(seedIngred
     </form>
   );
 }
+

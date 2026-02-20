@@ -80,21 +80,36 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
         .sort((a, b) => b.ts - a.ts)
         .map(({ r }) => r);
 
-      const mapped = dedupedSorted.map((recipe: any) => ({
-        id: recipe.id,
-        title: recipe.title ?? "Untitled",
-        imageUrl: recipe.image_url ?? (Array.isArray(recipe.images) ? recipe.images[0] : null),
-        prepTime: Number(recipe.prep_time_minutes ?? 0),
-        cookTime: Number(recipe.cook_time_minutes ?? 0),
-        servings: Number(recipe.servings ?? 1),
-        difficulty: (recipe.difficulty ?? "easy") as any,
-        tags: [
-          ...(Array.isArray(recipe.tags) ? recipe.tags : []),
-          ...(Array.isArray(recipe.diet_tags) ? recipe.diet_tags : []),
-          ...(Array.isArray(recipe.cuisines) ? recipe.cuisines : []),
-          ...(Array.isArray(recipe.flags) ? recipe.flags : []),
-        ],
-      }));
+      const mapped = dedupedSorted.map((recipe: any) => {
+        const cuisineName =
+          typeof recipe.cuisine === "string"
+            ? recipe.cuisine
+            : recipe.cuisine?.name ?? recipe.cuisine?.code ?? null;
+        const cuisines = Array.isArray(recipe.cuisines)
+          ? recipe.cuisines
+          : cuisineName
+            ? [cuisineName]
+            : [];
+
+        return {
+          id: recipe.id,
+          title: recipe.title ?? "Untitled",
+          imageUrl:
+            recipe.imageUrl ??
+            recipe.image_url ??
+            (Array.isArray(recipe.images) ? recipe.images[0] : null),
+          prepTime: Number(recipe.prepTimeMinutes ?? recipe.prep_time_minutes ?? 0),
+          cookTime: Number(recipe.cookTimeMinutes ?? recipe.cook_time_minutes ?? 0),
+          servings: Number(recipe.servings ?? 1),
+          difficulty: (recipe.difficulty ?? "easy") as any,
+          tags: [
+            ...(Array.isArray(recipe.tags) ? recipe.tags : []),
+            ...(Array.isArray(recipe.diet_tags) ? recipe.diet_tags : []),
+            ...(Array.isArray(recipe.flags) ? recipe.flags : []),
+            ...cuisines,
+          ],
+        };
+      });
 
       setRecentRecipes(mapped);
     } catch (e) {

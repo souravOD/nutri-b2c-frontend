@@ -28,7 +28,17 @@ export function SourceForm({ source, onChange, onAnalyze, isAnalyzing }: Props) 
     (source.type === "barcode" && ((source.rawText || "").trim().length > 0 || (source.barcode || "").length > 0)) ||
     (source.type === "live" && (source.rawText || "").trim().length > 0)
 
-  const setType = (t: SourceType) => onChange({ ...source, type: t })
+  const setType = (t: SourceType) => {
+    // Clear input fields when switching source types (unless switching to same type)
+    if (source.type !== t) {
+      onChange({ 
+        type: t, 
+        rawText: "", // Clear text when switching tabs
+        imageUrl: undefined,
+        barcode: undefined
+      })
+    }
+  }
 
   return (
     <Card className="h-full rounded-none lg:rounded-l-lg">
@@ -48,8 +58,8 @@ export function SourceForm({ source, onChange, onAnalyze, isAnalyzing }: Props) 
           <div className="flex-1 mt-4">
             <TabsContent value="paste" className="h-full"><PasteSource source={source} onChange={onChange}/></TabsContent>
             <TabsContent value="link" className="h-full"><LinkSource source={source} onChange={onChange}/></TabsContent>
-            <TabsContent value="photo" className="h-full"><PhotoSource source={source} onChange={onChange}/></TabsContent>
-            <TabsContent value="barcode" className="h-full"><BarcodeSource source={source} onChange={onChange}/></TabsContent>
+            <TabsContent value="photo" className="h-full"><PhotoSource source={source} onChange={onChange} onAnalyze={onAnalyze}/></TabsContent>
+            <TabsContent value="barcode" className="h-full"><BarcodeSource source={source} onChange={onChange} onAnalyze={onAnalyze}/></TabsContent>
             <TabsContent value="live" className="h-full"><LiveSource source={source} onChange={onChange}/></TabsContent>
           </div>
         </Tabs>

@@ -43,9 +43,7 @@ export default function MyRecipeDetailPage() {
       difficulty: (r.difficulty ?? "easy") as any,
       tags: [
         ...(Array.isArray(r.tags) ? r.tags : []),
-        ...(Array.isArray(r.diet_tags) ? r.diet_tags : []),
-        ...(Array.isArray(r.cuisines) ? r.cuisines : []),
-        ...(Array.isArray(r.flags) ? r.flags : []),
+        ...(Array.isArray(r.cuisines) ? r.cuisines : (r.cuisine ? [r.cuisine] : [])),
       ],
     } as Recipe
   }, [recipe])
@@ -103,6 +101,8 @@ export default function MyRecipeDetailPage() {
         onOpenChange={setCookingOpen}
         steps={steps}
         recipeTitle={heroRecipe.title}
+        recipeId={id}
+        servings={heroRecipe.servings ?? 1}
       />
     </div>
   )

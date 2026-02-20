@@ -6,6 +6,10 @@ export default function RecipeDetailsPanel({
 }: { recipe: any; onBack: () => void; onSave?: () => void; mode?: "preview" | "saved" }) {
   const n = recipe.nutrition || {}
   const isPreview = mode === "preview"
+  const cuisineLabel =
+    typeof recipe.cuisine === "string"
+      ? recipe.cuisine
+      : recipe.cuisine?.name ?? recipe.cuisine?.code ?? null;
 
   return (
     <div className="space-y-6">
@@ -22,7 +26,7 @@ export default function RecipeDetailsPanel({
             <div className="h-48 rounded-md border grid place-items-center text-sm text-muted-foreground">No image</div>
           )}
           <div className="mt-3 text-sm text-muted-foreground">
-            {recipe.cuisine && <span>• {recipe.cuisine} </span>}
+            {cuisineLabel && <span>• {cuisineLabel} </span>}
             {recipe.course && <span>• {recipe.course} </span>}
             {recipe.difficulty && <span>• {recipe.difficulty}</span>}
           </div>
@@ -32,7 +36,7 @@ export default function RecipeDetailsPanel({
           <section>
             <h3 className="font-medium">Summary</h3>
             <p className="text-sm text-muted-foreground">
-              A {recipe.cuisine || ""} {recipe.course || "dish"} for {recipe.servings || 1} serving(s),
+              A {cuisineLabel || ""} {recipe.course || "dish"} for {recipe.servings || 1} serving(s),
               about {(recipe.time?.prepMin ?? 0) + (recipe.time?.cookMin ?? 0)} minutes total.
               Fits your preferences.
             </p>

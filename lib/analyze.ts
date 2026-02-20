@@ -139,15 +139,15 @@ export function estimateNutrition(
     const mul = grams / 100
 
     totals.calories += (rec?.calories ?? 0) * mul
-    totals.protein  += (rec?.protein  ?? 0) * mul
-    totals.carbs    += (rec?.carbs    ?? 0) * mul
-    totals.fat      += (rec?.fat      ?? 0) * mul
-    totals.sodium   += (rec?.sodium   ?? 0) * mul
-    totals.sugars   += (rec?.sugars   ?? 0) * mul
-    totals.fiber    += (rec?.fiber    ?? 0) * mul
-    totals.potassium+= (rec?.potassium?? 0) * mul
-    totals.iron     += (rec?.iron     ?? 0) * mul
-    totals.calcium  += (rec?.calcium  ?? 0) * mul
+    totals.protein += (rec?.protein ?? 0) * mul
+    totals.carbs += (rec?.carbs ?? 0) * mul
+    totals.fat += (rec?.fat ?? 0) * mul
+    totals.sodium += (rec?.sodium ?? 0) * mul
+    totals.sugars += (rec?.sugars ?? 0) * mul
+    totals.fiber += (rec?.fiber ?? 0) * mul
+    totals.potassium += (rec?.potassium ?? 0) * mul
+    totals.iron += (rec?.iron ?? 0) * mul
+    totals.calcium += (rec?.calcium ?? 0) * mul
     totals.vitaminD += (rec?.vitaminD ?? 0) * mul
   }
 
@@ -224,7 +224,27 @@ export function generateSuggestions(r: AnalyzeResult) {
 
 /** ---------- Main Analyzer ---------- */
 
-export async function analyzeRecipe(text: string): Promise<AnalyzeResult> {
+/**
+ * Analyze recipe with LLM backend, fallback to local parser on error.
+ */
+export async function analyzeRecipe(text: string, memberId?: string): Promise<AnalyzeResult> {
+  // Try backend LLM analysis first
+  try {
+    const { apiAnalyzeText } = await import("./api");
+    const result = await apiAnalyzeText(text, memberId);
+    console.log("[Analyze] LLM analysis succeeded:", { title: result.title, ingredientsCount: result.ingredients?.length });
+    return result;
+  } catch (err: any) {
+    console.warn("[Analyze] LLM analysis failed, falling back to local parser", err?.message || err);
+    // Fallback to local parser
+    return analyzeRecipeLocal(text);
+  }
+}
+
+/**
+ * Local recipe parser (fallback when LLM is unavailable).
+ */
+export function analyzeRecipeLocal(text: string): AnalyzeResult {
   const parsed = parseRecipeText(text)
   const ingredients = parsed.ingredients.map(parseIngredient)
 
@@ -243,7 +263,7 @@ export async function analyzeRecipe(text: string): Promise<AnalyzeResult> {
     carbs: Number(nutritionMap.carbs ?? 0),
     fat: Number(nutritionMap.fat ?? 0),
     sodium: nutritionMap.sodium,
-    sugars: nutritionMap.sugars,
+    sugar: nutritionMap.sugars,
     fiber: nutritionMap.fiber,
     potassium: nutritionMap.potassium,
     iron: nutritionMap.iron,

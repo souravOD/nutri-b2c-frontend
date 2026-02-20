@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -8,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Clock, Flame, Soup, Heart, Star } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Difficulty } from "@/lib/types"
-import { DEFAULT_RECIPE_IMAGE } from "@/lib/constants"
 
 export type RecipeCardProps = {
   id: string
@@ -28,7 +26,7 @@ export type RecipeCardProps = {
 export function RecipeCard({
   id,
   title = "Untitled",
-  imageUrl = "/placeholder.svg",
+  imageUrl,
   prepTime = 0,
   cookTime = 0,
   servings = 1,
@@ -43,19 +41,20 @@ export function RecipeCard({
   const shown = tags.slice(0, 3)
   const rest = tags.length - shown.length
   const linkHref = href ?? `/recipes/${id}`;
+  const hasImage = typeof imageUrl === "string" && imageUrl.trim().length > 0;
 
   return (
     <Card className="overflow-hidden group focus-within:ring-2 focus-within:ring-ring">
       <Link href={linkHref} prefetch={false} className="block">
-        <div className="relative aspect-[16/9] w-full overflow-hidden">
-          <Image
-            src={DEFAULT_RECIPE_IMAGE}
-            alt={title}
-            fill
-            className="object-cover transition-transform duration-300 motion-reduce:transition-none group-hover:scale-105"
-            sizes="(max-width: 640px) 100vw, 33vw"
-            priority={false}
-          />
+        <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
+          {hasImage ? (
+            <img
+              src={imageUrl as string}
+              alt={title}
+              loading="lazy"
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 motion-reduce:transition-none group-hover:scale-105"
+            />
+          ) : null}
           {score !== undefined && (
             <div className="absolute top-2 right-2">
               <Badge variant="secondary" className="bg-black/70 text-white border-0 text-xs">
