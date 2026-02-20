@@ -25,9 +25,10 @@ const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 
 interface DailyViewProps {
   initialDate?: string;
+  memberId?: string;
 }
 
-export function DailyView({ initialDate }: DailyViewProps) {
+export function DailyView({ initialDate, memberId }: DailyViewProps) {
   const today = new Date().toISOString().slice(0, 10);
   const [date, setDate] = useState(initialDate ?? today);
   const [addSheetOpen, setAddSheetOpen] = useState(false);
@@ -49,7 +50,7 @@ export function DailyView({ initialDate }: DailyViewProps) {
     deleteItem,
     logWater,
     copyDay,
-  } = useMealLog(date);
+  } = useMealLog(date, memberId);
 
   const handleOpenAdd = useCallback((mealType: MealType) => {
     setActiveMealType(mealType);
@@ -204,7 +205,11 @@ export function DailyView({ initialDate }: DailyViewProps) {
       </div>
 
       {showHistory && (
-        <HistoryView open={showHistory} onClose={() => setShowHistory(false)} />
+        <HistoryView
+          open={showHistory}
+          memberId={memberId}
+          onClose={() => setShowHistory(false)}
+        />
       )}
 
       <AddItemSheet
@@ -212,6 +217,7 @@ export function DailyView({ initialDate }: DailyViewProps) {
         onOpenChange={setAddSheetOpen}
         mealType={activeMealType}
         date={date}
+        memberId={memberId}
         onAdd={handleAddItem}
       />
     </div>

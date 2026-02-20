@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -28,6 +28,7 @@ import {
   useDeletePlan,
   useLogMealFromPlan,
 } from "@/hooks/use-meal-plan";
+import { useGenerateGroceryList } from "@/hooks/use-grocery-list";
 import { useHouseholdMembers } from "@/hooks/use-household";
 import { useToast } from "@/hooks/use-toast";
 import type { MealPlanItem, MealPlanGenerateResponse } from "@/lib/types";
@@ -38,6 +39,11 @@ const statusColors: Record<string, string> = {
   completed: "bg-blue-100 text-blue-800",
   archived: "bg-gray-100 text-gray-800",
 };
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
+}
 
 export default function MealPlanPage() {
   const router = useRouter();
@@ -59,6 +65,7 @@ export default function MealPlanPage() {
   const regenerateMut = useRegeneratePlan();
   const deletePlanMut = useDeletePlan();
   const logMealMut = useLogMealFromPlan();
+  const generateGroceryMut = useGenerateGroceryList();
 
   const handlePlanGenerated = useCallback(
     (result: MealPlanGenerateResponse) => {
@@ -246,6 +253,42 @@ export default function MealPlanPage() {
                       })}
                     >
                       <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => router.push("/budget")}
+                    >
+                      Budget
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        generateGroceryMut.mutate(
+                          { mealPlanId: planDetail.id },
+                          {
+                            onSuccess: (result) => {
+                              toast({ title: "Grocery List Ready" });
+                              router.push(`/grocery-list?listId=${result.list.id}&mealPlanId=${planDetail.id}`);
+                            },
+                            onError: (err: unknown) => {
+                              toast({
+                                title: "Grocery Generation Failed",
+                                description: getErrorMessage(err, "Try again"),
+                                variant: "destructive",
+                              });
+                            },
+                          }
+                        )
+                      }
+                      disabled={generateGroceryMut.isPending}
+                    >
+                      {generateGroceryMut.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Grocery List"
+                      )}
                     </Button>
                   </div>
                 </div>

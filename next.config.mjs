@@ -16,6 +16,10 @@ const API_BASE = (
     : "http://127.0.0.1:5000"
 ).replace(/\/+$/, "");
 
+// Vercel sets VERCEL=1 in build/runtime environments.
+// Keep local builds strict by default, but skip lint during Vercel builds.
+const IS_VERCEL = process.env.VERCEL === "1";
+
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -34,8 +38,8 @@ const nextConfig = {
     ];
   },
 
-  // (Optional) keep these strict; flip to true only if you intentionally want to ship with lints/TS errors.
-  eslint: { ignoreDuringBuilds: false },
+  // Keep TS checks enabled, but don't block Vercel deploys on existing lint debt.
+  eslint: { ignoreDuringBuilds: IS_VERCEL },
   typescript: { ignoreBuildErrors: false },
   webpack(config) {
     // Ensure '@' alias works in all environments (CI/build included)

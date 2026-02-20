@@ -40,7 +40,7 @@ ENV API_BASE_URL=${API_BASE_URL} \
     NEXT_PUBLIC_APPWRITE_ADMINS_TEAM_ID=${NEXT_PUBLIC_APPWRITE_ADMINS_TEAM_ID}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm run build
+RUN npm run build:docker
 
 # 3) Runtime image: install only production deps, copy build
 FROM node:${NODE_VERSION}-bookworm-slim AS runner

@@ -4,10 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { apiGetMealHistory } from "@/lib/api";
 import type { DaySummary } from "@/lib/types";
 
-export function useMealHistory(startDate: string, endDate: string) {
+export function useMealHistory(startDate: string, endDate: string, memberId?: string) {
   const { data, isLoading, error } = useQuery<{ days: DaySummary[]; averages: any }>({
-    queryKey: ["meal-history", startDate, endDate],
-    queryFn: () => apiGetMealHistory(startDate, endDate),
+    queryKey: ["meal-history", startDate, endDate, memberId ?? ""],
+    queryFn: () => apiGetMealHistory(startDate, endDate, memberId),
     staleTime: 60_000,
     enabled: !!startDate && !!endDate,
   });

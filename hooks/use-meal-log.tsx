@@ -1,30 +1,30 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  apiGetMealLog,
   apiAddMealItem,
-  apiUpdateMealItem,
-  apiDeleteMealItem,
-  apiLogWater,
   apiCopyDay,
+  apiDeleteMealItem,
+  apiGetMealLog,
   apiLogFromCooking,
+  apiLogWater,
+  apiUpdateMealItem,
 } from "@/lib/api";
 import type {
-  MealLogResponse,
   AddMealItemPayload,
   CookingLogPayload,
   MealLogItem,
+  MealLogResponse,
   MealType,
 } from "@/lib/types";
 
-export function useMealLog(date: string) {
+export function useMealLog(date: string, memberId?: string) {
   const qc = useQueryClient();
-  const queryKey = ["meal-log", date];
+  const queryKey = ["meal-log", date, memberId ?? ""];
 
   const { data, isLoading, error } = useQuery<MealLogResponse>({
     queryKey,
-    queryFn: () => apiGetMealLog(date),
+    queryFn: () => apiGetMealLog(date, memberId),
     staleTime: 30_000,
     enabled: !!date,
   });
@@ -32,38 +32,49 @@ export function useMealLog(date: string) {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["meal-log"] });
     qc.invalidateQueries({ queryKey: ["meal-streak"] });
+    qc.invalidateQueries({ queryKey: ["nutrition-daily"] });
+    qc.invalidateQueries({ queryKey: ["nutrition-weekly"] });
+    qc.invalidateQueries({ queryKey: ["nutrition-member-summary"] });
   };
 
   const addItem = useMutation({
-    mutationFn: (payload: AddMealItemPayload) => apiAddMealItem(payload),
+    mutationFn: (payload: AddMealItemPayload) =>
+      apiAddMealItem({
+        ...payload,
+        ...(payload.memberId ? {} : memberId ? { memberId } : {}),
+      }),
     onSuccess: invalidate,
   });
 
   const updateItem = useMutation({
     mutationFn: ({ id, ...rest }: { id: string; servings?: number; mealType?: string; notes?: string }) =>
-      apiUpdateMealItem(id, rest),
+      apiUpdateMealItem(id, rest, memberId),
     onSuccess: invalidate,
   });
 
   const deleteItem = useMutation({
-    mutationFn: (id: string) => apiDeleteMealItem(id),
+    mutationFn: (id: string) => apiDeleteMealItem(id, memberId),
     onSuccess: invalidate,
   });
 
   const logWater = useMutation({
     mutationFn: ({ date: d, amountMl }: { date: string; amountMl: number }) =>
-      apiLogWater(d, amountMl),
+      apiLogWater(d, amountMl, memberId),
     onSuccess: invalidate,
   });
 
   const copyDay = useMutation({
     mutationFn: ({ sourceDate, targetDate }: { sourceDate: string; targetDate: string }) =>
-      apiCopyDay(sourceDate, targetDate),
+      apiCopyDay(sourceDate, targetDate, memberId),
     onSuccess: invalidate,
   });
 
   const logFromCooking = useMutation({
-    mutationFn: (payload: CookingLogPayload) => apiLogFromCooking(payload),
+    mutationFn: (payload: CookingLogPayload) =>
+      apiLogFromCooking({
+        ...payload,
+        ...(payload.memberId ? {} : memberId ? { memberId } : {}),
+      }),
     onSuccess: invalidate,
   });
 
@@ -86,3 +97,4 @@ export function useMealLog(date: string) {
     logFromCooking,
   };
 }
+

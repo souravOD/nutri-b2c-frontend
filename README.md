@@ -31,6 +31,7 @@ Nutri B2C is a consumer nutrition web app built with Next.js, focused on recipe 
 - `/scan` Product barcode and image scan experience.
 - `/meal-log` Daily nutrition logging workspace.
 - `/meal-plan` Weekly plan generation and management.
+- `/budget` Household budget tracking dashboard.
 - `/profile` Personal profile and health preferences.
 
 ## Technology

@@ -17,6 +17,7 @@ import {
 interface HistoryViewProps {
   open: boolean;
   onClose: () => void;
+  memberId?: string;
 }
 
 function formatShortDate(dateStr: string): string {
@@ -29,7 +30,7 @@ function n(v: number | string | null | undefined): number {
   return typeof v === "string" ? parseFloat(v) || 0 : v;
 }
 
-export function HistoryView({ open, onClose }: HistoryViewProps) {
+export function HistoryView({ open, onClose, memberId }: HistoryViewProps) {
   const [range, setRange] = useState<"7" | "30">("7");
 
   const endDate = new Date().toISOString().slice(0, 10);
@@ -39,7 +40,7 @@ export function HistoryView({ open, onClose }: HistoryViewProps) {
     return d.toISOString().slice(0, 10);
   }, [range]);
 
-  const { days, averages, isLoading } = useMealHistory(startDate, endDate);
+  const { days, averages, isLoading } = useMealHistory(startDate, endDate, memberId);
 
   const chartData = days.map((d) => ({
     date: formatShortDate(d.date),

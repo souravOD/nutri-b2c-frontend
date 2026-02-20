@@ -17,6 +17,7 @@ interface AddItemSheetProps {
   onOpenChange: (open: boolean) => void;
   mealType: MealType;
   date: string;
+  memberId?: string;
   onAdd: (payload: AddMealItemPayload) => void;
 }
 
@@ -27,12 +28,13 @@ const LABELS: Record<MealType, string> = {
   snack: "Snack",
 };
 
-export function AddItemSheet({ open, onOpenChange, mealType, date, onAdd }: AddItemSheetProps) {
+export function AddItemSheet({ open, onOpenChange, mealType, date, memberId, onAdd }: AddItemSheetProps) {
   const [tab, setTab] = useState("search");
 
   const handleRecipeSelect = (recipe: Recipe) => {
     onAdd({
       date,
+      ...(memberId ? { memberId } : {}),
       mealType,
       recipeId: recipe.id,
       servings: 1,
@@ -49,6 +51,7 @@ export function AddItemSheet({ open, onOpenChange, mealType, date, onAdd }: AddI
   }) => {
     onAdd({
       date,
+      ...(memberId ? { memberId } : {}),
       mealType,
       customName: data.customName,
       customBrand: data.customBrand,

@@ -282,6 +282,7 @@ export interface MealLogTemplate {
 
 export interface AddMealItemPayload {
   date: string;
+  memberId?: string;
   mealType: MealType;
   recipeId?: string;
   productId?: string;
@@ -307,6 +308,7 @@ export interface AddMealItemPayload {
 
 export interface CookingLogPayload {
   recipeId: string;
+  memberId?: string;
   servings: number;
   mealType?: MealType;
   cookingStartedAt: string;
@@ -464,6 +466,334 @@ export interface MealPlanSwapResponse {
   reasoning: string;
 }
 
+// ── Grocery Lists (PRD-05) ────────────────────────────────────────────────────
+
+export type ShoppingListStatus = "draft" | "active" | "purchased" | "archived";
+
+export interface ShoppingList {
+  id: string;
+  householdId: string | null;
+  b2cCustomerId: string | null;
+  b2bCustomerId: string | null;
+  mealPlanId: string | null;
+  listName: string | null;
+  vendorId: string | null;
+  totalEstimatedCost: number | string | null;
+  status: ShoppingListStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShoppingListItem {
+  id: string;
+  shoppingListId: string;
+  productId: string | null;
+  ingredientId: string | null;
+  itemName: string;
+  quantity: number | string;
+  unit: string | null;
+  category: string | null;
+  estimatedPrice: number | string | null;
+  actualPrice: number | string | null;
+  isPurchased: boolean;
+  substitutedProductId: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  currentProductId?: string | null;
+  currentProductName?: string | null;
+  currentProductBrand?: string | null;
+}
+
+export interface GroceryListSummary {
+  totalItems: number;
+  purchasedItems: number;
+  estimatedTotal: number;
+  purchasedActualTotal: number;
+}
+
+export interface GroceryListDetailResponse {
+  list: ShoppingList;
+  items: ShoppingListItem[];
+  estimatedTotal: number;
+  summary: GroceryListSummary;
+}
+
+export interface GrocerySubstitutionCandidate {
+  productId: string;
+  name: string;
+  brand: string | null;
+  price: number | null;
+  currency: string | null;
+  category: string | null;
+  imageUrl: string | null;
+  substitutionReason: string | null;
+  confidenceScore: number | null;
+  savingsVsCurrent: number | null;
+}
+
+export interface GenerateGroceryListPayload {
+  mealPlanId?: string;
+}
+
+export interface UpdateGroceryItemPayload {
+  isPurchased?: boolean;
+  actualPrice?: number;
+  substitutedProductId?: string;
+}
+
+export interface UpdateGroceryListStatusPayload {
+  status: "active" | "purchased";
+}
+
+
+export type BudgetPeriod = "weekly" | "monthly";
+export type BudgetType = "grocery";
+export type BudgetTipSeverity = "info" | "warning" | "critical";
+
+export interface Budget {
+  id: string;
+  householdId: string;
+  budgetType: BudgetType;
+  amount: number;
+  currency: "USD";
+  period: BudgetPeriod;
+  startDate: string | null;
+  endDate: string | null;
+  isActive: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface BudgetWindow {
+  period: BudgetPeriod;
+  timezone: string;
+  startAt: string;
+  endAt: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface BudgetCategorySpend {
+  category: string;
+  amount: number;
+  pct: number;
+  itemCount: number;
+}
+
+export interface BudgetPlanVsActual {
+  mealPlanId: string;
+  planName: string | null;
+  estimated: number;
+  actual: number;
+  difference: number;
+  differencePct: number | null;
+}
+
+export interface BudgetSnapshot {
+  budget: Budget | null;
+  window: BudgetWindow;
+  spent: number;
+  remaining: number | null;
+  utilizationPct: number | null;
+  breakdown: BudgetCategorySpend[];
+  planVsActual: BudgetPlanVsActual | null;
+  metadata: {
+    unpricedPurchasedItems: number;
+  };
+}
+
+export interface BudgetTrendPoint {
+  startDate: string;
+  endDate: string;
+  spent: number;
+  budgetAmount: number | null;
+  remaining: number | null;
+  utilizationPct: number | null;
+}
+
+export interface BudgetTrendsResponse {
+  period: BudgetPeriod;
+  timezone: string;
+  points: BudgetTrendPoint[];
+}
+
+export interface BudgetRecommendation {
+  id: string;
+  title: string;
+  description: string;
+  severity: BudgetTipSeverity;
+  potentialSavings: number | null;
+  source: "rules" | "llm";
+}
+
+export interface BudgetRecommendationsResponse {
+  tips: BudgetRecommendation[];
+  source: "rules" | "hybrid";
+  generatedAt: string;
+}
+
+export interface CreateBudgetPayload {
+  amount: number;
+  period: BudgetPeriod;
+  budgetType?: BudgetType;
+  currency?: "USD";
+  startDate?: string | null;
+  endDate?: string | null;
+}
+
+export interface UpdateBudgetPayload {
+  amount?: number;
+  period?: BudgetPeriod;
+  startDate?: string | null;
+  endDate?: string | null;
+}
+
+export interface NutrientGap {
+  key: string;
+  nutrient: string;
+  intake: number;
+  target: number;
+  unit: string;
+  deficit: number;
+  percentOfTarget: number;
+  status: "ok" | "low" | "high";
+}
+
+export interface ConditionAlert {
+  conditionName: string;
+  nutrient: string;
+  intake: number;
+  threshold: number;
+  unit: string;
+  direction: "high" | "low";
+  message: string;
+}
+
+export interface TrendPoint {
+  date: string;
+  value: number;
+}
+
+export interface NutritionDashboardDailyResponse {
+  date: string;
+  member: {
+    id: string;
+    name: string;
+    householdRole: string | null;
+  };
+  totals: {
+    calories: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+    fiberG: number;
+    sugarG: number;
+    sodiumMg: number;
+    vitaminDMcg: number;
+    calciumMg: number;
+    ironMg: number;
+    potassiumMg: number;
+    waterMl: number;
+  };
+  targets: {
+    calories: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+    fiberG: number;
+    sugarG: number;
+    sodiumMg: number;
+    vitaminDMcg: number;
+    calciumMg: number;
+    ironMg: number;
+    potassiumMg: number;
+    waterMl: number;
+  };
+  progress: {
+    caloriesPct: number;
+    proteinPct: number;
+    carbsPct: number;
+    fatPct: number;
+  };
+  meals: {
+    itemCount: number;
+    byType: Record<string, number>;
+  };
+  nutrientGaps: NutrientGap[];
+  conditionAlerts: ConditionAlert[];
+}
+
+export interface NutritionDashboardWeeklyResponse {
+  weekStart: string;
+  weekEnd: string;
+  days: Array<{
+    date: string;
+    calories: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+    fiberG: number;
+    sugarG: number;
+    sodiumMg: number;
+  }>;
+  averages: {
+    calories: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+    fiberG: number;
+    sugarG: number;
+    sodiumMg: number;
+    vitaminDMcg: number;
+    calciumMg: number;
+    ironMg: number;
+    potassiumMg: number;
+  };
+  compliance: {
+    loggedDays: number;
+    calorieGoalDays: number;
+    calorieGoalPct: number;
+  };
+  nutrientGaps: NutrientGap[];
+}
+
+export interface NutritionMemberSummaryResponse {
+  date: string;
+  members: Array<{
+    memberId: string;
+    name: string;
+    householdRole: string | null;
+    calories: number;
+    targetCalories: number | null;
+    progressPct: number;
+    itemCount: number;
+    status: "ok" | "under" | "over" | "no_data";
+  }>;
+}
+
+export interface NutritionHealthMetricsResponse {
+  member: {
+    id: string;
+    name: string;
+    age: number | null;
+    gender: string | null;
+  };
+  bmi: number | null;
+  bmr: number | null;
+  tdee: number | null;
+  weight: {
+    currentKg: number | null;
+    startKg: number | null;
+    targetKg: number | null;
+    progressPct: number | null;
+    changeKg: number | null;
+    trend: TrendPoint[];
+  };
+  activityLevel: string | null;
+  healthGoal: string | null;
+}
+
 // ── Household ───────────────────────────────────────────────────────────────
 
 export interface Household {
@@ -530,3 +860,5 @@ export interface RecipeRatingResponse {
   averageRating: number | null;
   ratingCount: number;
 }
+
+

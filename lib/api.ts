@@ -5,11 +5,29 @@ import { account } from "./appwrite";
 import type {
   Recipe,
   MealPlan,
-  MealPlanItem,
   MealPlanGenerateParams,
   MealPlanGenerateResponse,
   MealPlanDetailResponse,
   MealPlanSwapResponse,
+  ShoppingList,
+  ShoppingListItem,
+  GroceryListDetailResponse,
+  GrocerySubstitutionCandidate,
+  GenerateGroceryListPayload,
+  UpdateGroceryItemPayload,
+  UpdateGroceryListStatusPayload,
+  Budget,
+  BudgetSnapshot,
+  BudgetTrendsResponse,
+  BudgetRecommendationsResponse,
+  CreateBudgetPayload,
+  UpdateBudgetPayload,
+  BudgetPeriod,
+  BudgetType,
+  NutritionDashboardDailyResponse,
+  NutritionDashboardWeeklyResponse,
+  NutritionMemberSummaryResponse,
+  NutritionHealthMetricsResponse,
   HouseholdMembersResponse,
   HouseholdMember,
   RecipeRatingResponse,
@@ -17,13 +35,6 @@ import type {
   RecipeRating,
 } from "./types";
 
-// If NEXT_PUBLIC_API_BASE_URL is set, use it (direct to backend).
-// Otherwise call relative /api/v1/* so Next proxies handle it.
-const RAW_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").trim();
-// Ensure absolute URL w/ protocol; strip trailing slash
-const API_BASE = RAW_BASE
-  ? (/^https?:\/\//i.test(RAW_BASE) ? RAW_BASE : `https://${RAW_BASE}`).replace(/\/+$/, "")
-  : "";
 type FetchOpts = Omit<RequestInit, "headers"> & { headers?: HeadersInit };
 let cachedJwt: { token: string; exp: number } | null = null;
 
@@ -844,8 +855,10 @@ import type {
   DaySummary,
 } from "./types";
 
-export async function apiGetMealLog(date: string): Promise<MealLogResponse> {
-  const r = await authFetch(`/api/v1/meal-log?date=${encodeURIComponent(date)}`);
+export async function apiGetMealLog(date: string, memberId?: string): Promise<MealLogResponse> {
+  const query = new URLSearchParams({ date });
+  if (memberId) query.set("memberId", memberId);
+  const r = await authFetch(`/api/v1/meal-log?${query.toString()}`);
   if (!r.ok) throw new Error(`meal-log ${r.status}`);
   return r.json();
 }
@@ -860,8 +873,15 @@ export async function apiAddMealItem(data: AddMealItemPayload) {
   return r.json();
 }
 
-export async function apiUpdateMealItem(id: string, data: { servings?: number; mealType?: string; notes?: string }) {
-  const r = await authFetch(`/api/v1/meal-log/items/${id}`, {
+export async function apiUpdateMealItem(
+  id: string,
+  data: { servings?: number; mealType?: string; notes?: string },
+  memberId?: string
+) {
+  const query = new URLSearchParams();
+  if (memberId) query.set("memberId", memberId);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  const r = await authFetch(`/api/v1/meal-log/items/${id}${qs}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -870,40 +890,50 @@ export async function apiUpdateMealItem(id: string, data: { servings?: number; m
   return r.json();
 }
 
-export async function apiDeleteMealItem(id: string) {
-  const r = await authFetch(`/api/v1/meal-log/items/${id}`, { method: "DELETE" });
+export async function apiDeleteMealItem(id: string, memberId?: string) {
+  const query = new URLSearchParams();
+  if (memberId) query.set("memberId", memberId);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  const r = await authFetch(`/api/v1/meal-log/items/${id}${qs}`, { method: "DELETE" });
   if (!r.ok) throw new Error(`delete-meal-item ${r.status}`);
   return r.json();
 }
 
-export async function apiLogWater(date: string, amountMl: number) {
+export async function apiLogWater(date: string, amountMl: number, memberId?: string) {
   const r = await authFetch("/api/v1/meal-log/water", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ date, amount_ml: amountMl }),
+    body: JSON.stringify({ date, amount_ml: amountMl, ...(memberId ? { memberId } : {}) }),
   });
   if (!r.ok) throw new Error(`log-water ${r.status}`);
   return r.json();
 }
 
-export async function apiCopyDay(sourceDate: string, targetDate: string) {
+export async function apiCopyDay(sourceDate: string, targetDate: string, memberId?: string) {
   const r = await authFetch("/api/v1/meal-log/copy-day", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sourceDate, targetDate }),
+    body: JSON.stringify({ sourceDate, targetDate, ...(memberId ? { memberId } : {}) }),
   });
   if (!r.ok) throw new Error(`copy-day ${r.status}`);
   return r.json();
 }
 
-export async function apiGetMealHistory(startDate: string, endDate: string): Promise<{ days: DaySummary[]; averages: any }> {
-  const r = await authFetch(`/api/v1/meal-log/history?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`);
+export async function apiGetMealHistory(
+  startDate: string,
+  endDate: string,
+  memberId?: string
+): Promise<{ days: DaySummary[]; averages: any }> {
+  const query = new URLSearchParams({ startDate, endDate });
+  if (memberId) query.set("memberId", memberId);
+  const r = await authFetch(`/api/v1/meal-log/history?${query.toString()}`);
   if (!r.ok) throw new Error(`meal-history ${r.status}`);
   return r.json();
 }
 
-export async function apiGetStreak(): Promise<StreakInfo> {
-  const r = await authFetch("/api/v1/meal-log/streak");
+export async function apiGetStreak(memberId?: string): Promise<StreakInfo> {
+  const qs = memberId ? `?memberId=${encodeURIComponent(memberId)}` : "";
+  const r = await authFetch(`/api/v1/meal-log/streak${qs}`);
   if (!r.ok) throw new Error(`streak ${r.status}`);
   return r.json();
 }
@@ -918,13 +948,14 @@ export async function apiLogFromCooking(data: CookingLogPayload) {
   return r.json();
 }
 
-export async function apiGetMealTemplates(): Promise<{ templates: MealLogTemplate[] }> {
-  const r = await authFetch("/api/v1/meal-log/templates");
+export async function apiGetMealTemplates(memberId?: string): Promise<{ templates: MealLogTemplate[] }> {
+  const qs = memberId ? `?memberId=${encodeURIComponent(memberId)}` : "";
+  const r = await authFetch(`/api/v1/meal-log/templates${qs}`);
   if (!r.ok) throw new Error(`meal-templates ${r.status}`);
   return r.json();
 }
 
-export async function apiCreateMealTemplate(data: { name: string; mealType?: string; items: any[] }) {
+export async function apiCreateMealTemplate(data: { name: string; memberId?: string; mealType?: string; items: any[] }) {
   const r = await authFetch("/api/v1/meal-log/templates", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -1001,6 +1032,209 @@ export async function apiLogMealFromPlan(planId: string, itemId: string) {
 }
 
 // ── Household ──────────────────────────────────────────────────────────────
+
+export async function apiGenerateGroceryList(
+  payload: GenerateGroceryListPayload = {}
+): Promise<{ list: ShoppingList; items: ShoppingListItem[]; estimatedTotal: number }> {
+  const r = await authFetch("/api/v1/grocery-lists/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) {
+    const text = await r.text().catch(() => "");
+    throw new Error(`generate-grocery-list ${r.status}: ${text}`);
+  }
+  return r.json();
+}
+
+export async function apiGetGroceryLists(status?: string): Promise<{ lists: ShoppingList[] }> {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+  const r = await authFetch(`/api/v1/grocery-lists${qs}`);
+  if (!r.ok) throw new Error(`get-grocery-lists ${r.status}`);
+  return r.json();
+}
+
+export async function apiGetGroceryListDetail(id: string): Promise<GroceryListDetailResponse> {
+  const r = await authFetch(`/api/v1/grocery-lists/${id}`);
+  if (!r.ok) throw new Error(`get-grocery-list ${r.status}`);
+  return r.json();
+}
+
+export async function apiUpdateGroceryItem(
+  listId: string,
+  itemId: string,
+  payload: UpdateGroceryItemPayload
+) {
+  const r = await authFetch(`/api/v1/grocery-lists/${listId}/items/${itemId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) throw new Error(`update-grocery-item ${r.status}`);
+  return r.json();
+}
+
+export async function apiUpdateGroceryListStatus(
+  listId: string,
+  payload: UpdateGroceryListStatusPayload
+): Promise<{ list: ShoppingList }> {
+  const r = await authFetch(`/api/v1/grocery-lists/${listId}/status`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) throw new Error(`update-grocery-list-status ${r.status}`);
+  return r.json();
+}
+
+export async function apiAddGroceryItem(
+  listId: string,
+  payload: {
+    itemName: string;
+    quantity: number;
+    unit?: string;
+    category?: string;
+    estimatedPrice?: number;
+  }
+) {
+  const r = await authFetch(`/api/v1/grocery-lists/${listId}/items`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) throw new Error(`add-grocery-item ${r.status}`);
+  return r.json();
+}
+
+export async function apiDeleteGroceryItem(listId: string, itemId: string) {
+  const r = await authFetch(`/api/v1/grocery-lists/${listId}/items/${itemId}`, {
+    method: "DELETE",
+  });
+  if (!r.ok) throw new Error(`delete-grocery-item ${r.status}`);
+  return r.json();
+}
+
+export async function apiGetGrocerySubstitutions(
+  listId: string,
+  itemId: string
+): Promise<{ substitutions: GrocerySubstitutionCandidate[] }> {
+  const r = await authFetch(`/api/v1/grocery-lists/${listId}/items/${itemId}/substitutions`);
+  if (!r.ok) throw new Error(`get-grocery-substitutions ${r.status}`);
+  return r.json();
+}
+
+export async function apiGetBudgetSnapshot(params?: {
+  period?: BudgetPeriod;
+  budgetType?: BudgetType;
+}): Promise<BudgetSnapshot> {
+  const query = new URLSearchParams();
+  if (params?.period) query.set("period", params.period);
+  if (params?.budgetType) query.set("budgetType", params.budgetType);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  const r = await authFetch(`/api/v1/budget${qs}`);
+  if (!r.ok) throw new Error(`budget-snapshot ${r.status}`);
+  return r.json();
+}
+
+export async function apiCreateBudget(payload: CreateBudgetPayload): Promise<{ budget: Budget }> {
+  const r = await authFetch("/api/v1/budget", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) throw new Error(`create-budget ${r.status}`);
+  return r.json();
+}
+
+export async function apiUpdateBudget(
+  budgetId: string,
+  payload: UpdateBudgetPayload
+): Promise<{ budget: Budget }> {
+  const r = await authFetch(`/api/v1/budget/${budgetId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) throw new Error(`update-budget ${r.status}`);
+  return r.json();
+}
+
+export async function apiGetBudgetTrends(params?: {
+  period?: BudgetPeriod;
+  budgetType?: BudgetType;
+  points?: number;
+}): Promise<BudgetTrendsResponse> {
+  const query = new URLSearchParams();
+  if (params?.period) query.set("period", params.period);
+  if (params?.budgetType) query.set("budgetType", params.budgetType);
+  if (params?.points != null) query.set("points", String(params.points));
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  const r = await authFetch(`/api/v1/budget/trends${qs}`);
+  if (!r.ok) throw new Error(`budget-trends ${r.status}`);
+  return r.json();
+}
+
+export async function apiGetBudgetRecommendations(params?: {
+  period?: BudgetPeriod;
+  budgetType?: BudgetType;
+}): Promise<BudgetRecommendationsResponse> {
+  const query = new URLSearchParams();
+  if (params?.period) query.set("period", params.period);
+  if (params?.budgetType) query.set("budgetType", params.budgetType);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  const r = await authFetch(`/api/v1/budget/recommendations${qs}`);
+  if (!r.ok) throw new Error(`budget-recommendations ${r.status}`);
+  return r.json();
+}
+
+export async function apiGetNutritionDaily(params?: {
+  date?: string;
+  memberId?: string;
+}): Promise<NutritionDashboardDailyResponse> {
+  const query = new URLSearchParams();
+  if (params?.date) query.set("date", params.date);
+  if (params?.memberId) query.set("memberId", params.memberId);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  const r = await authFetch(`/api/v1/nutrition-dashboard/daily${qs}`);
+  if (!r.ok) throw new Error(`nutrition-daily ${r.status}`);
+  return r.json();
+}
+
+export async function apiGetNutritionWeekly(params?: {
+  weekStart?: string;
+  memberId?: string;
+}): Promise<NutritionDashboardWeeklyResponse> {
+  const query = new URLSearchParams();
+  if (params?.weekStart) query.set("weekStart", params.weekStart);
+  if (params?.memberId) query.set("memberId", params.memberId);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  const r = await authFetch(`/api/v1/nutrition-dashboard/weekly${qs}`);
+  if (!r.ok) throw new Error(`nutrition-weekly ${r.status}`);
+  return r.json();
+}
+
+export async function apiGetNutritionMemberSummary(params?: {
+  date?: string;
+}): Promise<NutritionMemberSummaryResponse> {
+  const query = new URLSearchParams();
+  if (params?.date) query.set("date", params.date);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  const r = await authFetch(`/api/v1/nutrition-dashboard/member-summary${qs}`);
+  if (!r.ok) throw new Error(`nutrition-member-summary ${r.status}`);
+  return r.json();
+}
+
+export async function apiGetNutritionHealthMetrics(params?: {
+  memberId?: string;
+}): Promise<NutritionHealthMetricsResponse> {
+  const query = new URLSearchParams();
+  if (params?.memberId) query.set("memberId", params.memberId);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  const r = await authFetch(`/api/v1/nutrition-dashboard/health-metrics${qs}`);
+  if (!r.ok) throw new Error(`nutrition-health-metrics ${r.status}`);
+  return r.json();
+}
 
 export async function apiGetHouseholdMembers(): Promise<HouseholdMembersResponse> {
   const r = await authFetch("/api/v1/households/members");
