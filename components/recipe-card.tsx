@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -48,10 +49,12 @@ export function RecipeCard({
       <Link href={linkHref} prefetch={false} className="block">
         <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
           {hasImage ? (
-            <img
+            <Image
               src={imageUrl as string}
               alt={title}
-              loading="lazy"
+              fill
+              unoptimized
+              sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
               className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 motion-reduce:transition-none group-hover:scale-105"
             />
           ) : null}

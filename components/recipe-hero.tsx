@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clock, Users, ChefHat, Heart, Share2, Star } from "lucide-react"
@@ -56,11 +57,13 @@ export function RecipeHero({ recipe, onToggleSave, onShare }: RecipeHeroProps) {
       {/* Hero Image */}
       <div className="relative w-full aspect-[16/9] overflow-hidden rounded-lg bg-muted">
         {hasImage ? (
-          <img
+          <Image
             src={src as string}
             alt={imageAlt ?? title}
+            fill
+            unoptimized
+            sizes="100vw"
             className="absolute inset-0 h-full w-full object-cover"
-            loading="lazy"
           />
         ) : (
           <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">

@@ -1,4 +1,5 @@
 "use client"
+import Image from "next/image"
 import { useState, useEffect, useRef } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -49,8 +50,13 @@ export function PhotoSource({ source, onChange, onAnalyze }: PhotoSourceProps) {
           <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
           {preview && <Button type="button" variant="outline" onClick={() => { setPreview(""); onChange({ ...source, imageUrl: "" }) }}><X className="h-4 w-4 mr-2" />Remove</Button>}
         </div>
-        {preview ? <img src={preview} alt="preview" className="mt-3 h-48 w-full object-cover rounded-md border" /> :
-          <div className="h-48 grid place-items-center border rounded-md text-sm text-muted-foreground"><Upload className="mr-2 h-4 w-4" /><span>Drop an image</span></div>}
+        {preview ? (
+          <div className="relative mt-3 h-48 w-full overflow-hidden rounded-md border">
+            <Image src={preview} alt="preview" fill unoptimized className="object-cover" />
+          </div>
+        ) : (
+          <div className="h-48 grid place-items-center border rounded-md text-sm text-muted-foreground"><Upload className="mr-2 h-4 w-4" /><span>Drop an image</span></div>
+        )}
       </div>
 
       <div className="space-y-2">

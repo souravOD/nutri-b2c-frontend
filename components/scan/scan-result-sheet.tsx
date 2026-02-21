@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useState } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
@@ -94,9 +95,12 @@ export function ScanResultSheet({
               {/* Product Info */}
               <div className="flex gap-4">
                 {result.product.imageUrl && (
-                  <img
+                  <Image
                     src={result.product.imageUrl || "/placeholder.svg"}
                     alt={result.product.title}
+                    width={80}
+                    height={80}
+                    unoptimized
                     className="w-20 h-20 rounded-lg object-cover"
                   />
                 )}

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import IngredientRowCmp, { type IngredientRow } from "./row";
 import DietAllergenPicker from "./DietAllergenPicker";
 import { Button } from "@/components/ui/button";
@@ -102,11 +103,15 @@ function RecipeDetailsPanel({
       <div className="grid gap-4 md:grid-cols-3">
         <div className="md:col-span-1">
           {recipe.imageUrl ? (
-            <img
-              className="h-48 w-full rounded-md object-cover border"
-              src={recipe.imageUrl}
-              alt={recipe.title || "Recipe image"}
-            />
+            <div className="relative h-48 w-full overflow-hidden rounded-md border">
+              <Image
+                src={recipe.imageUrl}
+                alt={recipe.title || "Recipe image"}
+                fill
+                unoptimized
+                className="object-cover"
+              />
+            </div>
           ) : (
             <div className="h-48 rounded-md border grid place-items-center text-sm text-muted-foreground">
               No image
