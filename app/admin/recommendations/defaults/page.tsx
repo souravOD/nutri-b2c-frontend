@@ -173,7 +173,7 @@ export default function AdminRecommendationDefaults() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
   useEffect(() => {
-    const saved = getAdminDefaults()
+    const saved = getAdminDefaults<RecommendationSettings>()
     const apply = isAdminApplyEnabled()
     if (saved) setSettings(saved)
     setApplyToDevice(apply)

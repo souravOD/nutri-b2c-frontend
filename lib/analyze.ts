@@ -39,7 +39,6 @@ export function parseRecipeText(text: string) {
 
   for (const raw of lines) {
     const line = raw.trim()
-    const lower = line.toLowerCase()
 
     // servings detection
     if (/serv(es|ings?)\s*[:\-]?\s*(\d+)/i.test(line) || /makes\s+(\d+)/i.test(line)) {
@@ -234,8 +233,9 @@ export async function analyzeRecipe(text: string, memberId?: string): Promise<An
     const result = await apiAnalyzeText(text, memberId);
     console.log("[Analyze] LLM analysis succeeded:", { title: result.title, ingredientsCount: result.ingredients?.length });
     return result;
-  } catch (err: any) {
-    console.warn("[Analyze] LLM analysis failed, falling back to local parser", err?.message || err);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.warn("[Analyze] LLM analysis failed, falling back to local parser", message);
     // Fallback to local parser
     return analyzeRecipeLocal(text);
   }

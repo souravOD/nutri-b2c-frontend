@@ -90,7 +90,7 @@ export interface Recipe {
   imageAlt?: string;
   instructions?: string[];
   steps?: string[];
-  ingredients?: any[];
+  ingredients?: unknown[];
 
   // Personalization & metadata
   isSaved?: boolean;
@@ -276,7 +276,7 @@ export interface MealLogTemplate {
   b2cCustomerId: string;
   templateName: string;
   mealType?: string | null;
-  items: any[];
+  items: unknown[];
   useCount: number;
 }
 
@@ -474,7 +474,6 @@ export interface ShoppingList {
   id: string;
   householdId: string | null;
   b2cCustomerId: string | null;
-  b2bCustomerId: string | null;
   mealPlanId: string | null;
   listName: string | null;
   vendorId: string | null;

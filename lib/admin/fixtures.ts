@@ -12,7 +12,9 @@ import announcements from "@/app/_mock/admin/announcements.json"
 
 const OVERRIDES_KEY = "admin_overrides_v1"
 
-const FIXTURES: Record<string, any> = {
+type FixtureValue = unknown
+
+const FIXTURES: Record<string, FixtureValue> = {
   analytics,
   audit,
   products,
@@ -32,15 +34,16 @@ export async function loadFixture(name: keyof typeof FIXTURES) {
   return FIXTURES[name]
 }
 
-export function saveOverride(name: keyof typeof FIXTURES, value: any) {
+export function saveOverride(name: keyof typeof FIXTURES, value: FixtureValue) {
   const overrides = getOverrides()
   overrides[name] = value
   localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides))
 }
 
-function getOverrides(): Record<string, any> {
+function getOverrides(): Record<string, FixtureValue> {
   try {
-    return JSON.parse(localStorage.getItem(OVERRIDES_KEY) || "{}")
+    const parsed = JSON.parse(localStorage.getItem(OVERRIDES_KEY) || "{}") as unknown
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, FixtureValue>) : {}
   } catch {
     return {}
   }

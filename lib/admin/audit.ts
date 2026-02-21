@@ -7,12 +7,13 @@ export type AuditEntry = {
   action: string
   target?: string
   summary?: string
-  diff?: any
+  diff?: unknown
 }
 
 export function listAudit(): AuditEntry[] {
   try {
-    return JSON.parse(localStorage.getItem(KEY) || "[]")
+    const parsed = JSON.parse(localStorage.getItem(KEY) || "[]") as unknown
+    return Array.isArray(parsed) ? (parsed as AuditEntry[]) : []
   } catch {
     return []
   }
