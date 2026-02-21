@@ -44,10 +44,11 @@ function LoginInner() {
       await refresh()
       const dest = next ?? (isAdmin() ? "/admin" : "/")
       router.replace(dest)
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Please check your credentials and try again."
       toast({
         title: "Sign-in failed",
-        description: err?.message ?? "Please check your credentials and try again.",
+        description: message,
         variant: "destructive",
       })
     } finally {

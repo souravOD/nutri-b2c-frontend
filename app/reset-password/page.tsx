@@ -60,8 +60,9 @@ function ResetPasswordClient() {
       await account.updateRecovery(userId, secret, pw1)
       toast({ title: "Password updated", description: "You can now sign in with your new password." })
       router.replace("/login")
-    } catch (e: any) {
-      toast({ title: "Reset failed", description: e?.message || "", variant: "destructive" })
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : ""
+      toast({ title: "Reset failed", description: message, variant: "destructive" })
     } finally {
       setLoading(false)
     }

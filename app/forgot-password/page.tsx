@@ -25,8 +25,9 @@ export default function ForgotPasswordPage() {
       await account.createRecovery(email, `${baseUrl}/reset-password`)
       setEmailSent(true)
       toast({ title: "Reset link sent", description: "Check your inbox for the reset link." })
-    } catch (e: any) {
-      toast({ title: "Failed to send reset link", description: e?.message || "", variant: "destructive" })
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : ""
+      toast({ title: "Failed to send reset link", description: message, variant: "destructive" })
     } finally {
       setIsLoading(false)
     }

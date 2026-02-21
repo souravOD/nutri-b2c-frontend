@@ -72,10 +72,11 @@ export default function RegisterPage() {
       // 4) Refresh context & route
       await refresh()
       router.replace(needsHealthOnboarding ? "/onboarding" : "/")
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Please check details and try again."
       toast({
         title: "Registration failed",
-        description: err?.message ?? "Please check details and try again.",
+        description: message,
         variant: "destructive",
       })
     } finally {
