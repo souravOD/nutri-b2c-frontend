@@ -12,19 +12,7 @@ type LivePreviewProps = {
 export function LivePreview({ deviceId, onDetected, onError }: LivePreviewProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-
-  // Normalize any vendor/library result to the shared shape
-  function normalize(raw: unknown): BarcodeResult {
-    const obj = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null
-    if (obj && typeof obj.value === "string") {
-      return { value: obj.value, format: typeof obj.format === "string" ? obj.format : undefined, raw };
-    }
-    // common alt field is "text"
-    if (obj && typeof obj.text === "string") {
-      return { value: obj.text, format: typeof obj.format === "string" ? obj.format : undefined, raw };
-    }
-    return { value: String(raw ?? ""), raw };
-  }
+  void onDetected;
 
   useEffect(() => {
     let cancelled = false;

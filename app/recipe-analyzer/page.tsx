@@ -5,7 +5,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { SourceForm } from "@/components/analyzer/source-form"
 import { ResultPanel } from "@/components/analyzer/result-panel"
 import { analyzeRecipe } from "@/lib/analyze"
-import { apiAnalyzeText, apiAnalyzeUrl, apiAnalyzeImage, apiAnalyzeBarcode, apiSaveAnalyzedRecipe } from "@/lib/api"
+import { apiAnalyzeUrl, apiAnalyzeImage, apiAnalyzeBarcode, apiSaveAnalyzedRecipe } from "@/lib/api"
 import type { AnalyzeResult } from "@/lib/types"
 import { MemberSelector } from "@/components/analyzer/member-selector"
 

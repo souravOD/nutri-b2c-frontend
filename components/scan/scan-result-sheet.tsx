@@ -70,8 +70,6 @@ export function ScanResultSheet({
     console.log("Saving product:", result.product)
   }
 
-  const hasWarnings = allergenWarnings.length > 0 || healthWarnings.length > 0
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-[80vh] overflow-y-auto">

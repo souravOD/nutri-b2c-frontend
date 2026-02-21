@@ -22,7 +22,6 @@ const statusColors: Record<string, string> = {
 
 export function MealCard({ item, onSwap, onLogMeal, onViewRecipe, isPastOrToday }: MealCardProps) {
   const recipe = item.recipe;
-  const nutrition = item.nutritionSnapshot;
 
   return (
     <Card className="overflow-hidden hover:shadow-md transition-shadow">

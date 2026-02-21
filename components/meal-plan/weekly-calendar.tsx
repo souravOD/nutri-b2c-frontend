@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { MealCard } from "./meal-card";
-import type { MealPlanItem, MealType } from "@/lib/types";
+import type { MealPlanItem } from "@/lib/types";
 
 interface WeeklyCalendarProps {
   items: MealPlanItem[];
@@ -86,9 +86,8 @@ export function WeeklyCalendar({
 
           {/* Meal rows */}
           {mealsPerDay.map((meal) => (
-            <>
+            <div key={meal} className="contents">
               <div
-                key={`label-${meal}`}
                 className="flex items-center text-sm font-medium text-muted-foreground capitalize"
               >
                 {MEAL_LABELS[meal] || meal}
@@ -113,7 +112,7 @@ export function WeeklyCalendar({
                   </div>
                 );
               })}
-            </>
+            </div>
           ))}
         </div>
       </div>

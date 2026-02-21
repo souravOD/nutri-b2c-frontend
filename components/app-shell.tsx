@@ -9,7 +9,6 @@ import { AppHeader } from "@/components/app-header"
 import { LeftSidebar } from "@/components/left-sidebar"
 import { BottomNav } from "@/components/bottom-nav"
 import AdminAppShell from "@/components/admin/app-shell"
-import { useUser } from "@/hooks/use-user"
 import { cn } from "@/lib/utils"
 
 interface AppShellProps {
@@ -21,7 +20,6 @@ const AUTH_PAGES = ["/login", "/register", "/forgot-password", "/verify-email", 
 export function AppShell({ children }: AppShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
-  const { isAuthed } = useUser()
   const pathname = usePathname()
 
   const isAuthPage = AUTH_PAGES.includes(pathname)

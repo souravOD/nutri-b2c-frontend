@@ -1,25 +1,14 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { apiSearchRecipes } from "@/lib/api";
 import type { Recipe } from "@/lib/types";
 
 interface QuickAddSearchProps {
   onSelect: (recipe: Recipe) => void;
-}
-
-function useDebounce(value: string, delay: number) {
-  const [debounced, setDebounced] = useState(value);
-  const timer = useCallback(() => {
-    const t = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(t);
-  }, [value, delay]);
-  useState(() => timer());
-  return debounced;
 }
 
 export function QuickAddSearch({ onSelect }: QuickAddSearchProps) {

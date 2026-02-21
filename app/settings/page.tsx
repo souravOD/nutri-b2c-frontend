@@ -1,6 +1,5 @@
 "use client"
 
-import { useUser } from "@/hooks/use-user"
 import { useSettings } from "@/hooks/use-settings"
 import { SettingsTabs } from "@/components/settings/settings-tabs"
 import { SettingsSection } from "@/components/settings/settings-section"
@@ -20,10 +19,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useToast } from "@/hooks/use-toast"
 import type { SortOption } from "@/lib/types"
 
-// helper to coerce unknown to SortOption
-const toSortOption = (v: unknown): SortOption =>
-  v === "time" || v === "relevance" || v === "popular" ? (v as SortOption) : "time"
-
 // Coerce string input to a number; if empty/NaN, keep the previous number
 const toNum = (prev: number, v: string) => {
   const n = Number.parseInt(v, 10);
@@ -31,7 +26,6 @@ const toNum = (prev: number, v: string) => {
 };
 
 export default function SettingsPage() {
-  const { user, isAuthed } = useUser()
   const { settings, updateSettings, apply, resetToDefaults, downloadJson } = useSettings()
   const { toast } = useToast()
 

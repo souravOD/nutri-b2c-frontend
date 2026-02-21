@@ -14,7 +14,7 @@ import { StreakBadge } from "./streak-badge";
 import { MealSlot } from "./meal-slot";
 import { AddItemSheet } from "./add-item-sheet";
 import { HistoryView } from "./history-view";
-import type { MealType, MealLogItem, AddMealItemPayload } from "@/lib/types";
+import type { MealType, AddMealItemPayload } from "@/lib/types";
 
 function n(v: number | string | null | undefined): number {
   if (v == null) return 0;
@@ -46,7 +46,6 @@ export function DailyView({ initialDate, memberId }: DailyViewProps) {
     isLoading,
     itemsByMeal,
     addItem,
-    updateItem,
     deleteItem,
     logWater,
     copyDay,
@@ -78,7 +77,7 @@ export function DailyView({ initialDate, memberId }: DailyViewProps) {
   );
 
   const handleEditItem = useCallback(
-    (item: MealLogItem) => {
+    () => {
       // For now, toggle servings as a simple edit (full edit dialog is a future enhancement)
     },
     []

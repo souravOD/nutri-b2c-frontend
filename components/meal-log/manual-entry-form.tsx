@@ -33,7 +33,6 @@ export function ManualEntryForm({ onSubmit, onCancel }: ManualEntryFormProps) {
   const [fat, setFat] = useState<string>("");
   const [fiber, setFiber] = useState<string>("");
   const [sugar, setSugar] = useState<string>("");
-  const [sodium, setSodium] = useState<string>("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +48,6 @@ export function ManualEntryForm({ onSubmit, onCancel }: ManualEntryFormProps) {
         fatG: fat ? Number(fat) : undefined,
         fiberG: fiber ? Number(fiber) : undefined,
         sugarG: sugar ? Number(sugar) : undefined,
-        sodiumMg: sodium ? Number(sodium) : undefined,
       },
     });
   };
