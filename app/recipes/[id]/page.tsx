@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useParams, useRouter } from "next/navigation"
@@ -10,10 +9,41 @@ import { StartCookingOverlay } from "@/components/start-cooking-overlay"
 import { RecipeHero } from "@/components/recipe-hero"
 import { RecipeTabs } from "@/components/recipe-tabs"
 import { RecipeRating } from "@/components/recipe-rating"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useFavorites } from "@/hooks/use-favorites"
 import { useHistory } from "@/hooks/use-history"
+import type { Recipe } from "@/lib/types"
+
+type ApiRecipe = Awaited<ReturnType<typeof apiGetRecipe>>
+
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" ? (value as Record<string, unknown>) : {}
+
+const firstImage = (images: unknown): string | undefined => {
+  if (!Array.isArray(images)) return undefined
+  return images.find((item): item is string => typeof item === "string" && item.length > 0)
+}
+
+const normalizeSteps = (recipe: { instructions?: unknown; steps?: unknown }): string[] => {
+  const fromInstructions = Array.isArray(recipe.instructions) ? recipe.instructions : []
+  if (fromInstructions.length > 0) {
+    return fromInstructions
+      .map((entry) => {
+        if (typeof entry === "string") return entry
+        if (entry && typeof entry === "object") {
+          const source = entry as Record<string, unknown>
+          const text = source.text ?? source.step
+          if (typeof text === "string") return text
+        }
+        return ""
+      })
+      .filter((step) => step.trim().length > 0)
+  }
+
+  const fromSteps = Array.isArray(recipe.steps) ? recipe.steps : []
+  return fromSteps.filter((step): step is string => typeof step === "string" && step.trim().length > 0)
+}
 
 export default function RecipeDetailPage() {
   const router = useRouter()
@@ -23,77 +53,38 @@ export default function RecipeDetailPage() {
   const queryClient = useQueryClient()
 
   const [cookingOpen, setCookingOpen] = useState(false)
-
-  // Access favorites/history without assuming exact method names on context types
-  const favoritesCtx: any = useFavorites() as any
-  const historyCtx: any = useHistory() as any
-
-  const isFavorite: (rid: string) => boolean =
-    typeof favoritesCtx?.isFavorite === "function"
-      ? favoritesCtx.isFavorite
-      : () => false
-
-  const addFavoriteFn: any =
-    favoritesCtx?.add ?? favoritesCtx?.addFavorite ?? favoritesCtx?.save ?? null
-
-  const removeFavoriteFn: any =
-    favoritesCtx?.remove ?? favoritesCtx?.removeFavorite ?? favoritesCtx?.unsave ?? null
-
-  // Our HistoryProvider exposes addToHistory(id). Keep it single-call to avoid duplicate server logs.
-  const addHistoryEntryFn = typeof historyCtx?.addToHistory === "function" ? historyCtx.addToHistory : null
+  const { isFavorite, addFavorite, removeFavorite } = useFavorites()
+  const { addToHistory } = useHistory()
 
   const {
     data: recipe,
     isLoading,
     error,
-  } = useQuery({
+  } = useQuery<ApiRecipe>({
     queryKey: ["recipe", id],
     queryFn: () => apiGetRecipe(id),
     retry: 2,
   })
 
-  const addedToHistoryRef = useRef<string | null>(null)
-
   useEffect(() => {
-    if (recipe?.id && typeof addHistoryEntryFn === "function") {
-      try { addHistoryEntryFn((recipe as any).id) } catch {}
-      addedToHistoryRef.current = (recipe as any).id
+    if (recipe?.id) {
+      addToHistory(recipe.id)
     }
-    // we deliberately exclude addHistoryEntryFn from deps to avoid re-runs
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recipe])
+  }, [recipe?.id, addToHistory])
 
   const toggleSave = useMutation({
     mutationFn: async () => {
-      if (!(recipe as any)?.id) return
-      const rid = (recipe as any).id as string
+      if (!recipe?.id) return
+      const rid = recipe.id
       const currentlyFav = isFavorite(rid)
 
-      // Backend toggle (expects a single id argument)
       await apiToggleSave(rid)
 
-      // Best-effort local update if context provides helpers
-      const favPayload = {
-        id: rid,
-        title: (recipe as any)?.title,
-        image:
-          (recipe as any)?.image_url ??
-          (Array.isArray((recipe as any)?.images) && (recipe as any).images.length
-            ? (recipe as any).images[0]
-            : null),
+      if (currentlyFav) {
+        removeFavorite(rid)
+      } else {
+        addFavorite(rid)
       }
-
-      try {
-        if (currentlyFav) {
-          if (typeof removeFavoriteFn === "function") {
-            try { removeFavoriteFn(rid) } catch { removeFavoriteFn(favPayload) }
-          }
-        } else {
-          if (typeof addFavoriteFn === "function") {
-            try { addFavoriteFn(favPayload) } catch { addFavoriteFn(rid) }
-          }
-        }
-      } catch {}
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["recipe", id] })
@@ -106,16 +97,18 @@ export default function RecipeDetailPage() {
 
   const handleShare = async () => {
     const shareUrl = typeof window !== "undefined" ? window.location.href : ""
-    if ((navigator as any).share) {
+    const nav = typeof window !== "undefined" ? window.navigator : null
+    if (nav && "share" in nav) {
       try {
-        await (navigator as any).share({ title: (recipe as any)?.title ?? "Recipe", url: shareUrl })
+        await nav.share({ title: recipe?.title ?? "Recipe", url: shareUrl })
         toast({ title: "Shared", description: "Link copied to your share sheet." })
       } catch {
         // user cancelled share
       }
     } else {
       try {
-        await navigator.clipboard.writeText(shareUrl)
+        const clipboard = typeof window !== "undefined" ? window.navigator.clipboard : undefined
+        await clipboard?.writeText(shareUrl)
         toast({ title: "Copied", description: "Link copied to clipboard." })
       } catch {
         toast({ title: "Error", description: "Failed to copy link to clipboard.", variant: "destructive" })
@@ -149,30 +142,32 @@ export default function RecipeDetailPage() {
     )
   }
 
-  const steps: string[] =
-    Array.isArray((recipe as any)?.instructions)
-      ? (recipe as any).instructions
-      : Array.isArray((recipe as any)?.steps)
-      ? (recipe as any).steps
-      : [];
+  const recipeImages = asRecord(recipe).images
 
-  // Normalize for RecipeHero
-  const heroRecipe = {
-    ...(recipe as any),
-    imageUrl:
-      (recipe as any)?.imageUrl ??
-      (recipe as any)?.image_url ??
-      (Array.isArray((recipe as any)?.images) && (recipe as any).images.length
-        ? (recipe as any).images[0]
-        : undefined),
-    imageAlt: (recipe as any)?.title ?? "Recipe image",
-    // Use Favorites context for current saved state to ensure the heart reflects immediately.
-    isSaved: isFavorite((recipe as any).id),
-  };
+  const heroRecipe: Recipe = {
+    id: recipe.id,
+    title: recipe.title ?? "Untitled",
+    description: recipe.description ?? undefined,
+    imageUrl: recipe.image_url ?? firstImage(recipeImages),
+    image_url: recipe.image_url ?? firstImage(recipeImages),
+    imageAlt: recipe.title ?? "Recipe image",
+    prepTime: Number(recipe.prep_time_minutes ?? 0),
+    cookTime: Number(recipe.cook_time_minutes ?? 0),
+    servings: recipe.servings ?? undefined,
+    difficulty:
+      recipe.difficulty === "easy" || recipe.difficulty === "medium" || recipe.difficulty === "hard"
+        ? recipe.difficulty
+        : "easy",
+    tags: Array.isArray(recipe.diet_tags)
+      ? recipe.diet_tags.filter((tag): tag is string => typeof tag === "string")
+      : [],
+    isSaved: isFavorite(recipe.id),
+  }
+
+  const steps = normalizeSteps(recipe)
 
   return (
     <div className="mx-auto w-full max-w-6xl lg:max-w-7xl px-4 py-8">
-      {/* Back Button */}
       <div className="mb-8">
         <Button variant="ghost" onClick={() => router.back()} className="pl-0">
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -181,19 +176,15 @@ export default function RecipeDetailPage() {
       </div>
 
       <div className="space-y-10">
-        {/* Recipe Hero */}
         <RecipeHero recipe={heroRecipe} onToggleSave={() => toggleSave.mutate()} onShare={handleShare} />
 
-        {/* Recipe Rating */}
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium text-muted-foreground">Rate this recipe:</span>
           <RecipeRating recipeId={id} />
         </div>
 
-        {/* Recipe Tabs */}
-        <RecipeTabs recipe={recipe as any} />
+        <RecipeTabs recipe={recipe as unknown as Recipe} />
 
-        {/* Start Cooking Button */}
         <div className="flex justify-center pt-6">
           <Button size="lg" onClick={() => setCookingOpen(true)}>
             Start Cooking
@@ -201,14 +192,13 @@ export default function RecipeDetailPage() {
         </div>
       </div>
 
-      {/* Cooking Overlay */}
       <StartCookingOverlay
         open={cookingOpen}
         onOpenChange={setCookingOpen}
         steps={steps}
-        recipeTitle={(recipe as any).title}
+        recipeTitle={recipe.title ?? "Untitled"}
         recipeId={id}
-        servings={(recipe as any).servings ?? 1}
+        servings={typeof recipe.servings === "number" ? recipe.servings : 1}
       />
     </div>
   )
