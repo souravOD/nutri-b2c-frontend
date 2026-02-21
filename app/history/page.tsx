@@ -21,7 +21,7 @@ export default function HistoryPage() {
       <div className="container px-4 py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold">Recently Viewed</h1>
-          <p className="text-muted-foreground">Recipes you've looked at recently</p>
+          <p className="text-muted-foreground">Recipes you&apos;ve looked at recently</p>
         </div>
 
         <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -30,7 +30,7 @@ export default function HistoryPage() {
           </div>
           <h2 className="text-xl font-semibold mb-2">No recent activity</h2>
           <p className="text-muted-foreground mb-6 max-w-md">
-            Start exploring recipes and they'll appear here for easy access later.
+            Start exploring recipes and they&apos;ll appear here for easy access later.
           </p>
           <div className="flex gap-3">
             <Button asChild>

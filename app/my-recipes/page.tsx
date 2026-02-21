@@ -59,7 +59,7 @@ export default function MyRecipesPage() {
       imageUrl: r.image_url ?? undefined,
       prepTime: prep || total,
       servings: r.servings ?? 0,
-      difficulty: (r.difficulty ?? "easy") as any,
+      difficulty: (r.difficulty ?? "easy") as RecipeCardProps["difficulty"],
       isSaved: false, // "My Recipes" are owned; we don’t show saved state here
       onSave: () => {}, // no-op; heart isn’t shown/used here
       tags: [
@@ -88,7 +88,6 @@ export default function MyRecipesPage() {
       ) : items.length ? (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((r) => {
-            const card = toCard(r);
             return (
               <Card key={r.id} className="overflow-hidden p-0">
                 <RecipeCard

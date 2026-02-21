@@ -26,7 +26,6 @@ export default function ScanPage() {
   const [scanResult, setScanResult] = useState<ScanLookupResult | null>(null)
   const [scanHistory, setScanHistory] = useState<ScanHistoryItem[]>([])
   const [isLookingUp, setIsLookingUp] = useState(false)
-  const [historyLoaded, setHistoryLoaded] = useState(false)
   const [useFallback, setUseFallback] = useState(false)
 
   // Load scan history from API on mount
@@ -39,7 +38,7 @@ export default function ScanPage() {
         console.error("Failed to load scan history:", err);
         // Fallback to localStorage history
         setScanHistory(
-          scanner.getHistory().map((h: any) => ({
+          scanner.getHistory().map((h: { ts?: string; value: string; format?: string }) => ({
             id: h.ts?.toString() ?? Date.now().toString(),
             barcode: h.value,
             barcodeFormat: h.format,
@@ -48,8 +47,6 @@ export default function ScanPage() {
             product: null,
           }))
         );
-      } finally {
-        setHistoryLoaded(true);
       }
     }
     loadHistory();

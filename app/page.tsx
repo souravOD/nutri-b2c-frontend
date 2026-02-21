@@ -1,28 +1,47 @@
 "use client"
 
 import { useMemo, useState, useCallback } from "react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { RecipeCard } from "@/components/recipe-card"
 import { Button } from "@/components/ui/button"
-import { apiGetFeed, apiSearchRecipes, apiToggleSave } from "@/lib/api"
+import { apiGetFeed, apiSearchRecipes } from "@/lib/api"
 import { useFilters } from "@/hooks/use-filters"
 import { FilterPanel, type FiltersFormValues } from "@/components/filter-panel"
 import { useUser } from "@/hooks/use-user"
 import { cn } from "@/lib/utils"
-import type { Recipe } from "@/lib/types"
+import type { Difficulty, Recipe } from "@/lib/types"
 import { useFavorites } from "@/hooks/use-favorites"
 
 const QUICK_FILTERS = [
   { label: "Breakfast", mealType: "breakfast" },
   { label: "Lunch", mealType: "lunch" },
   { label: "Dinner", mealType: "dinner" },
-]
+] as const
+
+type FeedItemRecord = Record<string, unknown>
+
+const asRecord = (value: unknown): FeedItemRecord =>
+  value && typeof value === "object" ? (value as FeedItemRecord) : {}
+
+const asStringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
+
+const toDifficulty = (value: unknown): Difficulty =>
+  value === "easy" || value === "medium" || value === "hard" ? value : "easy"
+
+const toNumber = (value: unknown, fallback = 0): number => {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "string") {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return fallback
+}
 
 export default function HomePage() {
   const { user } = useUser()
   const { filters, setFilters, resetFilters } = useFilters()
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [searchOpen, setSearchOpen] = useState(false) // tied to same panel for simplicity
   const qc = useQueryClient()
   const { isFavorite, toggleFavorite } = useFavorites()
 
@@ -62,7 +81,7 @@ export default function HomePage() {
   }
 
   function handleQuickFilterClick(item: (typeof QUICK_FILTERS)[number]) {
-    const next = { ...filters, q: "", dietaryRestrictions: [], mealType: (item as any).mealType }
+    const next = { ...filters, q: "", dietaryRestrictions: [], mealType: item.mealType }
     setFilters(next)
   }
 
@@ -77,7 +96,7 @@ export default function HomePage() {
               key={f.label}
               className={cn(
                 "rounded-full border px-3 py-1 text-sm hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                (filters.mealType as any) === (f as any).mealType ? "bg-accent" : undefined,
+                filters.mealType === f.mealType ? "bg-accent" : undefined,
               )}
               onClick={() => handleQuickFilterClick(f)}
             >
@@ -118,25 +137,52 @@ export default function HomePage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {items.map((item, i) => {
-              const r = (item as any)?.recipe ?? item; // supports both feed shapes
+              const itemRecord = asRecord(item)
+              const recipeRecord = asRecord(itemRecord.recipe ?? itemRecord)
+              const recipeId = typeof recipeRecord.id === "string" ? recipeRecord.id : "no-id"
+              const title =
+                typeof recipeRecord.title === "string"
+                  ? recipeRecord.title
+                  : typeof recipeRecord.name === "string"
+                    ? recipeRecord.name
+                    : "Untitled"
+              const prepTime = toNumber(
+                recipeRecord.prep_time_minutes ?? recipeRecord.time_minutes ?? recipeRecord.total_time_minutes,
+              )
+              const cookTime = toNumber(recipeRecord.cook_time_minutes, 0)
+              const servings = toNumber(recipeRecord.servings, 1)
+              const difficulty = toDifficulty(
+                typeof recipeRecord.difficulty === "string"
+                  ? recipeRecord.difficulty.toLowerCase()
+                  : recipeRecord.difficulty,
+              )
+              const imageUrl =
+                typeof recipeRecord.image_url === "string"
+                  ? recipeRecord.image_url
+                  : typeof recipeRecord.imageUrl === "string"
+                    ? recipeRecord.imageUrl
+                    : null
+              const tags = asStringArray(recipeRecord.diet_tags ?? recipeRecord.tags)
+              const isSaved = Boolean(recipeRecord.is_saved ?? recipeRecord.isSaved)
+
               return (
                 <RecipeCard
-                  key={`${r.id ?? 'no-id'}-${i}`}                   // i is defined
-                  id={r.id}
-                  title={r.title ?? r.name ?? 'Untitled'}
-                  imageUrl={r.image_url ?? r.imageUrl ?? null}
-                  // If your card uses one time field, keep the best you have:
-                  prepTime={r.prep_time_minutes ?? r.time_minutes ?? r.total_time_minutes ?? 0}
-                  cookTime={r.cook_time_minutes ?? undefined}
-                  servings={r.servings ?? undefined}
-                  difficulty={String(r.difficulty ?? 'easy').toLowerCase() as any}
-                  // Prefer client-side favorite state; fall back to API flag if present
-                  isSaved={isFavorite(r.id) || Boolean(r.is_saved ?? r.isSaved)}
-                  tags={r.diet_tags ?? r.tags ?? []}
-                  // Use Favorites context to optimistically toggle; then just invalidate queries.
-                  onSave={async (id) => { await toggleFavorite(id); invalidateSaved(); }}
+                  key={`${recipeId}-${i}`}
+                  id={recipeId}
+                  title={title}
+                  imageUrl={imageUrl}
+                  prepTime={prepTime}
+                  cookTime={cookTime}
+                  servings={servings}
+                  difficulty={difficulty}
+                  isSaved={isFavorite(recipeId) || isSaved}
+                  tags={tags}
+                  onSave={async (id) => {
+                    await toggleFavorite(id)
+                    invalidateSaved()
+                  }}
                 />
-              );
+              )
             })}
           </div>
         )}
@@ -152,14 +198,14 @@ export default function HomePage() {
           proteinMin: filters.proteinMin,
           carbsMin: filters.carbsMin,
           fatMin: filters.fatMin,
-          fiberMin: filters.fiberMin,      // ✅ new
-          sugarMax: filters.sugarMax,      // ✅ new
-          sodiumMax: filters.sodiumMax,    // ✅ new
+          fiberMin: filters.fiberMin,
+          sugarMax: filters.sugarMax,
+          sodiumMax: filters.sodiumMax,
           maxTime: filters.maxTime,
           cuisines: filters.cuisines,
-          majorConditions: filters.majorConditions, // ✅ new
+          majorConditions: filters.majorConditions,
           q: filters.q,
-          mealType: (filters.mealType as any) || "",
+          mealType: typeof filters.mealType === "string" ? filters.mealType : "",
         }}
         onApply={handleApply}
         onReset={() => resetFilters()}

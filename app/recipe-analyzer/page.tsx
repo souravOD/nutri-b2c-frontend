@@ -72,10 +72,11 @@ export default function RecipeAnalyzerPage() {
       setResult(analyzed)
       // Save result to localStorage (but not source input, so input stays fresh on refresh)
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ result: analyzed }))
-    } catch (err: any) {
-      console.error("[RecipeAnalyzer] Analysis failed:", err?.message || err)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error"
+      console.error("[RecipeAnalyzer] Analysis failed:", message)
       // Show user-friendly error message
-      alert(`Analysis failed: ${err?.message || "Unknown error"}. Check console for details.`)
+      alert(`Analysis failed: ${message}. Check console for details.`)
       // Error is handled by fallback in analyzeRecipe, but we still show the error
     } finally {
       setIsAnalyzing(false)

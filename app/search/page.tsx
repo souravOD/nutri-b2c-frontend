@@ -19,9 +19,6 @@ import { rank } from "@/lib/recommendation"
 import type { ScoredRecipe } from "@/lib/recommendation"
 import type { SortOption } from "@/lib/types"
 
-const toSortOption = (v: unknown): SortOption =>
-  v === "time" || v === "relevance" || v === "popular" ? (v as SortOption) : "time";
-
 const SORT_OPTIONS = [
   { value: "time" as const, label: "Cooking Time" },
   { value: "calories" as const, label: "Calories" },
@@ -223,7 +220,7 @@ export default function SearchPage() {
                 onOpenChange={setFiltersOpen}
                 initialValues={{
                   ...filters,
-                  mealType: (filters.mealType as any) || "",
+                  mealType: typeof filters.mealType === "string" ? filters.mealType : "",
                 }}
                 onApply={(values) => setFilters(values)}
                 onReset={resetFilters}
@@ -355,7 +352,7 @@ export default function SearchPage() {
             <div>
               <h2 className="text-xl font-semibold">
                 {isLoading ? "Searching..." : `${searchResults.length} recipes found`}
-                {searchQuery && <span className="text-muted-foreground font-normal"> for "{searchQuery}"</span>}
+                {searchQuery && <span className="text-muted-foreground font-normal"> for &quot;{searchQuery}&quot;</span>}
               </h2>
             </div>
             <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
