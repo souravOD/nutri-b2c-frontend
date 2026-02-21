@@ -13,38 +13,43 @@ interface RecipeHeroProps {
 
 
 export function RecipeHero({ recipe, onToggleSave, onShare }: RecipeHeroProps) {
-  const totalTime = (recipe.prepTime ?? 0) + (recipe.cookTime ?? 0)
+  const recipeRecord = recipe as unknown as Record<string, unknown>
+  const getNumber = (...values: unknown[]): number => {
+    for (const value of values) {
+      if (typeof value === "number" && Number.isFinite(value)) return value
+      if (typeof value === "string") {
+        const parsed = Number(value)
+        if (Number.isFinite(parsed)) return parsed
+      }
+    }
+    return 0
+  }
   const title = recipe.title ?? "Untitled"
-  const src = recipe.imageUrl ?? (recipe as any)?.image_url ?? null
+  const src = recipe.imageUrl ?? recipe.image_url ?? null
   const hasImage = typeof src === "string" && src.trim().length > 0
-  const imageAlt = recipe.imageAlt ?? recipe.title ?? "Recipe image";
-  const rating = "rating" in recipe ? (recipe as any).rating ?? 0 : 0;
-  const reviewCount =
-    "reviewCount" in recipe ? (recipe as any).reviewCount ?? 0 : 0;
-  const tags = recipe.tags ?? [];
-  const cuisines = recipe.cuisines ?? [];
+  const imageAlt = recipe.imageAlt ?? recipe.title ?? "Recipe image"
+  const rating = getNumber(recipe.rating, recipeRecord["rating"])
+  const reviewCount = getNumber(recipe.reviewCount, recipeRecord["reviewCount"])
+  const tags = recipe.tags ?? []
+  const cuisines = recipe.cuisines ?? []
 
-  const prepMinutes =
-  Number(
-    (recipe as any)?.prepTimeMinutes ??
-    (recipe as any)?.prep_time_minutes ??
-    (recipe as any)?.prep_minutes ??
-    0
-  );
+  const prepMinutes = getNumber(
+    recipe.prepTimeMinutes,
+    recipeRecord["prep_time_minutes"],
+    recipeRecord["prep_minutes"],
+  )
 
-const cookMinutes =
-  Number(
-    (recipe as any)?.cookTimeMinutes ??
-    (recipe as any)?.cook_time_minutes ??
-    (recipe as any)?.cook_minutes ??
-    0
-  );
+  const cookMinutes = getNumber(
+    recipe.cookTimeMinutes,
+    recipeRecord["cook_time_minutes"],
+    recipeRecord["cook_minutes"],
+  )
 
   // Unified display values (fallback to legacy props if minutes missing)
-  const prepDisplayMin = prepMinutes || Number((recipe as any)?.prepTime ?? 0) || 0;
-  const cookDisplayMin = cookMinutes || Number((recipe as any)?.cookTime ?? 0) || 0;
-  const servings = Number((recipe as any)?.servings ?? 1);
-  const difficulty = String((recipe as any)?.difficulty ?? "easy");
+  const prepDisplayMin = prepMinutes || getNumber(recipe.prepTime, recipeRecord["prepTime"])
+  const cookDisplayMin = cookMinutes || getNumber(recipe.cookTime, recipeRecord["cookTime"])
+  const servings = getNumber(recipe.servings, recipeRecord["servings"]) || 1
+  const difficulty = String(recipe.difficulty ?? recipeRecord["difficulty"] ?? "easy")
 
   return (
     <div className="space-y-4">
@@ -86,7 +91,7 @@ const cookMinutes =
 
       {/* Recipe Title and Description */}
       <div className="space-y-3">
-        <h1 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight">{recipe.title}</h1>
+        <h1 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight">{title}</h1>
         {recipe.description && (
           <p className="text-muted-foreground text-base md:text-lg leading-relaxed max-w-3xl">
             {recipe.description}
