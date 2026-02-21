@@ -14,7 +14,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     loadRecentRecipes()
-  }, [])
+  }, [loadRecentRecipes])
 
   if (recentRecipes.length === 0) {
     return (

@@ -12,7 +12,7 @@ export default function FavoritesPage() {
 
   useEffect(() => {
     loadSavedRecipes()
-  }, [])
+  }, [loadSavedRecipes])
 
   if (savedRecipes.length === 0) {
     return (

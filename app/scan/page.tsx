@@ -22,6 +22,7 @@ import {
 
 export default function ScanPage() {
   const scanner = useBarcodeScanner()
+  const { getHistory } = scanner
   const [showResult, setShowResult] = useState(false)
   const [scanResult, setScanResult] = useState<ScanLookupResult | null>(null)
   const [scanHistory, setScanHistory] = useState<ScanHistoryItem[]>([])
@@ -38,7 +39,7 @@ export default function ScanPage() {
         console.error("Failed to load scan history:", err);
         // Fallback to localStorage history
         setScanHistory(
-          scanner.getHistory().map((h: { ts?: string; value: string; format?: string }) => ({
+          getHistory().map((h: { ts?: string; value: string; format?: string }) => ({
             id: h.ts?.toString() ?? Date.now().toString(),
             barcode: h.value,
             barcodeFormat: h.format,
@@ -50,7 +51,7 @@ export default function ScanPage() {
       }
     }
     loadHistory();
-  }, [])
+  }, [getHistory])
 
   const handleDetected = useCallback(async (result: BarcodeResult) => {
     scanner.setResult(result)

@@ -18,11 +18,8 @@ export function PhotoSource({ source, onChange, onAnalyze }: PhotoSourceProps) {
   const pendingAnalyze = useRef(false)
 
   useEffect(() => {
-    if (!source.imageUrl) {
-      setPreview("")
-    } else if (source.imageUrl !== preview) {
-      setPreview(source.imageUrl)
-    }
+    const nextPreview = source.imageUrl || ""
+    setPreview((prev) => (prev === nextPreview ? prev : nextPreview))
   }, [source.imageUrl])
 
   // Auto-trigger analysis once the imageUrl is set in source state

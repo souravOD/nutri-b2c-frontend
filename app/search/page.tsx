@@ -50,9 +50,9 @@ export default function SearchPage() {
     const urlQuery = searchParams.get("q")
     if (urlQuery && urlQuery !== searchQuery) {
       setSearchQuery(urlQuery)
-      setFilters({ ...filters, q: urlQuery })
+      setFilters((prev) => ({ ...prev, q: urlQuery }))
     }
-  }, [searchParams])
+  }, [searchParams, searchQuery, setFilters])
 
   useEffect(() => {
     setSortBy(settings.behavior.defaultSort || "time")
