@@ -18,6 +18,27 @@ interface HistoryContextType {
   loadRecentRecipes: () => Promise<void>
 }
 
+type JsonRecord = Record<string, unknown>
+type RecentlyViewedRow = { history?: JsonRecord; recipe?: JsonRecord } & JsonRecord
+
+const isRecord = (value: unknown): value is JsonRecord => typeof value === "object" && value !== null
+const asString = (value: unknown): string | undefined => (typeof value === "string" ? value : undefined)
+const asStringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
+const asNumber = (value: unknown, fallback: number): number => {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "string") {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return fallback
+}
+const firstString = (value: unknown): string | undefined => {
+  if (!Array.isArray(value)) return undefined
+  return value.find((item): item is string => typeof item === "string")
+}
+const asDifficulty = (value: unknown): Recipe["difficulty"] =>
+  value === "easy" || value === "medium" || value === "hard" ? value : "easy"
 
 const HistoryContext = createContext<HistoryContextType | undefined>(undefined)
 
@@ -48,75 +69,80 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
   const historyRef = useRef(history)
   historyRef.current = history
 
-  const loadRecentRecipes = async () => {
+  const loadRecentRecipes = useCallback(async () => {
     if (!isAuthed) {
       setRecentRecipes([])
       return
     }
     try {
-      const rows = await apiGetRecentlyViewed(20);
+      const rows = await apiGetRecentlyViewed(20)
 
       // Dedupe by recipe id and keep the most recent view timestamp if present
-      type Row = { history?: any; recipe?: any };
-      const pickTs = (row: Row): number => {
-        const h: any = row?.history ?? {};
+      const pickTs = (row: RecentlyViewedRow): number => {
+        const h = isRecord(row.history) ? row.history : {}
         const raw =
-          h.viewed_at ?? h.viewedAt ?? h.created_at ?? h.createdAt ?? h.ts ?? h.timestamp ?? null;
-        const t = raw ? new Date(raw).getTime() : 0;
-        return Number.isFinite(t) ? t : 0;
-      };
+          h["viewed_at"] ?? h["viewedAt"] ?? h["created_at"] ?? h["createdAt"] ?? h["ts"] ?? h["timestamp"] ?? null
+        const t = typeof raw === "string" ? new Date(raw).getTime() : 0
+        return Number.isFinite(t) ? t : 0
+      }
 
-      const byId = new Map<string, { ts: number; r: any }>();
-      for (const row of rows as Row[]) {
-        const r = (row?.recipe ?? row) as any;
-        const id = r?.id;
-        if (!id) continue;
-        const ts = pickTs(row);
-        const prev = byId.get(id);
-        if (!prev || ts > prev.ts) byId.set(id, { ts, r });
+      const byId = new Map<string, { ts: number; r: JsonRecord }>()
+      for (const rawRow of rows) {
+        if (!isRecord(rawRow)) continue
+        const row = rawRow as RecentlyViewedRow
+        const recipeRecord = isRecord(row.recipe) ? row.recipe : row
+        const id = asString(recipeRecord["id"])
+        if (!id) continue
+        const ts = pickTs(row)
+        const prev = byId.get(id)
+        if (!prev || ts > prev.ts) byId.set(id, { ts, r: recipeRecord })
       }
 
       const dedupedSorted = Array.from(byId.values())
         .sort((a, b) => b.ts - a.ts)
-        .map(({ r }) => r);
+        .map(({ r }) => r)
 
-      const mapped = dedupedSorted.map((recipe: any) => {
+      const mapped: Recipe[] = dedupedSorted.map((recipe) => {
+        const cuisine = recipe["cuisine"]
         const cuisineName =
-          typeof recipe.cuisine === "string"
-            ? recipe.cuisine
-            : recipe.cuisine?.name ?? recipe.cuisine?.code ?? null;
-        const cuisines = Array.isArray(recipe.cuisines)
-          ? recipe.cuisines
+          typeof cuisine === "string"
+            ? cuisine
+            : isRecord(cuisine)
+              ? asString(cuisine["name"]) ?? asString(cuisine["code"]) ?? null
+              : null
+        const cuisines = asStringArray(recipe["cuisines"]).length
+          ? asStringArray(recipe["cuisines"])
           : cuisineName
             ? [cuisineName]
-            : [];
+            : []
 
         return {
-          id: recipe.id,
-          title: recipe.title ?? "Untitled",
+          id: asString(recipe["id"]) ?? "",
+          title: asString(recipe["title"]) ?? "Untitled",
           imageUrl:
-            recipe.imageUrl ??
-            recipe.image_url ??
-            (Array.isArray(recipe.images) ? recipe.images[0] : null),
-          prepTime: Number(recipe.prepTimeMinutes ?? recipe.prep_time_minutes ?? 0),
-          cookTime: Number(recipe.cookTimeMinutes ?? recipe.cook_time_minutes ?? 0),
-          servings: Number(recipe.servings ?? 1),
-          difficulty: (recipe.difficulty ?? "easy") as any,
+            asString(recipe["imageUrl"]) ??
+            asString(recipe["image_url"]) ??
+            firstString(recipe["images"]) ??
+            undefined,
+          prepTime: asNumber(recipe["prepTimeMinutes"] ?? recipe["prep_time_minutes"], 0),
+          cookTime: asNumber(recipe["cookTimeMinutes"] ?? recipe["cook_time_minutes"], 0),
+          servings: asNumber(recipe["servings"], 1),
+          difficulty: asDifficulty(recipe["difficulty"]),
           tags: [
-            ...(Array.isArray(recipe.tags) ? recipe.tags : []),
-            ...(Array.isArray(recipe.diet_tags) ? recipe.diet_tags : []),
-            ...(Array.isArray(recipe.flags) ? recipe.flags : []),
+            ...asStringArray(recipe["tags"]),
+            ...asStringArray(recipe["diet_tags"]),
+            ...asStringArray(recipe["flags"]),
             ...cuisines,
           ],
-        };
-      });
+        }
+      })
 
-      setRecentRecipes(mapped);
+      setRecentRecipes(mapped)
     } catch (e) {
-      console.error("Failed to load recent recipes:", e);
-      setRecentRecipes([]);
+      console.error("Failed to load recent recipes:", e)
+      setRecentRecipes([])
     }
-  };
+  }, [isAuthed])
 
   useEffect(() => {
     if (!isAuthed) {
@@ -128,7 +154,7 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
     } else {
       setRecentRecipes([])
     }
-  }, [history.length, isAuthed]) // include auth state so logout clears safely
+  }, [history.length, isAuthed, loadRecentRecipes]) // include auth state so logout clears safely
 
 const addToHistory = useCallback((entry: string | { id?: string }) => {
   const id = typeof entry === "string" ? entry : entry?.id;

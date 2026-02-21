@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react"
+import { createContext, useContext, useState, useCallback } from "react"
 import type { Recipe } from "@/lib/types"
 import { apiGetSaved, apiToggleSave } from "@/lib/api";
 import { useUser } from "@/hooks/use-user";
@@ -13,6 +13,12 @@ interface FavoritesContextType {
   isFavorite: (recipeId: string) => boolean;
   toggleFavorite: (recipeId: string) => Promise<void>;
   loadSavedRecipes: () => Promise<void>;
+}
+
+type ToggleSaveResponse = {
+  isSaved?: boolean
+  saved?: boolean
+  is_saved?: boolean
 }
 
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined)
@@ -46,7 +52,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     if (was) removeFavorite(id); else addFavorite(id);
 
     try {
-      const res = await apiToggleSave(id) as any;
+      const res = (await apiToggleSave(id)) as ToggleSaveResponse
       const serverSaved = (res?.isSaved ?? res?.saved ?? res?.is_saved);
       // reconcile with server if backend returns a definitive boolean
       if (serverSaved === true) addFavorite(id);
