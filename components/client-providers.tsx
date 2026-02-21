@@ -24,6 +24,7 @@ export default function ClientProviders({ children }: { children: ReactNode }) {
         },
       }),
   )
+  const isDevelopment = process.env.NODE_ENV === "development"
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
@@ -40,7 +41,7 @@ export default function ClientProviders({ children }: { children: ReactNode }) {
             </HistoryProvider>
           </FavoritesProvider>
         </UserProvider>
-        <ReactQueryDevtools initialIsOpen={false} />
+        {isDevelopment ? <ReactQueryDevtools initialIsOpen={false} /> : null}
       </QueryClientProvider>
     </ThemeProvider>
   )
