@@ -212,7 +212,7 @@ export function ScanResultSheet({
                 <Search className="w-8 h-8 text-muted-foreground" />
               </div>
               <h3 className="font-medium mb-2">Product Not Found</h3>
-              <p className="text-muted-foreground text-sm mb-4">We couldn't find information for this barcode.</p>
+              <p className="text-muted-foreground text-sm mb-4">We couldn&apos;t find information for this barcode.</p>
               <div className="space-y-2">
                 <Button variant="outline" size="sm">
                   Try Photo Scan

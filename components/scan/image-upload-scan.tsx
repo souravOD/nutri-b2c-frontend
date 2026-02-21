@@ -6,6 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Upload, Loader2 } from "lucide-react"
 import type { BarcodeResult } from "@/lib/barcode"
 
+type BarcodeDetectorResult = { format: string; rawValue: string }
+type BarcodeDetectorInstance = {
+  detect: (image: ImageBitmapSource) => Promise<BarcodeDetectorResult[]>
+}
+type BarcodeDetectorConstructor = new (options: {
+  formats: string[]
+}) => BarcodeDetectorInstance
+
 export function ImageUploadScan({ onDetected }: { onDetected: (r: BarcodeResult) => void }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -18,8 +26,9 @@ export function ImageUploadScan({ onDetected }: { onDetected: (r: BarcodeResult)
       const result = await scanImageFile(file)
       if (!result) throw new Error("No barcode found in this image")
       onDetected(result)
-    } catch (e: any) {
-      setError(e?.message || "Failed to scan image")
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Failed to scan image"
+      setError(message)
     } finally {
       setIsProcessing(false)
     }
@@ -27,10 +36,13 @@ export function ImageUploadScan({ onDetected }: { onDetected: (r: BarcodeResult)
 
   const scanImageFile = async (file: File): Promise<BarcodeResult | null> => {
     // 1. Try native BarcodeDetector (Chrome/Edge on desktop, most Android browsers)
-    if (typeof window !== "undefined" && "BarcodeDetector" in window) {
+    const BarcodeDetectorCtor =
+      typeof window !== "undefined"
+        ? (window as typeof window & { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector
+        : undefined
+    if (BarcodeDetectorCtor) {
       try {
-        // @ts-ignore
-        const det = new window.BarcodeDetector({
+        const det = new BarcodeDetectorCtor({
           formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "qr_code"],
         })
         const bitmap = await createImageBitmap(file)
@@ -84,10 +96,12 @@ export function ImageUploadScan({ onDetected }: { onDetected: (r: BarcodeResult)
               ],
             },
           },
-          (res: any) => {
+          (res) => {
             URL.revokeObjectURL(url)
-            if (res?.codeResult?.code) {
-              resolve({ format: res.codeResult.format || "quagga", value: res.codeResult.code })
+            const code = res?.codeResult?.code
+            if (typeof code === "string" && code.length > 0) {
+              const format = typeof res.codeResult?.format === "string" ? res.codeResult.format : "quagga"
+              resolve({ format, value: code })
             } else {
               resolve(null)
             }

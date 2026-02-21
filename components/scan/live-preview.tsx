@@ -14,13 +14,14 @@ export function LivePreview({ deviceId, onDetected, onError }: LivePreviewProps)
   const streamRef = useRef<MediaStream | null>(null);
 
   // Normalize any vendor/library result to the shared shape
-  function normalize(raw: any): BarcodeResult {
-    if (typeof raw?.value === "string") {
-      return { value: raw.value, format: raw.format, raw };
+  function normalize(raw: unknown): BarcodeResult {
+    const obj = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null
+    if (obj && typeof obj.value === "string") {
+      return { value: obj.value, format: typeof obj.format === "string" ? obj.format : undefined, raw };
     }
     // common alt field is "text"
-    if (typeof raw?.text === "string") {
-      return { value: raw.text, format: raw.format, raw };
+    if (obj && typeof obj.text === "string") {
+      return { value: obj.text, format: typeof obj.format === "string" ? obj.format : undefined, raw };
     }
     return { value: String(raw ?? ""), raw };
   }
@@ -46,7 +47,7 @@ export function LivePreview({ deviceId, onDetected, onError }: LivePreviewProps)
 
         // TODO: hook your barcode library here. When it yields a result `raw`,
         // call: onDetected(normalize(raw));
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!cancelled) onError(e instanceof Error ? e : new Error(String(e)));
       }
     }
