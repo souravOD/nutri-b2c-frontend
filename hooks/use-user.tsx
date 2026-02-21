@@ -11,11 +11,37 @@ import {
 } from "react"
 import { account, databases, teams } from "@/lib/appwrite"
 import { Permission, Query, Role } from "appwrite"
-import { syncProfile, syncHealth } from "@/lib/api";
+import { syncHealth } from "@/lib/api";
 
-type AppwriteUser = any
-type ProfileDoc = any
-type HealthDoc = any
+type AppwriteUser = {
+  $id: string
+  prefs?: Record<string, unknown>
+}
+
+type ProfileDoc = Record<string, unknown>
+type HealthDoc = Record<string, unknown>
+type TeamEntry = { $id?: string; name?: string }
+
+type UserUpdates = {
+  dateOfBirth?: string
+  sex?: string
+  activityLevel?: string
+  goal?: string
+  diets?: string[] | string
+  allergens?: string[] | string
+  intolerances?: string[] | string
+  dislikedIngredients?: string[] | string
+  major_conditions?: string[] | string
+  majorConditions?: string[] | string
+  diet_codes?: string[] | string
+  diet_ids?: string[] | string
+  allergen_codes?: string[] | string
+  allergen_ids?: string[] | string
+  condition_codes?: string[] | string
+  condition_ids?: string[] | string
+  height?: string | { value: number | string; unit: string }
+  weight?: string | { value: number | string; unit: string }
+}
 
 type State = {
   loading: boolean
@@ -41,7 +67,7 @@ type Ctx = {
   refresh: () => Promise<void>
   signOut: () => Promise<void>
   /** Upserts the health profile using ONLY attributes your schema allows */
-  updateUser: (updates: any) => Promise<void>
+  updateUser: (updates: UserUpdates) => Promise<void>
 }
 
 const DB_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID as string
@@ -101,32 +127,35 @@ async function fetchHealth(userId: string) {
   }
 }
 
-async function computeIsAdmin(user: any, profile: any): Promise<boolean> {
+async function computeIsAdmin(user: AppwriteUser, profile: ProfileDoc | null): Promise<boolean> {
   // Preferred: Teams membership
   try {
     if (ADMINS_TEAM_ID) {
       const teamList = await teams.list()
-      if (teamList?.teams?.some((t: any) => t.$id === ADMINS_TEAM_ID)) return true
-      if (teamList?.teams?.some((t: any) => String(t.name).toLowerCase() === "admins")) return true
+      if (teamList?.teams?.some((t: TeamEntry) => t.$id === ADMINS_TEAM_ID)) return true
+      if (teamList?.teams?.some((t: TeamEntry) => String(t.name).toLowerCase() === "admins")) return true
     }
   } catch {
     // ignore and fallback to profile-based role
   }
   // Fallback: profile role(s)
-  const role = (profile?.role ?? user?.prefs?.role ?? "").toString().toLowerCase()
-  const roles = Array.isArray(profile?.roles)
-    ? profile.roles.map((r: any) => String(r).toLowerCase())
+  const profileRole = profile && typeof profile === "object" ? profile.role : undefined
+  const prefsRole = user?.prefs && typeof user.prefs === "object" ? user.prefs.role : undefined
+  const role = (profileRole ?? prefsRole ?? "").toString().toLowerCase()
+  const profileRoles = profile && typeof profile === "object" ? profile.roles : undefined
+  const roles = Array.isArray(profileRoles)
+    ? profileRoles.map((r: unknown) => String(r).toLowerCase())
     : []
   return role === "admin" || roles.includes("admin")
 }
 
-export function UserProvider({ children }: { children: React.ReactNode }) {
+export function UserProvider({ children }: { children: ReactNode }) {
   const [state, set] = useReducer(reducer, initial)
 
   const load = useCallback(async () => {
     set({ loading: true, error: null })
     try {
-      const user = await account.get().catch(() => null)
+      const user = await account.get().catch(() => null) as AppwriteUser | null
       if (!user) {
         set({
           loading: false,
@@ -150,10 +179,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         health,
         isAdminBool,
       })
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to load user"
       set({
         loading: false,
-        error: err?.message ?? "Failed to load user",
+        error: message,
         isAuthed: false,
         user: null,
         profile: null,
@@ -181,13 +211,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   // Save only attributes your health_profiles schema allows
   const updateUser = useCallback(
-    async (updates: any) => {
+    async (updates: UserUpdates) => {
       if (!state.user) throw new Error("Not signed in")
       const uid = state.user.$id
 
-      const asArray = (v: any) =>
+      const asArray = (v: unknown): string[] =>
         Array.isArray(v)
-          ? v
+          ? v.map((item) => String(item))
           : typeof v === "string"
           ? v
               .split(",")
@@ -195,7 +225,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
               .filter(Boolean)
           : []
 
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         dateOfBirth: updates.dateOfBirth ?? undefined,
         sex: updates.sex ?? undefined,
         activityLevel: updates.activityLevel ?? undefined,
