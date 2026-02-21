@@ -6,6 +6,7 @@ import DietAllergenPicker from "./DietAllergenPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import type { UserRecipe } from "@/lib/api";
 
 /**
  * Embedded preview panel (merged from components/recipe/recipe-details-panel.tsx)
@@ -83,10 +84,7 @@ function RecipeDetailsPanel({
   busy?: boolean;
 }) {
   const n = recipe.nutrition || {};
-  const cuisineLabel =
-    typeof recipe.cuisine === "string"
-      ? recipe.cuisine
-      : recipe.cuisine?.name ?? recipe.cuisine?.code ?? null;
+  const cuisineLabel = recipe.cuisine;
 
   return (
     <div className="space-y-6">
@@ -230,7 +228,7 @@ export default function RecipeCreateForm({
   busy = false,
 }: {
   initial?: RecipeFormInitial;
-  onSubmit: (draft: RecipeSubmitDraft) => void | Promise<void>;
+  onSubmit: (draft: Partial<UserRecipe>) => void | Promise<void>;
   busy?: boolean;
 }) {
   // ---- basic form state ----
@@ -398,7 +396,7 @@ export default function RecipeCreateForm({
 
   async function handleSaveFromPreview() {
     if (!previewDraft) return;
-    await onSubmit(previewDraft);
+    await onSubmit(previewDraft as unknown as Partial<UserRecipe>);
   }
 
   if (mode === "preview" && previewDraft) {

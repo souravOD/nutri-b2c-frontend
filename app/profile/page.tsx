@@ -35,7 +35,7 @@ import {
 } from "@/lib/api";
 
 // 👉 single source of truth lists
-import type { TaxonomyOption } from "@/lib/api";
+import type { HealthProfile, TaxonomyOption, UserProfile } from "@/lib/api";
 
 /* If lib/data.ts already exports these, import them instead of defining here */
 const activityOptions = [
@@ -54,88 +54,102 @@ const goalOptions = [
 ] as const;
 
 // ---------- types ----------
-type Overview = {
-  fullName?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  dateOfBirth?: string | null;
-  gender?: string | null;
-  diets?: string[] | null;
-  allergens?: string[] | null;
-  createdAt?: string | null;
-  updatedAt?: string | null;
-  [k: string]: any;
+type Overview = UserProfile;
+type Health = HealthProfile;
+
+type OverviewForm = {
+  fullName: string;
+  email: string;
+  phone: string;
+  diets: string[];
+  allergens: string[];
 };
 
-type Health = {
-  heightCm?: number | null;
-  weightKg?: number | null;
-  activityLevel?: string | null;
-  healthGoal?: string | null;
-  targetWeightKg?: number | null;
-  targetCalories?: number | null;
-  targetProteinG?: number | null;
-  targetCarbsG?: number | null;
-  targetFatG?: number | null;
-  targetFiberG?: number | null;
-  targetSodiumMg?: number | null;
-  targetSugarG?: number | null;
-  intolerances?: string[] | null;
-  dislikedIngredients?: string[] | null;
-  onboardingComplete?: boolean | null;
-  conditions?: string[] | null;
-  dateOfBirth?: string | null;
-  gender?: string | null;
-  createdAt?: string | null;
-  updatedAt?: string | null;
-  [k: string]: any;
+type HealthForm = {
+  dateOfBirth: string;
+  gender: string;
+  activityLevel: string;
+  healthGoal: string;
+  heightCm: number | "";
+  weightKg: number | "";
+  targetWeightKg: number | "";
+  targetCalories: number | "";
+  targetProteinG: number | "";
+  targetCarbsG: number | "";
+  targetFatG: number | "";
+  targetFiberG: number | "";
+  targetSodiumMg: number | "";
+  targetSugarG: number | "";
+  intolerances: string[];
+  dislikedIngredients: string[];
+  conditions: string[];
+  onboardingComplete: boolean;
 };
 
 // ---------- helpers ----------
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+
+const asStringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.map(String).filter(Boolean) : [];
+
+const asNullableNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 const show = (v: unknown, fallback = "Not set") =>
   v === null || v === undefined || v === "" ? fallback : String(v);
 
 const list = (arr?: string[] | null, fallback = "None specified") =>
   arr && arr.length ? arr.join(", ") : fallback;
 
-function normalizeOverview(row: any): Overview {
+function normalizeOverview(row: unknown): Overview {
+  const src = asRecord(row);
   if (!row) return {};
   return {
-    fullName: row.fullName ?? row.full_name ?? null,
-    email: row.email ?? null,
-    phone: row.phone ?? null,
-    dateOfBirth: row.dateOfBirth ?? row.date_of_birth ?? null,
-    gender: row.gender ?? row.sex ?? null,
-    diets: row.diets ?? [],
-    allergens: row.allergens ?? [],
-    createdAt: row.createdAt ?? row.created_at ?? null,
-    updatedAt: row.updatedAt ?? row.updated_at ?? null,
+    fullName: (src.fullName ?? src.full_name ?? null) as string | null,
+    email: (src.email ?? null) as string | null,
+    phone: (src.phone ?? null) as string | null,
+    dateOfBirth: (src.dateOfBirth ?? src.date_of_birth ?? null) as string | null,
+    gender: (src.gender ?? src.sex ?? null) as string | null,
+    diets: asStringArray(src.diets),
+    allergens: asStringArray(src.allergens),
+    createdAt: (src.createdAt ?? src.created_at ?? null) as string | null,
+    updatedAt: (src.updatedAt ?? src.updated_at ?? null) as string | null,
   };
 }
 
-function normalizeHealth(row: any): Health {
+function normalizeHealth(row: unknown): Health {
+  const src = asRecord(row);
   if (!row) return {};
   return {
-    heightCm: row.heightCm ?? row.height_cm ?? null,
-    weightKg: row.weightKg ?? row.weight_kg ?? null,
-    activityLevel: row.activityLevel ?? row.activity_level ?? null,
-    healthGoal: row.healthGoal ?? row.health_goal ?? row.goal ?? null,
-    targetWeightKg: row.targetWeightKg ?? row.target_weight_kg ?? null,
-    targetCalories: row.targetCalories ?? row.target_calories ?? null,
-    targetProteinG: row.targetProteinG ?? row.target_protein_g ?? null,
-    targetCarbsG: row.targetCarbsG ?? row.target_carbs_g ?? null,
-    targetFatG: row.targetFatG ?? row.target_fat_g ?? null,
-    targetFiberG: row.targetFiberG ?? row.target_fiber_g ?? null,
-    targetSodiumMg: row.targetSodiumMg ?? row.target_sodium_mg ?? null,
-    targetSugarG: row.targetSugarG ?? row.target_sugar_g ?? null,
-    intolerances: row.intolerances ?? [],
-    dislikedIngredients: row.dislikedIngredients ?? row.disliked_ingredients ?? [],
-    onboardingComplete: row.onboardingComplete ?? row.onboarding_complete ?? null,
-    conditions: row.conditions ?? row.majorConditions ?? row.major_conditions ?? [],
-    dateOfBirth: row.dateOfBirth ?? row.date_of_birth ?? null,
-    gender: row.gender ?? row.sex ?? null,
-    createdAt: row.createdAt ?? row.created_at ?? null,
-    updatedAt: row.updatedAt ?? row.updated_at ?? null,
+    heightCm: asNullableNumber(src.heightCm ?? src.height_cm),
+    weightKg: asNullableNumber(src.weightKg ?? src.weight_kg),
+    activityLevel: (src.activityLevel ?? src.activity_level ?? null) as string | null,
+    healthGoal: (src.healthGoal ?? src.health_goal ?? src.goal ?? null) as string | null,
+    targetWeightKg: asNullableNumber(src.targetWeightKg ?? src.target_weight_kg),
+    targetCalories: asNullableNumber(src.targetCalories ?? src.target_calories),
+    targetProteinG: asNullableNumber(src.targetProteinG ?? src.target_protein_g),
+    targetCarbsG: asNullableNumber(src.targetCarbsG ?? src.target_carbs_g),
+    targetFatG: asNullableNumber(src.targetFatG ?? src.target_fat_g),
+    targetFiberG: asNullableNumber(src.targetFiberG ?? src.target_fiber_g),
+    targetSodiumMg: asNullableNumber(src.targetSodiumMg ?? src.target_sodium_mg),
+    targetSugarG: asNullableNumber(src.targetSugarG ?? src.target_sugar_g),
+    intolerances: asStringArray(src.intolerances),
+    dislikedIngredients: asStringArray(src.dislikedIngredients ?? src.disliked_ingredients),
+    onboardingComplete:
+      typeof src.onboardingComplete === "boolean"
+        ? src.onboardingComplete
+        : typeof src.onboarding_complete === "boolean"
+          ? src.onboarding_complete
+          : null,
+    conditions: asStringArray(src.conditions ?? src.majorConditions ?? src.major_conditions),
+    dateOfBirth: (src.dateOfBirth ?? src.date_of_birth ?? null) as string | null,
+    gender: (src.gender ?? src.sex ?? null) as string | null,
+    createdAt: (src.createdAt ?? src.created_at ?? null) as string | null,
+    updatedAt: (src.updatedAt ?? src.updated_at ?? null) as string | null,
   };
 }
 
@@ -156,6 +170,35 @@ function bmiFrom(heightCm?: number | null, weightKg?: number | null) {
   const bmi = weightKg / (m * m);
   return Math.round(bmi * 10) / 10;
 }
+
+const EMPTY_OV_FORM: OverviewForm = {
+  fullName: "",
+  email: "",
+  phone: "",
+  diets: [],
+  allergens: [],
+};
+
+const EMPTY_HP_FORM: HealthForm = {
+  dateOfBirth: "",
+  gender: "",
+  activityLevel: "",
+  healthGoal: "",
+  heightCm: "",
+  weightKg: "",
+  targetWeightKg: "",
+  targetCalories: "",
+  targetProteinG: "",
+  targetCarbsG: "",
+  targetFatG: "",
+  targetFiberG: "",
+  targetSodiumMg: "",
+  targetSugarG: "",
+  intolerances: [],
+  dislikedIngredients: [],
+  conditions: [],
+  onboardingComplete: false,
+};
 
 // chip group used for multi-select lists
 function ChipGroup({
@@ -204,10 +247,10 @@ export default function ProfilePage() {
   const [conditionOptions, setConditionOptions] = React.useState<string[]>([]);
 
   // local editable copies (arrays, not CSV)
-  const [ovForm, setOvForm] = React.useState<any>({});
-  const [hpForm, setHpForm] = React.useState<any>({});
+  const [ovForm, setOvForm] = React.useState<OverviewForm>(EMPTY_OV_FORM);
+  const [hpForm, setHpForm] = React.useState<HealthForm>(EMPTY_HP_FORM);
 
-  async function load() {
+  const load = React.useCallback(async () => {
     try {
       setLoading(true);
       const [ovRaw, hpRaw] = await Promise.all([apiGetMyOverview(), apiGetMyHealth()]);
@@ -218,6 +261,7 @@ export default function ProfilePage() {
 
       // seed edit state with arrays & scalars
       setOvForm({
+        ...EMPTY_OV_FORM,
         fullName: ov.fullName ?? "",
         email: ov.email ?? "",
         phone: ov.phone ?? "",
@@ -225,6 +269,7 @@ export default function ProfilePage() {
         allergens: ov.allergens ?? [],
       });
       setHpForm({
+        ...EMPTY_HP_FORM,
         dateOfBirth: hp.dateOfBirth ?? "",
         gender: hp.gender ?? "",
         activityLevel: hp.activityLevel ?? "",
@@ -250,9 +295,9 @@ export default function ProfilePage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [toast]);
 
-  async function loadTaxonomy() {
+  const loadTaxonomy = React.useCallback(async () => {
     try {
       const [dietsRes, allergensRes, conditionsRes] = await Promise.all([
         apiGetDietaryPreferences(),
@@ -261,7 +306,9 @@ export default function ProfilePage() {
       ]);
 
       const toNames = (items: TaxonomyOption[]) =>
-        (items || []).map((item) => item.name || item.code).filter(Boolean);
+        (items || [])
+          .map((item) => item.name || item.code)
+          .filter((item): item is string => Boolean(item));
 
       setDietOptions(toNames(dietsRes));
       setAllergenOptions(toNames(allergensRes));
@@ -272,12 +319,12 @@ export default function ProfilePage() {
       setAllergenOptions([]);
       setConditionOptions([]);
     }
-  }
+  }, []);
 
   React.useEffect(() => {
-    load();
-    loadTaxonomy();
-  }, []);
+    void load();
+    void loadTaxonomy();
+  }, [load, loadTaxonomy]);
 
   const completeness = React.useMemo(() => {
     const fields = [
@@ -490,7 +537,7 @@ export default function ProfilePage() {
                       <ChipGroup
                         options={dietOptions}
                         value={ovForm.diets || []}
-                        onChange={(next) => setOvForm((s: any) => ({ ...s, diets: next }))}
+                        onChange={(next) => setOvForm((s) => ({ ...s, diets: next }))}
                       />
                     </div>
                     <div>
@@ -498,7 +545,7 @@ export default function ProfilePage() {
                       <ChipGroup
                         options={allergenOptions}
                         value={ovForm.allergens || []}
-                        onChange={(next) => setOvForm((s: any) => ({ ...s, allergens: next }))}
+                        onChange={(next) => setOvForm((s) => ({ ...s, allergens: next }))}
                       />
                     </div>
                   </div>
@@ -522,15 +569,15 @@ export default function ProfilePage() {
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="col-span-2">
                       <Label htmlFor="ov-full-name">Full name</Label>
-                      <Input id="ov-full-name" value={ovForm.fullName} onChange={(e) => setOvForm((s: any) => ({...s, fullName: e.target.value}))} />
+                      <Input id="ov-full-name" value={ovForm.fullName} onChange={(e) => setOvForm((s) => ({...s, fullName: e.target.value}))} />
                     </div>
                     <div>
                       <Label htmlFor="ov-email">Email</Label>
-                      <Input id="ov-email" type="email" value={ovForm.email} onChange={(e) => setOvForm((s: any) => ({...s, email: e.target.value}))} />
+                      <Input id="ov-email" type="email" value={ovForm.email} onChange={(e) => setOvForm((s) => ({...s, email: e.target.value}))} />
                     </div>
                     <div>
                       <Label htmlFor="ov-phone">Phone</Label>
-                      <Input id="ov-phone" value={ovForm.phone} onChange={(e) => setOvForm((s: any) => ({...s, phone: e.target.value}))} />
+                      <Input id="ov-phone" value={ovForm.phone} onChange={(e) => setOvForm((s) => ({...s, phone: e.target.value}))} />
                     </div>
                     <div className="col-span-2 flex gap-2">
                       <Button onClick={saveOverviewInline}>Save</Button>
@@ -563,18 +610,18 @@ export default function ProfilePage() {
                   <div className="space-y-3">
                     <div>
                       <Label htmlFor="hp-dob">Date of Birth</Label>
-                      <Input id="hp-dob" type="date" value={hpForm.dateOfBirth} onChange={(e) => setHpForm((s: any) => ({...s, dateOfBirth: e.target.value}))} />
+                      <Input id="hp-dob" type="date" value={hpForm.dateOfBirth} onChange={(e) => setHpForm((s) => ({...s, dateOfBirth: e.target.value}))} />
                     </div>
                     <div>
                       <Label htmlFor="hp-gender">Gender</Label>
-                      <Input id="hp-gender" placeholder="male | female | other" value={hpForm.gender} onChange={(e) => setHpForm((s: any) => ({...s, gender: e.target.value}))} />
+                      <Input id="hp-gender" placeholder="male | female | other" value={hpForm.gender} onChange={(e) => setHpForm((s) => ({...s, gender: e.target.value}))} />
                     </div>
 
                     <div>
                       <Label>Activity Level</Label>
                       <Select
                         value={hpForm.activityLevel ?? ""}
-                        onValueChange={(v) => setHpForm((s: any) => ({ ...s, activityLevel: v }))}
+                        onValueChange={(v) => setHpForm((s) => ({ ...s, activityLevel: v }))}
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select activity level" />
@@ -593,7 +640,7 @@ export default function ProfilePage() {
                       <Label>Goal</Label>
                       <Select
                         value={hpForm.healthGoal ?? ""}
-                        onValueChange={(v) => setHpForm((s: any) => ({ ...s, healthGoal: v }))}
+                        onValueChange={(v) => setHpForm((s) => ({ ...s, healthGoal: v }))}
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select goal" />
@@ -633,11 +680,11 @@ export default function ProfilePage() {
                   <div className="grid gap-3 md:grid-cols-2">
                     <div>
                       <Label htmlFor="hp-hcm">Height (cm)</Label>
-                      <Input id="hp-hcm" type="number" value={hpForm.heightCm} onChange={(e) => setHpForm((s: any) => ({...s, heightCm: e.target.value}))} />
+                      <Input id="hp-hcm" type="number" value={hpForm.heightCm} onChange={(e) => setHpForm((s) => ({...s, heightCm: e.target.value === "" ? "" : Number(e.target.value)}))} />
                     </div>
                     <div>
                       <Label htmlFor="hp-wkg">Weight (kg)</Label>
-                      <Input id="hp-wkg" type="number" value={hpForm.weightKg} onChange={(e) => setHpForm((s: any) => ({...s, weightKg: e.target.value}))} />
+                      <Input id="hp-wkg" type="number" value={hpForm.weightKg} onChange={(e) => setHpForm((s) => ({...s, weightKg: e.target.value === "" ? "" : Number(e.target.value)}))} />
                     </div>
                     <div className="col-span-2 text-sm text-muted-foreground">
                       BMI (live): {bmiEdit ?? "—"}
@@ -675,7 +722,7 @@ export default function ProfilePage() {
                       <ChipGroup
                         options={conditionOptions}
                         value={hpForm.conditions || []}
-                        onChange={(next) => setHpForm((s: any) => ({ ...s, conditions: next }))}
+                        onChange={(next) => setHpForm((s) => ({ ...s, conditions: next }))}
                       />
                     </div>
                     <div className="md:col-span-3 space-y-2">
@@ -684,7 +731,7 @@ export default function ProfilePage() {
                         placeholder="e.g., lactose, sorbitol"
                         value={(hpForm.intolerances || []).join(", ")}
                         onChange={(e) =>
-                          setHpForm((s: any) => ({
+                          setHpForm((s) => ({
                             ...s,
                             intolerances: e.target.value
                               .split(",")
@@ -700,7 +747,7 @@ export default function ProfilePage() {
                         placeholder="e.g., cilantro, olives"
                         value={(hpForm.dislikedIngredients || []).join(", ")}
                         onChange={(e) =>
-                          setHpForm((s: any) => ({
+                          setHpForm((s) => ({
                             ...s,
                             dislikedIngredients: e.target.value
                               .split(",")
@@ -711,7 +758,7 @@ export default function ProfilePage() {
                       />
                     </div>
                     <div className="md:col-span-3 flex items-center gap-2">
-                      <Checkbox id="hp-onboard" checked={!!hpForm.onboardingComplete} onCheckedChange={(v) => setHpForm((s: any) => ({...s, onboardingComplete: !!v}))} />
+                      <Checkbox id="hp-onboard" checked={!!hpForm.onboardingComplete} onCheckedChange={(v) => setHpForm((s) => ({...s, onboardingComplete: !!v}))} />
                       <Label htmlFor="hp-onboard">Onboarding Complete</Label>
                     </div>
                     <div className="md:col-span-3 flex gap-2">
