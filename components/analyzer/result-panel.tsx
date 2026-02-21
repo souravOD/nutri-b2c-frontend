@@ -15,6 +15,7 @@ import { TagsCard } from "@/components/analyzer/result-cards/tags-card"
 import { SummaryCard } from "@/components/analyzer/result-cards/summary-card"
 import { SuggestionsCard } from "@/components/analyzer/result-cards/suggestions-card"
 import { IngredientsCard } from "@/components/analyzer/result-cards/ingredients-card"
+import type { AnalyzerCardResult } from "@/components/analyzer/result-cards/types"
 
 interface Props {
   result?: AnalyzeResult
@@ -72,7 +73,7 @@ export function ResultPanel({
   }
 
   // ---- Normalize fields for the cards (typed + safe) ----
-  const mapped = {
+  const mapped: AnalyzerCardResult = {
     ...result,
     // Prefer nutritionPerServing. (We do NOT reference a non-existent 'nutrition' key.)
     nutrition: result.nutritionPerServing ?? {},
@@ -145,13 +146,13 @@ export function ResultPanel({
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <SummaryCard result={mapped as any} onEdit={onEdit} />
-        <NutritionCard result={mapped as any} onEdit={onEdit} />
-        <IngredientsCard result={mapped as any} onEdit={onEdit} />
-        <AllergensCard result={mapped as any} onEdit={onEdit} />
-        <TagsCard result={mapped as any} onEdit={onEdit} />
-        <TasteProfileCard result={mapped as any} onEdit={onEdit} />
-        <SuggestionsCard result={mapped as any} onEdit={onEdit} />
+        <SummaryCard result={mapped} onEdit={onEdit} />
+        <NutritionCard result={mapped} onEdit={onEdit} />
+        <IngredientsCard result={mapped} onEdit={onEdit} />
+        <AllergensCard result={mapped} onEdit={onEdit} />
+        <TagsCard result={mapped} onEdit={onEdit} />
+        <TasteProfileCard result={mapped} onEdit={onEdit} />
+        <SuggestionsCard result={mapped} onEdit={onEdit} />
       </div>
     </div>
   )

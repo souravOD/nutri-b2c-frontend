@@ -3,8 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Edit, FileText, Clock, Users } from "lucide-react"
 import type { AnalyzeResult } from "@/lib/types"
+import type { AnalyzerCardResult } from "@/components/analyzer/result-cards/types"
 
-export function SummaryCard({ result, onEdit }: { result: any; onEdit?: (r: AnalyzeResult)=>void }) {
+interface SummaryCardProps {
+  result: AnalyzerCardResult
+  onEdit?: (r: AnalyzeResult) => void
+}
+
+export function SummaryCard({ result, onEdit }: SummaryCardProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
