@@ -10,16 +10,21 @@ import {
   type ReactNode,
 } from "react"
 import { account, databases, teams } from "@/lib/appwrite"
-import { Permission, Query, Role } from "appwrite"
+import { Permission, Query, Role, type Models } from "appwrite"
 import { syncHealth } from "@/lib/api";
+import type { HealthProfile, UserProfile } from "@/lib/api";
 
-type AppwriteUser = {
-  $id: string
-  prefs?: Record<string, unknown>
+type UserPrefs = Record<string, string | undefined> & {
+  displayName?: string
+  role?: string
+  image?: string
 }
-
-type ProfileDoc = Record<string, unknown>
-type HealthDoc = Record<string, unknown>
+type AppwriteUser = Omit<Models.User<Models.Preferences>, "prefs"> & {
+  prefs?: UserPrefs
+  role?: string
+}
+type ProfileDoc = Models.Document & UserProfile & { role?: string; roles?: unknown[] }
+type HealthDoc = Models.Document & HealthProfile
 type TeamEntry = { $id?: string; name?: string }
 
 type UserUpdates = {
@@ -27,18 +32,18 @@ type UserUpdates = {
   sex?: string
   activityLevel?: string
   goal?: string
-  diets?: string[] | string
-  allergens?: string[] | string
-  intolerances?: string[] | string
-  dislikedIngredients?: string[] | string
-  major_conditions?: string[] | string
-  majorConditions?: string[] | string
-  diet_codes?: string[] | string
-  diet_ids?: string[] | string
-  allergen_codes?: string[] | string
-  allergen_ids?: string[] | string
-  condition_codes?: string[] | string
-  condition_ids?: string[] | string
+  diets?: Array<string | null | undefined> | string
+  allergens?: Array<string | null | undefined> | string
+  intolerances?: Array<string | null | undefined> | string
+  dislikedIngredients?: Array<string | null | undefined> | string
+  major_conditions?: Array<string | null | undefined> | string
+  majorConditions?: Array<string | null | undefined> | string
+  diet_codes?: Array<string | null | undefined> | string
+  diet_ids?: Array<string | null | undefined> | string
+  allergen_codes?: Array<string | null | undefined> | string
+  allergen_ids?: Array<string | null | undefined> | string
+  condition_codes?: Array<string | null | undefined> | string
+  condition_ids?: Array<string | null | undefined> | string
   height?: string | { value: number | string; unit: string }
   weight?: string | { value: number | string; unit: string }
 }
@@ -217,7 +222,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
       const asArray = (v: unknown): string[] =>
         Array.isArray(v)
-          ? v.map((item) => String(item))
+          ? v
+              .map((item) => (item == null ? "" : String(item)))
+              .map((s) => s.trim())
+              .filter(Boolean)
           : typeof v === "string"
           ? v
               .split(",")

@@ -38,11 +38,30 @@ import type {
 type FetchOpts = Omit<RequestInit, "headers"> & { headers?: HeadersInit };
 let cachedJwt: { token: string; exp: number } | null = null;
 
+type JsonRecord = Record<string, unknown>;
+type SearchFilters = {
+  dietaryRestrictions?: string[] | null;
+  cuisines?: string[] | null;
+  allergens?: string[] | null;
+  majorConditions?: string[] | null;
+  calories?: number[] | null;
+  proteinMin?: number | null;
+  fiberMin?: number | null;
+  satfatMax?: number | null;
+  sugarMax?: number | null;
+  sodiumMax?: number | null;
+  maxTime?: number | null;
+  difficulty?: string | null;
+  mealType?: string | null;
+};
 
-const toInt = (v: any): number | null =>
+const asRecord = (value: unknown): JsonRecord =>
+  value && typeof value === "object" ? (value as JsonRecord) : {};
+
+const toInt = (v: unknown): number | null =>
   v === null || v === undefined || v === '' ? null : Number.parseInt(String(v), 10);
 
-const toNum = (v: any): number | null =>
+const toNum = (v: unknown): number | null =>
   v === null || v === undefined || v === '' ? null : Number.parseFloat(String(v));
 
 type NormalizedRecipe = {
@@ -67,9 +86,9 @@ type NormalizedRecipe = {
   diet_tags: string[];
   allergens: string[];
   flags: string[];
-  nutrition?: any;
-  ingredients: string[] | any[];
-  instructions: string[] | any[];
+  nutrition?: JsonRecord;
+  ingredients: string[] | unknown[];
+  instructions: string[] | unknown[];
   notes: string | null;
   market_country: string | null;
   status?: string;
@@ -104,7 +123,7 @@ export type UserRecipe = {
   cuisines?: string[] | null;
   ingredients?: Ingredient[] | null;
   instructions?: Instruction[] | null;
-  nutrition?: any;
+  nutrition?: JsonRecord;
   calories?: number | null;
   protein_g?: number | null;
   carbs_g?: number | null;
@@ -127,71 +146,82 @@ function makeIdemKey() {
   try { return crypto.randomUUID(); } catch { return `${Date.now()}-${Math.random().toString(36).slice(2)}`; }
 }
 
-function uniqStr(arr: any[]): string[] {
+function uniqStr(arr: unknown[]): string[] {
   return Array.from(new Set((arr ?? []).filter(Boolean).map(String)));
 }
 
-function toRecipe(raw: any): Recipe {
-  const r = raw?.recipe ?? raw;
+function toRecipe(raw: unknown): Recipe {
+  const rawRecord = asRecord(raw);
+  const r = asRecord(rawRecord.recipe ?? rawRecord);
 
   const imageUrl = r.image_url ?? r.imageUrl ?? null;
-  const prep = r.prep_time_minutes ?? r.prepTimeMinutes ?? 0;
-  const cook = r.cook_time_minutes ?? r.cookTimeMinutes ?? 0;
-  const total =
-    (r.time_minutes ?? r.total_time_minutes ?? r.totalTimeMinutes ?? (prep + cook)) ?? 0;
+  const prep = toInt(r.prep_time_minutes ?? r.prepTimeMinutes) ?? 0;
+  const cook = toInt(r.cook_time_minutes ?? r.cookTimeMinutes) ?? 0;
+  const total = toInt(r.time_minutes ?? r.total_time_minutes ?? r.totalTimeMinutes) ?? (prep + cook);
 
+  const cuisineSource = r.cuisine;
+  const cuisineObj = asRecord(cuisineSource);
   const cuisineName =
-    typeof r.cuisine === "string"
-      ? r.cuisine
-      : r.cuisine?.name ?? r.cuisine?.code ?? null;
+    typeof cuisineSource === "string"
+      ? cuisineSource
+      : cuisineObj.name ?? cuisineObj.code ?? null;
   const cuisines = Array.isArray(r.cuisines)
     ? r.cuisines
     : cuisineName
       ? [cuisineName]
       : [];
 
-  const nutrition = r.nutrition ?? {
-    calories: r.calories ?? null,
-    protein_g: r.protein_g ?? r.proteinG ?? null,
-    carbs_g: r.carbs_g ?? r.carbsG ?? null,
-    fat_g: r.fat_g ?? r.fatG ?? null,
-    fiber_g: r.fiber_g ?? r.fiberG ?? null,
-    sugar_g: r.sugar_g ?? r.sugarG ?? null,
-    sodium_mg: r.sodium_mg ?? r.sodiumMg ?? null,
-    saturated_fat_g: r.saturated_fat_g ?? r.saturatedFatG ?? null,
+  const nutritionBase = asRecord(r.nutrition);
+  const nutrition = {
+    calories: toInt(nutritionBase.calories ?? r.calories) ?? undefined,
+    protein_g: toNum(nutritionBase.protein_g ?? nutritionBase.protein ?? r.protein_g ?? r.proteinG) ?? undefined,
+    carbs_g: toNum(nutritionBase.carbs_g ?? nutritionBase.carbs ?? r.carbs_g ?? r.carbsG) ?? undefined,
+    fat_g: toNum(nutritionBase.fat_g ?? nutritionBase.fat ?? r.fat_g ?? r.fatG) ?? undefined,
+    fiber_g: toNum(nutritionBase.fiber_g ?? nutritionBase.fiber ?? r.fiber_g ?? r.fiberG) ?? undefined,
+    sugar_g: toNum(nutritionBase.sugar_g ?? nutritionBase.sugar ?? r.sugar_g ?? r.sugarG) ?? undefined,
+    sodium_mg: toInt(nutritionBase.sodium_mg ?? nutritionBase.sodium ?? r.sodium_mg ?? r.sodiumMg) ?? undefined,
+    saturatedFat: toNum(
+      nutritionBase.saturated_fat_g ?? nutritionBase.saturatedFat ?? r.saturated_fat_g ?? r.saturatedFatG
+    ) ?? undefined,
   };
 
   const tags = uniqStr([
-    ...(r.tags ?? []),
-    ...(r.diet_tags ?? r.dietTags ?? []),
-    ...(r.flags ?? r.flag_tags ?? r.flagTags ?? []),
+    ...(Array.isArray(r.tags) ? r.tags : []),
+    ...(Array.isArray(r.diet_tags) ? r.diet_tags : Array.isArray(r.dietTags) ? r.dietTags : []),
+    ...(Array.isArray(r.flags) ? r.flags : Array.isArray(r.flag_tags) ? r.flag_tags : Array.isArray(r.flagTags) ? r.flagTags : []),
     ...cuisines,
   ]);
 
-  const isSaved = Boolean(raw?.isSaved ?? raw?.savedAt ?? r.is_saved ?? r.isSaved);
-  const score = raw?.score ?? r.score;
+  const isSaved = Boolean(rawRecord.isSaved ?? rawRecord.savedAt ?? r.is_saved ?? r.isSaved);
+  const score = rawRecord.score ?? r.score;
+  const difficultyRaw = String(r.difficulty ?? "easy").toLowerCase();
+  const difficulty = (difficultyRaw === "easy" || difficultyRaw === "medium" || difficultyRaw === "hard")
+    ? difficultyRaw
+    : "easy";
 
-  return {
-    id: r.id,
-    title: r.title ?? "Untitled",
-    imageUrl,
-    image_url: imageUrl ?? undefined,
+  const normalizedCuisines = cuisines.map((c) => String(c));
+  const recipe: Recipe = {
+    id: String(r.id ?? ""),
+    title: String(r.title ?? "Untitled"),
+    imageUrl: typeof imageUrl === "string" ? imageUrl : undefined,
+    image_url: typeof imageUrl === "string" ? imageUrl : undefined,
     time_minutes: total,
     prepTime: prep || total,
     cookTime: cook || 0,
-    prepTimeMinutes: r.prepTimeMinutes ?? prep,
-    cookTimeMinutes: r.cookTimeMinutes ?? cook,
-    totalTimeMinutes: r.totalTimeMinutes ?? total,
-    servings: r.servings ?? undefined,
-    difficulty: String(r.difficulty ?? "easy").toLowerCase() as any,
+    prepTimeMinutes: toInt(r.prepTimeMinutes ?? prep) ?? undefined,
+    cookTimeMinutes: toInt(r.cookTimeMinutes ?? cook) ?? undefined,
+    totalTimeMinutes: toInt(r.totalTimeMinutes ?? total) ?? undefined,
+    servings: toInt(r.servings) ?? undefined,
+    difficulty,
     isSaved,
     tags,
-    cuisine: r.cuisine ?? cuisineName ?? null,
-    cuisines,
+    cuisine: typeof cuisineName === "string" ? cuisineName : null,
+    cuisines: normalizedCuisines,
     nutrition,
-    allergens: Array.isArray(r.allergens) ? r.allergens : [],
-    score,
-  } as Recipe;
+    allergens: Array.isArray(r.allergens) ? r.allergens.map((a) => String(a)) : [],
+    score: toNum(score) ?? undefined,
+  };
+  return recipe;
 }
 
 async function getJwt(): Promise<string | null> {
@@ -250,32 +280,44 @@ export async function authFetch(path: string, opts: FetchOpts = {}) {
     }
     return res;
   } catch (err) {
+    const redacted = new Set(["authorization", "x-appwrite-jwt", "idempotency-key", "cookie", "set-cookie"]);
+    const safeHeaders = [...headers.entries()].map(([key, value]) => [
+      key,
+      redacted.has(key.toLowerCase()) ? "[REDACTED]" : value,
+    ]);
+
     // Surface network/CORS issues in the console for easier debugging
-    console.error("authFetch network error", { url, method, headers: [...headers.entries()] }, err);
+    console.error("authFetch network error", { url, method, headers: safeHeaders }, err);
     throw err;
   }
 }
 
 /* ---- Public ---- */
-function normalizeRecipeFromApi(d: any): NormalizedRecipe {
-  const nutrition = d?.nutrition ?? {};
+function normalizeRecipeFromApi(input: unknown): NormalizedRecipe {
+  const d = asRecord(input);
+  const nutrition = asRecord(d.nutrition);
+  const cuisineSource = d.cuisine;
+  const cuisineObj = asRecord(cuisineSource);
   const cuisineName =
-    typeof d?.cuisine === "string"
-      ? d.cuisine
-      : d?.cuisine?.name ?? d?.cuisine?.code ?? null;
-  const cuisines = Array.isArray(d?.cuisines)
+    typeof cuisineSource === "string"
+      ? cuisineSource
+      : cuisineObj.name ?? cuisineObj.code ?? null;
+  const cuisines = Array.isArray(d.cuisines)
     ? d.cuisines
     : cuisineName
       ? [cuisineName]
       : [];
+  const imageUrl = typeof d.imageUrl === "string" ? d.imageUrl : typeof d.image_url === "string" ? d.image_url : null;
+  const sourceUrl = typeof d.sourceUrl === "string" ? d.sourceUrl : typeof d.source_url === "string" ? d.source_url : null;
+  const normalizedCuisines = cuisines.map((c) => String(c));
 
   return {
-    id: d.id,
-    title: d.title ?? "",
-    description: d.description ?? null,
-    image_url: d.imageUrl ?? d.image_url ?? null,
-    source_url: d.sourceUrl ?? d.source_url ?? null,
-    cuisine: cuisineName,
+    id: String(d.id ?? ""),
+    title: String(d.title ?? ""),
+    description: d.description == null ? null : String(d.description),
+    image_url: imageUrl,
+    source_url: sourceUrl,
+    cuisine: typeof cuisineName === "string" ? cuisineName : null,
 
     calories: toInt(nutrition.calories ?? d.calories),
     protein_g: toNum(nutrition.protein_g ?? nutrition.protein ?? d.protein_g ?? d.proteinG),
@@ -289,70 +331,78 @@ function normalizeRecipeFromApi(d: any): NormalizedRecipe {
     sodium_mg: toInt(nutrition.sodium_mg ?? nutrition.sodium ?? d.sodium_mg ?? d.sodiumMg),
 
     servings: toInt(d.servings),
-    difficulty: d.difficulty ?? null,
-    meal_type: d.mealType ?? d.meal_type ?? null,
+    difficulty: d.difficulty == null ? null : String(d.difficulty),
+    meal_type: d.mealType == null ? (d.meal_type == null ? null : String(d.meal_type)) : String(d.mealType),
 
-    cuisines,
-    diet_tags: Array.isArray(d.dietTags) ? d.dietTags : Array.isArray(d.diet_tags) ? d.diet_tags : [],
-    allergens: Array.isArray(d.allergens)
-      ? d.allergens
-      : Array.isArray(nutrition.allergens)
-        ? nutrition.allergens
+    cuisines: normalizedCuisines,
+    diet_tags: Array.isArray(d.dietTags)
+      ? d.dietTags.map((tag) => String(tag))
+      : Array.isArray(d.diet_tags)
+        ? d.diet_tags.map((tag) => String(tag))
         : [],
-    flags: Array.isArray(d.flags) ? d.flags : Array.isArray(d.flag_tags) ? d.flag_tags : [],
+    allergens: Array.isArray(d.allergens)
+      ? d.allergens.map((allergen) => String(allergen))
+      : Array.isArray(nutrition.allergens)
+        ? nutrition.allergens.map((allergen) => String(allergen))
+        : [],
+    flags: Array.isArray(d.flags)
+      ? d.flags.map((flag) => String(flag))
+      : Array.isArray(d.flag_tags)
+        ? d.flag_tags.map((flag) => String(flag))
+        : [],
 
     ingredients: Array.isArray(d.ingredients) ? d.ingredients : [],
     instructions: Array.isArray(d.instructions) ? d.instructions : [],
-    notes: d.notes ?? null,
+    notes: d.notes == null ? null : String(d.notes),
 
-    market_country: d.marketCountry ?? d.market_country ?? null,
+    market_country: d.marketCountry == null ? (d.market_country == null ? null : String(d.market_country)) : String(d.marketCountry),
 
-    status: d.status,
+    status: d.status == null ? undefined : String(d.status),
 
     total_time_minutes: toInt(d.totalTimeMinutes ?? d.total_time_minutes ?? d.time_minutes ?? d.timeMinutes),
     prep_time_minutes: toInt(d.prepTimeMinutes ?? d.prep_time_minutes),
     cook_time_minutes: toInt(d.cookTimeMinutes ?? d.cook_time_minutes),
 
-    created_at: d.createdAt ?? d.created_at ?? null,
-    updated_at: d.updatedAt ?? d.updated_at ?? null,
-    published_at: d.publishedAt ?? d.published_at ?? null,
+    created_at: d.createdAt == null ? (d.created_at == null ? null : String(d.created_at)) : String(d.createdAt),
+    updated_at: d.updatedAt == null ? (d.updated_at == null ? null : String(d.updated_at)) : String(d.updatedAt),
+    published_at: d.publishedAt == null ? (d.published_at == null ? null : String(d.published_at)) : String(d.publishedAt),
     nutrition,
   };
 }
-function normalizeUserRecipe(row: any): UserRecipe {
-  if (!row) return row;
-  const nutrition = row.nutrition ?? {};
-  const imageUrl = row.image_url ?? row.imageUrl ?? null;
+function normalizeUserRecipe(row: unknown): UserRecipe {
+  const baseRow = asRecord(row);
+  const nutrition = asRecord(baseRow.nutrition);
+  const imageUrl = baseRow.image_url ?? baseRow.imageUrl ?? null;
   const cuisineName =
-    typeof row.cuisine === "string"
-      ? row.cuisine
-      : row.cuisine?.name ?? row.cuisine?.code ?? null;
-  const cuisines = Array.isArray(row.cuisines)
-    ? row.cuisines
+    typeof baseRow.cuisine === "string"
+      ? baseRow.cuisine
+      : asRecord(baseRow.cuisine).name ?? asRecord(baseRow.cuisine).code ?? null;
+  const cuisines = Array.isArray(baseRow.cuisines)
+    ? baseRow.cuisines
     : cuisineName
       ? [cuisineName]
       : [];
 
   return {
-    ...row,
+    ...baseRow,
     image_url: imageUrl ?? undefined,
     imageUrl,
-    prep_time_minutes: row.prep_time_minutes ?? row.prepTimeMinutes ?? null,
-    cook_time_minutes: row.cook_time_minutes ?? row.cookTimeMinutes ?? null,
-    total_time_minutes: row.total_time_minutes ?? row.totalTimeMinutes ?? null,
-    meal_type: row.meal_type ?? row.mealType ?? null,
+    prep_time_minutes: baseRow.prep_time_minutes ?? baseRow.prepTimeMinutes ?? null,
+    cook_time_minutes: baseRow.cook_time_minutes ?? baseRow.cookTimeMinutes ?? null,
+    total_time_minutes: baseRow.total_time_minutes ?? baseRow.totalTimeMinutes ?? null,
+    meal_type: baseRow.meal_type ?? baseRow.mealType ?? null,
     cuisine: cuisineName ?? (cuisines.length ? cuisines[0] : null),
     cuisines,
-    calories: row.calories ?? nutrition.calories ?? null,
-    protein_g: row.protein_g ?? nutrition.protein_g ?? nutrition.protein ?? null,
-    carbs_g: row.carbs_g ?? nutrition.carbs_g ?? nutrition.carbs ?? null,
-    fat_g: row.fat_g ?? nutrition.fat_g ?? nutrition.fat ?? null,
-    fiber_g: row.fiber_g ?? nutrition.fiber_g ?? nutrition.fiber ?? null,
-    sugar_g: row.sugar_g ?? nutrition.sugar_g ?? nutrition.sugar ?? null,
-    sodium_mg: row.sodium_mg ?? nutrition.sodium_mg ?? nutrition.sodium ?? null,
-    saturated_fat_g: row.saturated_fat_g ?? nutrition.saturated_fat_g ?? nutrition.saturatedFat ?? null,
-    created_at: row.created_at ?? row.createdAt ?? null,
-    updated_at: row.updated_at ?? row.updatedAt ?? null,
+    calories: baseRow.calories ?? nutrition.calories ?? null,
+    protein_g: baseRow.protein_g ?? nutrition.protein_g ?? nutrition.protein ?? null,
+    carbs_g: baseRow.carbs_g ?? nutrition.carbs_g ?? nutrition.carbs ?? null,
+    fat_g: baseRow.fat_g ?? nutrition.fat_g ?? nutrition.fat ?? null,
+    fiber_g: baseRow.fiber_g ?? nutrition.fiber_g ?? nutrition.fiber ?? null,
+    sugar_g: baseRow.sugar_g ?? nutrition.sugar_g ?? nutrition.sugar ?? null,
+    sodium_mg: baseRow.sodium_mg ?? nutrition.sodium_mg ?? nutrition.sodium ?? null,
+    saturated_fat_g: baseRow.saturated_fat_g ?? nutrition.saturated_fat_g ?? nutrition.saturatedFat ?? null,
+    created_at: baseRow.created_at ?? baseRow.createdAt ?? null,
+    updated_at: baseRow.updated_at ?? baseRow.updatedAt ?? null,
   } as UserRecipe;
 }
 
@@ -360,11 +410,11 @@ export async function apiGetFeed(): Promise<Recipe[]> {
   const res = await authFetch(`/api/v1/feed`);
   const data = await res.json().catch(() => []);
   const arr = Array.isArray(data) ? data : [];
-  return arr.map((it: any) => toRecipe(it));
+  return arr.map((it: unknown) => toRecipe(it));
 }
 
 
-export async function apiSearchRecipes(args: { q?: string; filters: any; sort?: string }): Promise<Recipe[]> {
+export async function apiSearchRecipes(args: { q?: string; filters: SearchFilters; sort?: string }): Promise<Recipe[]> {
   const { q, filters, sort } = args;
   const p = new URLSearchParams();
 
@@ -382,16 +432,28 @@ export async function apiSearchRecipes(args: { q?: string; filters: any; sort?: 
   if (Number.isFinite(calMax) && calMax < 1200) p.set("cal_max", String(calMax));
 
   // mins: send only if > 0
-  if (Number.isFinite(filters?.proteinMin) && filters.proteinMin > 0) p.set("protein_min", String(filters.proteinMin));
-  if (Number.isFinite(filters?.fiberMin) && filters.fiberMin > 0) p.set("fiber_min", String(filters.fiberMin));
+  if (typeof filters?.proteinMin === "number" && Number.isFinite(filters.proteinMin) && filters.proteinMin > 0) {
+    p.set("protein_min", String(filters.proteinMin));
+  }
+  if (typeof filters?.fiberMin === "number" && Number.isFinite(filters.fiberMin) && filters.fiberMin > 0) {
+    p.set("fiber_min", String(filters.fiberMin));
+  }
 
   // sat fat: if you want a default “no limit”, either omit or guard like the others
-  if (Number.isFinite(filters?.satfatMax)) p.set("satfat_max", String(filters.satfatMax));
+  if (typeof filters?.satfatMax === "number" && Number.isFinite(filters.satfatMax)) {
+    p.set("satfat_max", String(filters.satfatMax));
+  }
 
   // ✅ the three you asked about — send only if stricter than baseline
-  if (Number.isFinite(filters?.sugarMax) && filters.sugarMax < 100) p.set("sugar_max", String(filters.sugarMax));
-  if (Number.isFinite(filters?.sodiumMax) && filters.sodiumMax < 4000) p.set("sodium_max", String(filters.sodiumMax));
-  if (Number.isFinite(filters?.maxTime) && filters.maxTime < 120) p.set("time_max", String(filters.maxTime));
+  if (typeof filters?.sugarMax === "number" && Number.isFinite(filters.sugarMax) && filters.sugarMax < 100) {
+    p.set("sugar_max", String(filters.sugarMax));
+  }
+  if (typeof filters?.sodiumMax === "number" && Number.isFinite(filters.sodiumMax) && filters.sodiumMax < 4000) {
+    p.set("sodium_max", String(filters.sodiumMax));
+  }
+  if (typeof filters?.maxTime === "number" && Number.isFinite(filters.maxTime) && filters.maxTime < 120) {
+    p.set("time_max", String(filters.maxTime));
+  }
 
   // enums
   if (filters?.difficulty) p.set("difficulty", String(filters.difficulty));
@@ -454,7 +516,7 @@ export async function apiAnalyzeText(text: string, memberId?: string): Promise<A
     }
     
     return res.json();
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[API] apiAnalyzeText error:", err);
     throw err;
   }
@@ -497,8 +559,8 @@ export async function apiAnalyzeBarcode(
       body: JSON.stringify({ barcode, ...(memberId ? { memberId } : {}) }),
     });
     return res.json();
-  } catch (err: any) {
-    const msg = err?.message || "";
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "";
     try {
       const parsed = JSON.parse(msg);
       if (parsed.detail) throw new Error(parsed.detail);
@@ -733,7 +795,7 @@ export async function apiGetRecentlyViewed(limit = 20) {
     method: "GET",
   });
   // backend returns rows like { history: {...}, recipe: {...} }
-  return res.json() as Promise<Array<{ history: any; recipe: any }>>;
+  return res.json() as Promise<Array<{ history: JsonRecord; recipe: JsonRecord }>>;
 }
 
 export async function apiGetAllergens(): Promise<TaxonomyOption[]> {
@@ -923,7 +985,7 @@ export async function apiGetMealHistory(
   startDate: string,
   endDate: string,
   memberId?: string
-): Promise<{ days: DaySummary[]; averages: any }> {
+): Promise<{ days: DaySummary[]; averages: JsonRecord }> {
   const query = new URLSearchParams({ startDate, endDate });
   if (memberId) query.set("memberId", memberId);
   const r = await authFetch(`/api/v1/meal-log/history?${query.toString()}`);
@@ -955,7 +1017,7 @@ export async function apiGetMealTemplates(memberId?: string): Promise<{ template
   return r.json();
 }
 
-export async function apiCreateMealTemplate(data: { name: string; memberId?: string; mealType?: string; items: any[] }) {
+export async function apiCreateMealTemplate(data: { name: string; memberId?: string; mealType?: string; items: unknown[] }) {
   const r = await authFetch("/api/v1/meal-log/templates", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
