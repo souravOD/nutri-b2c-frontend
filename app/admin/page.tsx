@@ -5,7 +5,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { loadFixture } from "@/lib/admin/fixtures"
-import { Users, FileText, Package, BarChart3, TrendingUp, Activity } from "lucide-react"
+import { Users, FileText, Package, Activity } from "lucide-react"
 
 interface AnalyticsData {
   overview: {
@@ -35,7 +35,7 @@ export default function AdminDashboardPage() {
     async function loadData() {
       setIsLoading(true)
       const analytics = await loadFixture("analytics")
-      setData(analytics as any)
+      setData(analytics as AnalyticsData)
       setIsLoading(false)
     }
     loadData()

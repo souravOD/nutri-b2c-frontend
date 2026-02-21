@@ -6,7 +6,7 @@ import { useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clock, Users } from "lucide-react"
-import DataTable from "@/components/admin/data-table" // default export works too
+import DataTable, { type Column } from "@/components/admin/data-table" // default export works too
 
 // Adjust the path if yours differs
 import recipesAdmin from "@/app/_mock/admin/recipes-admin.json"
@@ -28,23 +28,26 @@ export type RecipeAdminRow = {
   servings: number
 }
 
-const columns = [
+type RawRecipeRow = Partial<RecipeAdminRow> & Record<string, unknown>
+
+const columns: Column<RecipeAdminRow>[] = [
   { key: "title", label: "Title", sortable: true },
   {
     key: "status",
     label: "Status",
     sortable: true,
-    render: (v: PublishStatus) => {
+    render: (v) => {
+      const status = String(v ?? "draft") as PublishStatus
       const variant =
-        v === "published" ? "default" : v === "review" ? "secondary" : "outline"
-      return <Badge variant={variant as any}>{v}</Badge>
+        status === "published" ? "default" : status === "review" ? "secondary" : "outline"
+      return <Badge variant={variant}>{status}</Badge>
     },
   },
   {
     key: "updatedAt",
     label: "Updated",
     sortable: true,
-    render: (v: number | string) => {
+    render: (v) => {
       const d = typeof v === "number" ? new Date(v) : new Date(String(v))
       return d.toLocaleDateString()
     },
@@ -55,15 +58,15 @@ const columns = [
     key: "difficulty",
     label: "Difficulty",
     sortable: true,
-    render: (v: Difficulty) => <Badge variant="outline">{v}</Badge>,
+    render: (v) => <Badge variant="outline">{String(v ?? "easy")}</Badge>,
   },
   {
     key: "timeMins",
     label: "Time",
     sortable: true,
-    render: (v: number) => (
+    render: (v) => (
       <span className="inline-flex items-center gap-1">
-        <Clock className="h-3 w-3" /> {v}m
+        <Clock className="h-3 w-3" /> {Number(v ?? 0)}m
       </span>
     ),
   },
@@ -71,32 +74,42 @@ const columns = [
     key: "servings",
     label: "Servings",
     sortable: true,
-    render: (v: number) => (
+    render: (v) => (
       <span className="inline-flex items-center gap-1">
-        <Users className="h-3 w-3" /> {v}
+        <Users className="h-3 w-3" /> {Number(v ?? 0)}
       </span>
     ),
   },
-] as const
+]
 
 // ----- Page ----------------------------------------------------------------
 
 export default function AdminRecipesPage() {
   // Robustly read mock data whether it's an array or {recipes: []}
   const rows = useMemo<RecipeAdminRow[]>(() => {
-    const raw: any = recipesAdmin as any
-    const arr: any[] = Array.isArray(raw) ? raw : Array.isArray(raw?.recipes) ? raw.recipes : []
-    return arr.map((r) => ({
-      id: String(r.id ?? r._id ?? crypto.randomUUID()),
-      title: r.title ?? "Untitled",
-      status: (r.status ?? "draft") as PublishStatus,
-      updatedAt: r.updatedAt ?? r.updated ?? Date.now(),
-      views: Number(r.views ?? 0),
-      saves: Number(r.saves ?? r.favorites ?? 0),
-      difficulty: (r.difficulty ?? "easy") as RecipeAdminRow["difficulty"],
-      timeMins: Number(r.timeMins ?? r.time ?? 0),
-      servings: Number(r.servings ?? 0),
-    }))
+    const raw = recipesAdmin as unknown
+    const arr: RawRecipeRow[] = Array.isArray(raw)
+      ? (raw as RawRecipeRow[])
+      : raw && typeof raw === "object" && Array.isArray((raw as { recipes?: unknown }).recipes)
+        ? (((raw as { recipes: unknown[] }).recipes) as RawRecipeRow[])
+        : []
+    return arr.map((r) => {
+      const updatedRaw = r.updatedAt ?? r.updated
+      const updatedAt =
+        typeof updatedRaw === "number" || typeof updatedRaw === "string" ? updatedRaw : Date.now()
+
+      return {
+        id: String(r.id ?? r._id ?? crypto.randomUUID()),
+        title: String(r.title ?? "Untitled"),
+        status: (r.status ?? "draft") as PublishStatus,
+        updatedAt,
+        views: Number(r.views ?? 0),
+        saves: Number(r.saves ?? r.favorites ?? 0),
+        difficulty: (r.difficulty ?? "easy") as RecipeAdminRow["difficulty"],
+        timeMins: Number(r.timeMins ?? r.time ?? 0),
+        servings: Number(r.servings ?? 0),
+      }
+    })
   }, [])
 
   const [selected, setSelected] = useState<RecipeAdminRow[]>([])
@@ -106,13 +119,13 @@ export default function AdminRecipesPage() {
 
   const sorted = useMemo(() => {
     const list = [...rows]
-    list.sort((a: any, b: any) => {
+    list.sort((a, b) => {
       const av = a[sortKey]
       const bv = b[sortKey]
-      if (av === bv) return 0
-      if (av == null) return 1
-      if (bv == null) return -1
-      if (av > bv) return sortDir === "asc" ? 1 : -1
+      const avComparable = typeof av === "number" ? av : String(av ?? "")
+      const bvComparable = typeof bv === "number" ? bv : String(bv ?? "")
+      if (avComparable === bvComparable) return 0
+      if (avComparable > bvComparable) return sortDir === "asc" ? 1 : -1
       return sortDir === "asc" ? -1 : 1
     })
     return list
@@ -140,7 +153,7 @@ export default function AdminRecipesPage() {
       </div>
 
       <DataTable<RecipeAdminRow>
-        columns={columns as any}
+        columns={columns}
         data={sorted}
         selectedRows={selected}
         onToggleRow={toggleRow}
