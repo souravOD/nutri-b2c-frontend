@@ -18,13 +18,58 @@ const genId = () =>
 // Show placeholder in the UI but treat empty as 0 when submitting
 const toZero = (v: number | "") => (v === "" ? 0 : Number(v) || 0);
 
-// Numeric input change helper: keep "" if cleared, else Number(...)
-const onNumChange =
-  (set: React.Dispatch<React.SetStateAction<number | "">>) =>
-  (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    set(val === "" ? "" : Number(val));
+type RecipePreview = {
+  title: string;
+  imageUrl: string | null;
+  cuisine: string | null;
+  course: string | null;
+  difficulty: string | null;
+  servings: number;
+  time: { prepMin: number; cookMin: number };
+  tags: { diets: string[]; allergens: string[] };
+  ingredients: Array<{ qty: number | ""; unit: string | null; item: string }>;
+  steps: string[];
+  nutrition: {
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+    fiber_g: number;
+    sodium_mg: number;
+    saturated_fat_g: number;
   };
+};
+
+export type RecipeSubmitDraft = {
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  servings: number;
+  prep_time_minutes: number;
+  cook_time_minutes: number;
+  total_time_minutes: number;
+  cuisines: string[];
+  meal_type: string | null;
+  difficulty: string | null;
+  diet_tags: string[];
+  allergens: string[];
+  ingredients: Array<{
+    qty: number | "";
+    unit: string | null;
+    item: string;
+    note: string | null;
+  }>;
+  instructions: Array<{ order: number; text: string }>;
+  notes: null;
+  visibility: "private";
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fiber_g: number;
+  sodium_mg: number;
+  saturated_fat_g: number;
+};
 
 function RecipeDetailsPanel({
   recipe,
@@ -32,7 +77,7 @@ function RecipeDetailsPanel({
   onSave,
   busy = false,
 }: {
-  recipe: any;
+  recipe: RecipePreview;
   onBack: () => void;
   onSave?: () => void;
   busy?: boolean;
@@ -108,7 +153,7 @@ function RecipeDetailsPanel({
           <section>
             <h3 className="font-medium mb-2">Ingredients</h3>
             <ul className="list-disc pl-5 text-sm space-y-1">
-              {recipe.ingredients?.map((r: any, i: number) => (
+              {recipe.ingredients?.map((r, i) => (
                 <li key={i}>
                   {r.qty}
                   {r.unit && ` ${r.unit}`} {r.item}
@@ -185,7 +230,7 @@ export default function RecipeCreateForm({
   busy = false,
 }: {
   initial?: RecipeFormInitial;
-  onSubmit: (draft: any) => void | Promise<void>;
+  onSubmit: (draft: RecipeSubmitDraft) => void | Promise<void>;
   busy?: boolean;
 }) {
   // ---- basic form state ----
@@ -211,29 +256,34 @@ export default function RecipeCreateForm({
     initial?.allergens ?? []
   );
   const seedIngredients: IngredientRow[] =
-  Array.isArray(initial?.ingredients) && initial!.ingredients.length
-    ? (initial!.ingredients as any[]).map((r: any) => ({
-        id: genId(),                      // ensure a stable key
-        qty: r?.qty ?? "",
-        unit: r?.unit ?? "",
-        item: r?.item ?? "",
-        note: r?.note ?? "",
-      }))
-    : [
-        {
+    Array.isArray(initial?.ingredients) && initial.ingredients.length
+      ? initial.ingredients.map((r) => ({
           id: genId(),
-          qty: "",
-          unit: "",
-          item: "",
-        },
-      ];
+          qty:
+            r?.qty === "" || r?.qty == null
+              ? ""
+              : Number.isFinite(Number(r.qty))
+                ? Number(r.qty)
+                : "",
+          unit: r?.unit ?? "",
+          item: r?.item ?? r?.name ?? "",
+          note: r?.note ?? "",
+        }))
+      : [
+          {
+            id: genId(),
+            qty: "",
+            unit: "",
+            item: "",
+          },
+        ];
 
-const [ingredients, setIngredients] = React.useState<IngredientRow[]>(seedIngredients);
+  const [ingredients, setIngredients] = React.useState<IngredientRow[]>(
+    seedIngredients
+  );
   const [steps, setSteps] = React.useState<string[]>(
     Array.isArray(initial?.instructions)
-      ? (initial!.instructions as any[]).map((x: any) =>
-          typeof x === "string" ? x : x?.text ?? ""
-        )
+      ? initial.instructions.map((x) => (typeof x === "string" ? x : x?.text ?? ""))
       : [""]
   );
 
@@ -248,35 +298,35 @@ const [ingredients, setIngredients] = React.useState<IngredientRow[]>(seedIngred
 
   // ---- preview wiring ----
   const [mode, setMode] = React.useState<"edit" | "preview">("edit");
-  const [previewDraft, setPreviewDraft] = React.useState<any | null>(null);
+  const [previewDraft, setPreviewDraft] = React.useState<RecipeSubmitDraft | null>(null);
 
-  const toNumberOrNull = (v: any): number | null => {
+  const toNumberOrNull = (v: unknown): number | null => {
     if (v === "" || v === null || v === undefined) return null;
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
   };
 
-  function normalizeIngredients(rows: IngredientRow[]): any[] {
+  function normalizeIngredients(rows: IngredientRow[]): RecipeSubmitDraft["ingredients"] {
     return rows
       .filter((r) => (r.item ?? "").toString().trim().length > 0)
       .map((r) => ({
         qty: r.qty === "" ? "" : Number(r.qty ?? "") || "",
         unit: (r.unit ?? "").trim() || null,
         item: (r.item ?? "").trim(),
-        note: (r as any).note ? String((r as any).note).trim() : null,
+        note: r.note?.trim() ? r.note.trim() : null,
       }));
   }
 
-  function normalizeSteps(src: string[] | { text: string }[]): any[] {
+  function normalizeSteps(src: string[] | { text: string }[]): RecipeSubmitDraft["instructions"] {
     if (!Array.isArray(src)) return [];
-    return src.map((s: any, i: number) =>
+    return src.map((s, i) =>
       typeof s === "string"
         ? { order: i + 1, text: s }
-        : { order: i + 1, text: s?.text ?? "" }
+        : { order: i + 1, text: s.text ?? "" }
     );
   }
 
-  function buildDraft() {
+  function buildDraft(): RecipeSubmitDraft {
     return {
       title: title.trim(),
       description: description?.trim() || null,
@@ -307,7 +357,7 @@ const [ingredients, setIngredients] = React.useState<IngredientRow[]>(seedIngred
     };
   }
 
-  function draftToPreviewModel(draft: any) {
+  function draftToPreviewModel(draft: RecipeSubmitDraft): RecipePreview {
     return {
       title: draft.title,
       imageUrl: draft.image_url,
@@ -320,12 +370,12 @@ const [ingredients, setIngredients] = React.useState<IngredientRow[]>(seedIngred
         cookMin: draft.cook_time_minutes,
       },
       tags: { diets: draft.diet_tags ?? [], allergens: draft.allergens ?? [] },
-      ingredients: (draft.ingredients ?? []).map((r: any) => ({
+      ingredients: (draft.ingredients ?? []).map((r) => ({
         qty: r.qty,
         unit: r.unit,
         item: r.item,
       })),
-      steps: (draft.instructions ?? []).map((s: any) => s?.text ?? s),
+      steps: (draft.instructions ?? []).map((s) => s.text ?? ""),
       nutrition: {
         calories: draft.calories ?? 0,
         protein_g: draft.protein_g ?? 0,
