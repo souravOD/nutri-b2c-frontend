@@ -53,7 +53,7 @@ export function NutritionFactsPanel({
   className,
 }: NutritionFactsPanelProps) {
   // Some APIs use `sugar` for total sugars; prefer explicit `totalSugars` if present
-  const totalSugars = nutrition.totalSugars ?? (nutrition as any).sugar ?? 0
+  const totalSugars = nutrition.totalSugars ?? nutrition.sugar ?? 0
   const allergens = nutrition.allergens ?? []
 
   return (

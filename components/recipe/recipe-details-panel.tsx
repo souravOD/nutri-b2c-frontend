@@ -1,9 +1,23 @@
 "use client"
 import { Button } from "@/components/ui/button"
 
+type RecipeDetails = {
+  title?: string
+  imageUrl?: string
+  cuisine?: string | { name?: string | null; code?: string | null } | null
+  course?: string
+  difficulty?: string
+  servings?: number
+  time?: { prepMin?: number; cookMin?: number }
+  tags?: { diets?: string[]; allergens?: string[] }
+  ingredients?: Array<{ qty?: number | string; unit?: string; item?: string }>
+  steps?: string[]
+  nutrition?: Record<string, string | number | null | undefined>
+}
+
 export default function RecipeDetailsPanel({
   recipe, onBack, onSave, mode = "preview",
-}: { recipe: any; onBack: () => void; onSave?: () => void; mode?: "preview" | "saved" }) {
+}: { recipe: RecipeDetails; onBack: () => void; onSave?: () => void; mode?: "preview" | "saved" }) {
   const n = recipe.nutrition || {}
   const isPreview = mode === "preview"
   const cuisineLabel =
@@ -55,7 +69,7 @@ export default function RecipeDetailsPanel({
           <section>
             <h3 className="font-medium mb-2">Ingredients</h3>
             <ul className="list-disc pl-5 text-sm space-y-1">
-              {recipe.ingredients?.map((r: any, i: number) => (
+              {recipe.ingredients?.map((r, i: number) => (
                 <li key={i}>{r.qty}{r.unit && ` ${r.unit}`} {r.item}</li>
               ))}
             </ul>

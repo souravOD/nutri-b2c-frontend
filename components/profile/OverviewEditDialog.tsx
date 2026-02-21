@@ -15,6 +15,8 @@ const schema = z.object({
   diets: z.array(z.string()).optional(),
   allergens: z.array(z.string()).optional(),
 });
+type OverviewFormValues = z.infer<typeof schema>
+type OverviewInitialValues = Partial<OverviewFormValues> | null | undefined
 
 export function OverviewEditDialog({
   open,
@@ -24,11 +26,11 @@ export function OverviewEditDialog({
 }: {
   open: boolean;
   onOpenChange(v: boolean): void;
-  initial: any;
+  initial: OverviewInitialValues;
   onSaved(): void;
 }) {
-  const form = useForm<z.infer<typeof schema>>({
-    resolver: zodResolver(schema) as unknown as Resolver<z.infer<typeof schema>>,
+  const form = useForm<OverviewFormValues>({
+    resolver: zodResolver(schema) as unknown as Resolver<OverviewFormValues>,
     defaultValues: {
       ...initial,
       diets: initial?.diets ?? [],

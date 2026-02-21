@@ -47,7 +47,7 @@ export function AddItemSheet({ open, onOpenChange, mealType, date, memberId, onA
     customName: string;
     customBrand?: string;
     servings: number;
-    nutrition: any;
+    nutrition: AddMealItemPayload["nutrition"];
   }) => {
     onAdd({
       date,

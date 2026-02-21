@@ -11,10 +11,10 @@ interface PlanSummaryProps {
   members: HouseholdMember[];
 }
 
-function n(val: any): number {
+function n(val: unknown): number {
   if (val == null) return 0;
   const parsed = typeof val === "string" ? parseFloat(val) : val;
-  return Number.isFinite(parsed) ? parsed : 0;
+  return typeof parsed === "number" && Number.isFinite(parsed) ? parsed : 0;
 }
 
 export function PlanSummary({ plan, items, members }: PlanSummaryProps) {

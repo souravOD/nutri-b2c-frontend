@@ -101,12 +101,12 @@ export function DailyView({ initialDate, memberId }: DailyViewProps) {
     copyDay.mutate(
       { sourceDate: date, targetDate: today },
       {
-        onSuccess: (data: any) => {
+        onSuccess: (data: { items?: unknown[] } | undefined) => {
           const label = new Date(date + "T00:00:00").toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
           });
-          toast({ title: `Copied ${data.items?.length ?? 0} items from ${label} to today` });
+          toast({ title: `Copied ${data?.items?.length ?? 0} items from ${label} to today` });
           setDate(today);
         },
         onError: () =>
