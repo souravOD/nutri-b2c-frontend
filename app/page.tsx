@@ -164,6 +164,7 @@ export default function HomePage() {
                     : null
               const tags = asStringArray(recipeRecord.diet_tags ?? recipeRecord.tags)
               const isSaved = Boolean(recipeRecord.is_saved ?? recipeRecord.isSaved)
+              const reasons = asStringArray(itemRecord.reasons)
 
               return (
                 <RecipeCard
@@ -177,6 +178,7 @@ export default function HomePage() {
                   difficulty={difficulty}
                   isSaved={isFavorite(recipeId) || isSaved}
                   tags={tags}
+                  reasons={reasons}
                   onSave={async (id) => {
                     await toggleFavorite(id)
                     invalidateSaved()

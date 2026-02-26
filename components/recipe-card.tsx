@@ -7,11 +7,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clock, Flame, Soup, Heart, Star } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { MatchReasonBadge } from "@/components/search/match-reason-badge"
 import type { Difficulty } from "@/lib/types"
 
 export type RecipeCardProps = {
   id: string
-  href?: string 
+  href?: string
   title?: string
   imageUrl?: string | null
   prepTime?: number
@@ -22,6 +23,7 @@ export type RecipeCardProps = {
   onSave: (id: string) => void
   tags?: string[]
   score?: number
+  reasons?: string[]
 }
 
 export function RecipeCard({
@@ -36,6 +38,7 @@ export function RecipeCard({
   onSave,
   tags = [],
   score,
+  reasons,
   href,
 }: RecipeCardProps) {
   const totalTime = prepTime + cookTime
@@ -105,6 +108,13 @@ export function RecipeCard({
             </Badge>
           )}
         </div>
+        {reasons && reasons.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {reasons.slice(0, 3).map((reason) => (
+              <MatchReasonBadge key={reason} reason={reason} />
+            ))}
+          </div>
+        )}
       </CardContent>
       <CardFooter className="p-3 pt-0">
         <Button

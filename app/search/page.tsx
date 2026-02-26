@@ -196,6 +196,12 @@ export default function SearchPage() {
             />
           </div>
 
+          {/* NL Search Hints (PRD-10) */}
+          <p className="text-muted-foreground text-sm mt-1">
+            Try: &quot;high protein vegan dinner under 30 minutes&quot; or
+            &quot;kid-friendly lunch without nuts&quot;
+          </p>
+
           {/* Search Actions */}
           <div className="flex items-center gap-2">
             <Button onClick={() => handleSearch(searchQuery)} size="sm">
@@ -422,6 +428,7 @@ export default function SearchPage() {
                     isSaved={recipe.isSaved}
                     tags={recipe.tags}
                     score={settings.behavior.showScoreBadge ? recipe.score : undefined}
+                    reasons={(recipe as any).reasons}
                     onSave={() => {
                       // Handle save/unsave
                     }}
