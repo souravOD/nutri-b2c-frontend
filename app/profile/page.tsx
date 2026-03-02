@@ -49,9 +49,9 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [health, setHealth] = useState<HealthData | null>(null);
   const [loading, setLoading] = useState(true);
-  const { members } = useHouseholdMembers();
-  const { data: unreadCount } = useUnreadCount();
-  const { savedRecipes } = useFavorites();
+  const { members = [] } = useHouseholdMembers();
+  const { data: unreadCount = 0 } = useUnreadCount();
+  const { savedRecipes = [] } = useFavorites();
 
   useEffect(() => {
     async function load() {
@@ -60,6 +60,9 @@ export default function ProfilePage() {
           authFetch("/api/v1/me/profile"),
           authFetch("/api/v1/me/health"),
         ]);
+        if (!pRes.ok || !hRes.ok) {
+          throw new Error(`Profile load failed: ${pRes.status}/${hRes.status}`);
+        }
         setProfile(await pRes.json());
         setHealth(await hRes.json());
       } catch (err) {

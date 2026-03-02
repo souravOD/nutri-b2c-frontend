@@ -281,7 +281,7 @@ export default function HomePage() {
             <QuickActionCard
               title="AI Planner"
               description="Let AI build your weekly menu based on your fridge contents."
-              href="/meal-plan/ai-planner"
+              href="/meal-plan/generate"
               icon={Sparkles}
               variant="white"
             />

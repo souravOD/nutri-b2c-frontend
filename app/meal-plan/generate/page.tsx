@@ -114,10 +114,16 @@ export default function AiPlannerPage() {
         const daysToNextMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
         const monday = new Date(today);
         monday.setDate(today.getDate() + daysToNextMonday);
-        const startDate = monday.toISOString().slice(0, 10);
+        const toLocalYMD = (d: Date) => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, "0");
+            const dd = String(d.getDate()).padStart(2, "0");
+            return `${y}-${m}-${dd}`;
+        };
+        const startDate = toLocalYMD(monday);
         const endD = new Date(monday);
         endD.setDate(endD.getDate() + 6);
-        const endDate = endD.toISOString().slice(0, 10);
+        const endDate = toLocalYMD(endD);
 
         const params: MealPlanGenerateParams = {
             startDate,
@@ -550,10 +556,10 @@ export default function AiPlannerPage() {
                                                     onClick={() => isCompleted && setStep(stepNum)}
                                                     disabled={!isCompleted}
                                                     className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all ${isCompleted
-                                                            ? "bg-[#9C3] cursor-pointer hover:brightness-110"
-                                                            : isActive
-                                                                ? "bg-[#9C3] ring-4 ring-[rgba(153,204,51,0.3)]"
-                                                                : "bg-slate-600"
+                                                        ? "bg-[#9C3] cursor-pointer hover:brightness-110"
+                                                        : isActive
+                                                            ? "bg-[#9C3] ring-4 ring-[rgba(153,204,51,0.3)]"
+                                                            : "bg-slate-600"
                                                         }`}
                                                 >
                                                     {isCompleted ? (
@@ -571,10 +577,10 @@ export default function AiPlannerPage() {
                                             {/* Label */}
                                             <div className="pt-2.5">
                                                 <p className={`text-sm font-semibold leading-tight ${isActive
-                                                        ? "text-white"
-                                                        : isCompleted
-                                                            ? "text-slate-300"
-                                                            : "text-slate-500"
+                                                    ? "text-white"
+                                                    : isCompleted
+                                                        ? "text-slate-300"
+                                                        : "text-slate-500"
                                                     }`} style={{ fontFamily: "Inter, sans-serif" }}>
                                                     {s.label}
                                                 </p>

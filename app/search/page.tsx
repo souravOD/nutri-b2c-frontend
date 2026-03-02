@@ -162,7 +162,7 @@ export default function SearchPage() {
     data: searchResults = [],
     isLoading,
   } = useQuery({
-    queryKey: ["search", committed ? query : "", apiFilters, sortBy],
+    queryKey: ["search", committed ? query : "", apiFilters, sortBy, settings.behavior],
     queryFn: async (): Promise<ScoredRecipe[]> => {
       if (!query && !hasFilters) return []
       const rawResults = await apiSearchRecipes({ q: query, filters: apiFilters as any, sort: sortBy })
@@ -178,7 +178,7 @@ export default function SearchPage() {
   const {
     data: suggestions = [],
   } = useQuery({
-    queryKey: ["suggestions", debouncedQuery],
+    queryKey: ["suggestions", debouncedQuery, apiFilters],
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return []
       const results = await apiSearchRecipes({ q: debouncedQuery, filters: apiFilters as any, sort: "relevance" })

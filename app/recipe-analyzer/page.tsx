@@ -478,7 +478,13 @@ function RecipeAnalyzerInner() {
                   <input id="desktop-photo-upload" type="file" accept="image/*" className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0]
-                      if (file) setSource({ ...source, imageUrl: URL.createObjectURL(file) })
+                      if (!file) return
+                      const prevUrl = source.imageUrl
+                      const nextUrl = URL.createObjectURL(file)
+                      setSource({ ...source, imageUrl: nextUrl })
+                      if (prevUrl && prevUrl.startsWith("blob:")) {
+                        try { URL.revokeObjectURL(prevUrl) } catch { /* ignore */ }
+                      }
                     }} />
                 </label>
                 {source.imageUrl && (
