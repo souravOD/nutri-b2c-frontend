@@ -1,9 +1,7 @@
 import type { RecommendationSettings } from "./types"
 import { ALL_CUISINES, ALL_DIETS, ALL_ALLERGENS } from "./data"
 
-const STORAGE_KEY = "nutri_settings_v1"
-
-// ---- Non-optional default sections (so TS won't complain) ----
+// ---- Non-optional default sections ----
 const DEFAULT_BEHAVIOR: NonNullable<RecommendationSettings["behavior"]> = {
   showScoreBadge: true,
   exploration: 0.15,
@@ -58,67 +56,7 @@ export const DEFAULT_SETTINGS: RecommendationSettings = {
   advanced: DEFAULT_ADVANCED,
 }
 
-// ---- Helpers ----
-/** Load settings from localStorage, falling back to defaults. */
-export function loadSettings(): RecommendationSettings {
-  if (typeof window === "undefined") return DEFAULT_SETTINGS
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return DEFAULT_SETTINGS
-    const parsed = JSON.parse(raw) ?? {}
-
-    return {
-      ...DEFAULT_SETTINGS,
-      ...parsed,
-      behavior: {
-        ...DEFAULT_BEHAVIOR,
-        ...(parsed.behavior ?? {}),
-      },
-      personalization: {
-        ...DEFAULT_PERSONALIZATION,
-        ...(parsed.personalization ?? {}),
-      },
-      notifications: {
-        ...DEFAULT_NOTIFICATIONS,
-        ...(parsed.notifications ?? {}),
-      },
-      advanced: {
-        ...DEFAULT_ADVANCED,
-        ...(parsed.advanced ?? {}),
-        weights: {
-          ...DEFAULT_ADVANCED.weights,
-          ...(parsed.advanced?.weights ?? {}),
-        },
-        filters: {
-          ...DEFAULT_ADVANCED.filters,
-          ...(parsed.advanced?.filters ?? {}),
-        },
-      },
-    }
-  } catch {
-    return DEFAULT_SETTINGS
-  }
-}
-
-/** Persist settings to localStorage. */
-export function saveSettings(settings: RecommendationSettings): void {
-  if (typeof window === "undefined") return
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
-  } catch {
-    // ignore quota errors
-  }
-}
-
-/** Reset settings in storage and return defaults. */
-export function resetSettings(): RecommendationSettings {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem(STORAGE_KEY)
-  }
-  return DEFAULT_SETTINGS
-}
-
-/** Download the current settings as a JSON file (for debugging/export). */
+// ---- Download helper (kept for Privacy tab) ----
 export function downloadSettingsJson(settings: RecommendationSettings): void {
   const blob = new Blob([JSON.stringify(settings, null, 2)], { type: "application/json" })
   const url = URL.createObjectURL(blob)

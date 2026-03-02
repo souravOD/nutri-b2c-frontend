@@ -28,6 +28,19 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
   reactStrictMode: true,
 
+  // Produce a self-contained build for Docker (much smaller image — no bulky node_modules)
+  output: "standalone",
+
+  // Allow external recipe images from any HTTPS source.
+  // Recipe images come from 50+ domains (pinimg, sndimg, nyt, allrecipes,
+  // squarespace-cdn, apartmenttherapy, amazonaws, etc.), so a broad HTTPS
+  // pattern is necessary. HTTP is blocked to prevent mixed-content issues.
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "**" },
+    ],
+  },
+
   // Proxy API calls to the backend; destinations are baked at build time
   // into .next/routes-manifest.json (NOT re-evaluated at runtime by `next start`).
   // In Docker: API_BASE_URL=http://backend:5000 via build arg.

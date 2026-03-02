@@ -108,7 +108,7 @@ export function ResultPanel({
 
       {/* Personalized Warnings */}
       {(result.allergenWarnings && result.allergenWarnings.length > 0) ||
-      (result.healthWarnings && result.healthWarnings.length > 0) ? (
+        (result.healthWarnings && result.healthWarnings.length > 0) ? (
         <Card className="border-destructive/50 bg-destructive/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">

@@ -12,11 +12,12 @@ export function ChatBubble({ role, content }: ChatBubbleProps) {
         <div className={cn("flex", role === "user" ? "justify-end" : "justify-start")}>
             <div
                 className={cn(
-                    "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
+                    "max-w-[85%] rounded-2xl px-4 py-2.5 text-[14px] leading-[1.5]",
                     role === "user"
-                        ? "bg-primary text-primary-foreground rounded-br-sm"
-                        : "bg-muted text-foreground rounded-bl-sm"
+                        ? "bg-[#538100] text-white rounded-br-sm shadow-sm"
+                        : "bg-white text-[#0F172A] rounded-bl-sm border border-[#E2E8F0] shadow-sm"
                 )}
+                style={{ fontFamily: "Inter, sans-serif" }}
             >
                 {content}
             </div>

@@ -42,15 +42,13 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build:docker
 
-# 3) Runtime image: install only production deps, copy build
+# 3) Runtime image: use standalone output for minimal footprint (~200MB vs ~1GB)
 FROM node:${NODE_VERSION}-bookworm-slim AS runner
 ENV NODE_ENV=production \
-    NEXT_TELEMETRY_DISABLED=1
+    NEXT_TELEMETRY_DISABLED=1 \
+    HOSTNAME=0.0.0.0 \
+    PORT=3000
 WORKDIR /app
-
-# Install only production deps to keep image small
-COPY package*.json ./
-RUN npm ci --omit=dev
 
 # Re-declare build-time args in this stage so they can be baked as runtime envs
 ARG API_BASE_URL
@@ -74,15 +72,17 @@ ENV API_BASE_URL=${API_BASE_URL} \
     NEXT_PUBLIC_APPWRITE_HEALTH_COLLECTION_ID=${NEXT_PUBLIC_APPWRITE_HEALTH_COLLECTION_ID} \
     NEXT_PUBLIC_APPWRITE_ADMINS_TEAM_ID=${NEXT_PUBLIC_APPWRITE_ADMINS_TEAM_ID}
 
-# Copy built app and static files
-COPY --from=builder /app/.next ./.next
+# Standalone output: only copy the self-contained server + static assets
+# No need for npm ci or node_modules — deps are bundled in standalone
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.mjs ./next.config.mjs
 
 EXPOSE 3000
 
 # Lightweight healthcheck without curl
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+    CMD node -e "require('http').get('http://localhost:3000',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
-CMD ["npm", "start"]
+# Standalone server is a plain Node script, no npm required
+CMD ["node", "server.js"]

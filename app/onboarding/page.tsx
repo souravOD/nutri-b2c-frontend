@@ -1,17 +1,10 @@
-"use client";
+"use client"
 
-import dynamic from "next/dynamic";
-
-// Load the wizard as a client chunk (also safe if it uses hooks)
-const HealthOnboardingWizard = dynamic(
-  () => import("@/components/health-onboarding-wizard"),
-  { ssr: false } // prevents SSR from trying to execute hooks during prerender
-);
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 
 export default function OnboardingPage() {
-  return (
-    <div className="container mx-auto px-6 py-10">
-      <HealthOnboardingWizard />
-    </div>
-  );
+  const router = useRouter()
+  useEffect(() => { router.replace("/onboarding/personal-info") }, [router])
+  return <div className="min-h-screen" style={{ background: "var(--nutri-bg)" }} />
 }

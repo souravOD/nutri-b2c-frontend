@@ -7,17 +7,11 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useUser } from "@/hooks/use-user"
 import { useToast } from "@/hooks/use-toast"
 import { account } from "@/lib/appwrite"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, EyeOff, Lock, Mail } from "lucide-react"
+import { Eye, EyeOff, ChevronLeft, Shield } from "lucide-react"
 
-// Top-level page only renders a Suspense boundary.
-// The component that calls useSearchParams() is inside it.
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen" />}>
+    <Suspense fallback={<div className="min-h-screen" style={{ background: "var(--nutri-bg)" }} />}>
       <LoginInner />
     </Suspense>
   )
@@ -46,81 +40,113 @@ function LoginInner() {
       router.replace(dest)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Please check your credentials and try again."
-      toast({
-        title: "Sign-in failed",
-        description: message,
-        variant: "destructive",
-      })
+      toast({ title: "Sign-in failed", description: message, variant: "destructive" })
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle>Sign in</CardTitle>
-          <CardDescription>Continue with your email and password.</CardDescription>
-        </CardHeader>
+    <div className="min-h-screen flex flex-col" style={{ background: "var(--nutri-bg)" }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <Link href="/welcome" className="flex items-center justify-center w-12 h-12">
+          <ChevronLeft className="w-4 h-4" style={{ color: "var(--nutri-heading)" }} />
+        </Link>
+        <span className="text-[18px] font-bold tracking-[-0.45px] pr-12" style={{ color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}>
+          Sign In
+        </span>
+        <div className="w-12" />
+      </div>
 
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  className="pl-9"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                />
-              </div>
-            </div>
+      {/* Heading */}
+      <div className="px-6 pt-8 pb-2 text-center">
+        <h1 className="text-[28px] font-bold leading-[35px] tracking-[-0.7px]" style={{ color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}>
+          Welcome back
+        </h1>
+        <p className="mt-2 text-[14px] leading-[20px]" style={{ color: "var(--nutri-body)", fontFamily: "Inter, sans-serif" }}>
+          Sign in to continue your nutrition journey.
+        </p>
+      </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type={showPw ? "text" : "password"}
-                  className="pl-9 pr-10"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  className="absolute right-2 top-2.5 p-1 text-muted-foreground"
-                  onClick={() => setShowPw((s) => !s)}
-                  aria-label={showPw ? "Hide password" : "Show password"}
-                >
-                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
+      {/* Form */}
+      <form onSubmit={handleLogin} className="px-6 pt-6 space-y-4">
+        <div>
+          <label className="block px-1 pb-2 text-[14px] font-semibold" style={{ color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}>
+            Email Address
+          </label>
+          <input
+            id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+            required autoComplete="email" placeholder="Enter your email"
+            className="w-full h-14 px-6 rounded-full border text-[16px] outline-none transition-colors focus:border-[var(--nutri-green)]"
+            style={{ background: "white", borderColor: "var(--nutri-border)", color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}
+          />
+        </div>
+        <div>
+          <div className="flex items-center justify-between px-1 pb-2">
+            <label className="text-[14px] font-semibold" style={{ color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}>
+              Password
+            </label>
+            <Link href="/forgot-password" className="text-[12px] font-medium no-underline" style={{ color: "var(--nutri-link)", fontFamily: "Inter, sans-serif" }}>
+              Forgot password?
+            </Link>
+          </div>
+          <div className="relative">
+            <input
+              id="password" type={showPw ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
+              required autoComplete="current-password" placeholder="Enter your password"
+              className="w-full h-14 px-6 pr-12 rounded-full border text-[16px] outline-none transition-colors focus:border-[var(--nutri-green)]"
+              style={{ background: "white", borderColor: "var(--nutri-border)", color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}
+            />
+            <button type="button" onClick={() => setShowPw((s) => !s)} className="absolute right-4 top-1/2 -translate-y-1/2 p-1" aria-label={showPw ? "Hide password" : "Show password"}>
+              {showPw ? <EyeOff className="w-5 h-5" style={{ color: "var(--nutri-placeholder)" }} /> : <Eye className="w-5 h-5" style={{ color: "var(--nutri-placeholder)" }} />}
+            </button>
+          </div>
+        </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign in"}
-            </Button>
+        {/* CTA */}
+        <button
+          type="submit" disabled={isLoading}
+          className="w-full h-14 rounded-full text-[16px] font-bold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
+          style={{ background: "var(--nutri-green)", fontFamily: "Inter, sans-serif", boxShadow: "0px 10px 15px -3px rgba(153,204,51,0.2), 0px 4px 6px -4px rgba(153,204,51,0.2)" }}
+        >
+          {isLoading ? "Signing in..." : "Sign In"}
+        </button>
+      </form>
 
-            <Button type="button" variant="outline" className="w-full" disabled title="SSO coming soon">
-              Continue with SSO
-            </Button>
+      {/* Social auth divider */}
+      <div className="px-6 pt-6">
+        <div className="flex items-center gap-4 py-2">
+          <div className="flex-1 h-px" style={{ background: "var(--nutri-border)" }} />
+          <span className="text-[12px] font-medium tracking-[0.6px] uppercase" style={{ color: "var(--nutri-placeholder)", fontFamily: "Inter, sans-serif" }}>
+            or sign in with
+          </span>
+          <div className="flex-1 h-px" style={{ background: "var(--nutri-border)" }} />
+        </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <Link href="/forgot-password" className="text-muted-foreground hover:underline">Forgot password?</Link>
-              <Link href="/register" className="text-muted-foreground hover:underline">Create account</Link>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+        <div className="space-y-3 pt-4">
+          <button disabled title="Coming soon" className="w-full h-14 rounded-full border bg-white flex items-center justify-center text-[16px] font-semibold disabled:opacity-60" style={{ borderColor: "var(--nutri-border)", color: "#334155", fontFamily: "Inter, sans-serif" }}>
+            Sign in with Google
+          </button>
+          <button disabled title="Coming soon" className="w-full h-14 rounded-full border bg-white flex items-center justify-center gap-3 text-[16px] font-semibold disabled:opacity-60" style={{ borderColor: "var(--nutri-border)", color: "#334155", fontFamily: "Inter, sans-serif" }}>
+            <span className="text-[14px]">🍎</span> Sign in with Apple
+          </button>
+        </div>
+      </div>
+
+      {/* Trust footer */}
+      <div className="px-6 py-8 flex flex-col items-center gap-4">
+        <div className="w-full rounded-[48px] px-4 py-4 flex items-center gap-3 border" style={{ background: "var(--nutri-green-5)", borderColor: "var(--nutri-green-10)" }}>
+          <Shield className="w-4 h-4 shrink-0" style={{ color: "var(--nutri-green-dark)" }} />
+          <p className="text-[13px] leading-[18px]" style={{ color: "var(--nutri-body)", fontFamily: "Inter, sans-serif" }}>
+            Your privacy is our priority. Your data is encrypted and secure.
+          </p>
+        </div>
+        <p className="text-[14px]" style={{ color: "var(--nutri-body-light)", fontFamily: "Inter, sans-serif" }}>
+          Don&apos;t have an account?{" "}
+          <Link href="/register" className="font-extrabold no-underline" style={{ color: "var(--nutri-link)" }}>Create account</Link>
+        </p>
+      </div>
     </div>
   )
 }
