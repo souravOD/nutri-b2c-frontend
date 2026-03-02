@@ -113,11 +113,55 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* ── Nutri Figma Design Tokens ── */
+:root {
+  --nutri-green: #99CC33;
+  --nutri-green-dark: #6B8F24;
+  --nutri-green-text: #538100;
+  --nutri-bg: #F7F8F6;
+  --nutri-heading: #0F172A;
+  --nutri-body: #475569;
+  --nutri-body-light: #64748B;
+  --nutri-placeholder: #94A3B8;
+  --nutri-border: #E2E8F0;
+  --nutri-cta-dark: #333333;
+  --nutri-link: #6B8F24;
+  --nutri-green-5: rgba(153, 204, 51, 0.05);
+  --nutri-green-10: rgba(153, 204, 51, 0.1);
+  --nutri-green-20: rgba(153, 204, 51, 0.2);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ── Force light theme for specific page sections ── */
+.light-theme-scope,
+.light-theme-scope * {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  color-scheme: light;
 }

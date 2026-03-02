@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Upload, X } from "lucide-react"
-import type { SourceData } from "@/app/recipe-analyzer/page"
+import type { SourceData } from "@/components/analyzer/analyzer-context"
 
 interface PhotoSourceProps {
   source: SourceData

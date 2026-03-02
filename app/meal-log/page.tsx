@@ -1,53 +1,381 @@
-"use client";
+"use client"
 
-import { useEffect, useMemo } from "react";
-import { DailyView } from "@/components/meal-log/daily-view";
-import { useHouseholdMembers } from "@/hooks/use-household";
-import { useSelectedMember } from "@/hooks/use-selected-member";
+import { useState, useCallback } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { ArrowLeft, Calendar, Sparkles } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  apiGetMealLog,
+  apiAddMealItem,
+  apiUpdateMealItem,
+  apiDeleteMealItem,
+  apiLogWater,
+  apiCopyDay,
+  apiGetStreak,
+  apiGetNutritionDaily,
+  apiToggleSave,
+} from "@/lib/api"
+import { useUser } from "@/hooks/use-user"
+import { useToast } from "@/hooks/use-toast"
+import { CalorieRing } from "@/components/home/calorie-ring"
+import { MacroBar } from "@/components/home/macro-bar"
+import { DateNavigator } from "@/components/meal/date-navigator"
+import { WaterTracker } from "@/components/meal/water-tracker"
+import { MealSlotCard } from "@/components/meal/meal-slot-card"
+import { QuickAddSheet } from "@/components/meal/quick-add-sheet"
+import { MealOptionsSheet } from "@/components/meal/meal-options-sheet"
+import { LogMealModal } from "@/components/meal/log-meal-modal"
+import { LogConfirmation } from "@/components/meal/log-confirmation"
+import type { MealType, MealLogItem, Recipe, AddMealItemPayload } from "@/lib/types"
 
-export default function MealLogPage() {
-  const { members } = useHouseholdMembers();
-  const defaultMember = useMemo(
-    () => members.find((m) => m.isProfileOwner) ?? members[0] ?? null,
-    [members]
-  );
-  const { memberId: selectedMemberId, setMemberId: setSelectedMemberId } = useSelectedMember(
-    defaultMember?.id
-  );
+function toDateStr(d: Date): string {
+  return d.toISOString().split("T")[0]
+}
 
-  useEffect(() => {
-    if (!selectedMemberId && defaultMember?.id) {
-      setSelectedMemberId(defaultMember.id);
+function n(v: number | string | null | undefined): number {
+  if (v == null) return 0
+  return typeof v === "string" ? parseFloat(v) || 0 : v
+}
+
+const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "snack", "dinner"]
+
+export default function DailyLogPage() {
+  const { user } = useUser()
+  const { toast } = useToast()
+  const router = useRouter()
+  const queryClient = useQueryClient()
+
+  // ── State ──
+  const [date, setDate] = useState(new Date())
+  const [memberId, setMemberId] = useState<string | undefined>()
+  const dateStr = toDateStr(date)
+
+  // Quick-add sheet
+  const [quickAddOpen, setQuickAddOpen] = useState(false)
+  const [quickAddSlot, setQuickAddSlot] = useState<MealType>("breakfast")
+
+  // Meal options sheet
+  const [optionsOpen, setOptionsOpen] = useState(false)
+  const [optionsItem, setOptionsItem] = useState<MealLogItem | null>(null)
+
+  // Log meal modal
+  const [logModalOpen, setLogModalOpen] = useState(false)
+  const [logRecipe, setLogRecipe] = useState<Recipe | null>(null)
+
+  // Log confirmation
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmData, setConfirmData] = useState({
+    calories: 0, protein: 0, carbs: 0, fats: 0,
+  })
+
+  // ── Data fetching ──
+  const { data: mealLog } = useQuery({
+    queryKey: ["meal-log", dateStr, memberId],
+    queryFn: () => apiGetMealLog(dateStr, memberId),
+    staleTime: 30_000,
+  })
+
+  const { data: nutrition } = useQuery({
+    queryKey: ["nutrition-daily", dateStr],
+    queryFn: () => apiGetNutritionDaily({ date: dateStr }),
+    staleTime: 30_000,
+  })
+
+  const { data: streakData } = useQuery({
+    queryKey: ["streak", memberId],
+    queryFn: () => apiGetStreak(memberId),
+    staleTime: 120_000,
+  })
+
+  // ── Mutations ──
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["meal-log", dateStr] })
+    queryClient.invalidateQueries({ queryKey: ["nutrition-daily", dateStr] })
+  }
+
+  const addMutation = useMutation({
+    mutationFn: (payload: AddMealItemPayload) => apiAddMealItem(payload),
+    onSuccess: () => invalidate(),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiDeleteMealItem(id, memberId),
+    onSuccess: () => invalidate(),
+  })
+
+  const waterMutation = useMutation({
+    mutationFn: (deltaMl: number) => apiLogWater(dateStr, deltaMl, memberId),
+    onSuccess: () => invalidate(),
+  })
+
+  const copyDayMutation = useMutation({
+    mutationFn: () => {
+      const yesterday = new Date(date)
+      yesterday.setDate(yesterday.getDate() - 1)
+      return apiCopyDay(toDateStr(yesterday), dateStr, memberId)
+    },
+    onSuccess: () => {
+      invalidate()
+      toast({ title: "Copied!", description: "Yesterday's meals copied to today." })
+    },
+    onError: () => {
+      toast({ title: "Copy failed", variant: "destructive" })
+    },
+  })
+
+  // ── Helpers ──
+  const items = mealLog?.items ?? []
+  const itemsBySlot = (slot: MealType) => items.filter((i) => i.mealType === slot)
+
+  const totals = nutrition?.totals ?? { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 }
+  const targets = nutrition?.targets ?? { calories: 2000, proteinG: 150, carbsG: 250, fatG: 70 }
+  // Source water from the meal log row (backend stores water_ml on meal_logs table)
+  const waterGlasses = Math.round(n((mealLog?.log as { waterMl?: number | null })?.waterMl ?? 0) / 250)
+  const streakDays = streakData?.currentStreak ?? 0
+
+  // ── Handlers ──
+  const handleOpenQuickAdd = useCallback((slot: MealType) => {
+    setQuickAddSlot(slot)
+    setQuickAddOpen(true)
+  }, [])
+
+  const handleOpenOptions = useCallback((item: MealLogItem) => {
+    setOptionsItem(item)
+    setOptionsOpen(true)
+  }, [])
+
+  const handleQuickSelectRecipe = useCallback((recipe: Recipe) => {
+    setLogRecipe(recipe)
+    setQuickAddOpen(false)
+    setLogModalOpen(true)
+  }, [])
+
+  const handleConfirmLog = useCallback(
+    async (recipeId: string, mealType: MealType, servings: number) => {
+      try {
+        await addMutation.mutateAsync({
+          date: dateStr,
+          mealType,
+          recipeId,
+          servings,
+          source: "recipe",
+          ...(memberId ? { memberId } : {}),
+        })
+        setLogModalOpen(false)
+        setConfirmData({
+          calories: (logRecipe?.calories || 0) * servings,
+          protein: (logRecipe?.protein_g || 0) * servings,
+          carbs: (logRecipe?.carbs_g || 0) * servings,
+          fats: (logRecipe?.fat_g || 0) * servings,
+        })
+        setConfirmOpen(true)
+      } catch {
+        toast({ title: "Failed to log meal", variant: "destructive" })
+      }
+    },
+    [addMutation, dateStr, memberId, logRecipe, toast],
+  )
+
+  const handleEditPortions = useCallback((item: MealLogItem) => {
+    // Simple inline edit — prompt for servings
+    const newServings = prompt("Enter new servings:", String(n(item.servings)))
+    if (newServings) {
+      apiUpdateMealItem(item.id, { servings: parseFloat(newServings) }, memberId).then(() => invalidate())
     }
-  }, [selectedMemberId, defaultMember?.id, setSelectedMemberId]);
+  }, [memberId])
+
+  const handleRemoveMeal = useCallback((item: MealLogItem) => {
+    deleteMutation.mutate(item.id)
+    toast({ title: "Meal removed" })
+  }, [deleteMutation, toast])
+
+  const handleCopyToTomorrow = useCallback((item: MealLogItem) => {
+    const tomorrow = new Date(date)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    addMutation.mutate({
+      date: toDateStr(tomorrow),
+      mealType: item.mealType as MealType,
+      ...(item.recipeId ? { recipeId: item.recipeId } : {}),
+      ...(item.productId ? { productId: item.productId } : {}),
+      ...(item.customName ? { customName: item.customName } : {}),
+      servings: n(item.servings),
+      source: "copy",
+    })
+    toast({ title: "Copied to tomorrow" })
+  }, [addMutation, date, toast])
+
+  const handleSaveToFavorites = useCallback((item: MealLogItem) => {
+    if (item.recipeId) {
+      apiToggleSave(item.recipeId).then(() => {
+        toast({ title: "Saved to favorites!" })
+      })
+    }
+  }, [toast])
+
+  const handleLogForFamily = useCallback((_item: MealLogItem) => {
+    toast({ title: "Coming soon", description: "Family logging will be available in a future update." })
+  }, [toast])
 
   return (
-    <main className="container mx-auto max-w-2xl px-4 py-4">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">Meal Log</h1>
-        {members.length > 1 ? (
-          <Select value={selectedMemberId} onValueChange={(v) => setSelectedMemberId(v)}>
-            <SelectTrigger className="w-[220px]">
-              <SelectValue placeholder="Select member" />
-            </SelectTrigger>
-            <SelectContent>
-              {members.map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  {m.firstName || m.fullName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : null}
+    <div className="min-h-screen bg-[#F7F8F6] pb-[100px] lg:pb-8">
+      <div className="w-full max-w-[600px] mx-auto px-4 md:px-6">
+
+        {/* ── Header ──────────────────────────────────────────────── */}
+        <header className="flex items-center justify-between pt-6 pb-2">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="p-1.5 rounded-full hover:bg-[#F1F5F9] transition-colors lg:hidden"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="w-5 h-5 text-[#0F172A]" />
+            </button>
+            <h1
+              className="text-[20px] font-bold text-[#0F172A]"
+              style={{ fontFamily: "Inter, sans-serif" }}
+            >
+              Daily Log
+            </h1>
+          </div>
+          <button
+            type="button"
+            className="p-2 rounded-full hover:bg-[#F1F5F9] transition-colors"
+            aria-label="Calendar"
+          >
+            <Calendar className="w-5 h-5 text-[#0F172A]" />
+          </button>
+        </header>
+
+        {/* ── Date Navigator ─────────────────────────────────────── */}
+        <DateNavigator date={date} onChange={setDate} />
+
+        {/* ── Daily Overview Card ─────────────────────────────────── */}
+        <section
+          className="bg-white border border-[#F1F5F9] rounded-[24px] p-5 mt-2"
+          style={{ boxShadow: "0px 1px 3px 0px rgba(0,0,0,0.06)" }}
+        >
+          <div className="flex items-center justify-between">
+            <CalorieRing consumed={n(totals.calories)} target={n(targets.calories)} />
+            <div className="flex flex-col items-end gap-1">
+              {streakDays > 0 && (
+                <span
+                  className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#538100] bg-[#F0F7E6] px-2.5 py-1 rounded-full"
+                  style={{ fontFamily: "Inter, sans-serif" }}
+                >
+                  🔥 {streakDays} Day Streak!
+                </span>
+              )}
+              <MacroBar label="Protein" value={n(totals.proteinG)} target={n(targets.proteinG)} color="#99CC33" />
+              <MacroBar label="Carbs" value={n(totals.carbsG)} target={n(targets.carbsG)} color="#60A5FA" />
+              <MacroBar label="Fat" value={n(totals.fatG)} target={n(targets.fatG)} color="#FB923C" />
+            </div>
+          </div>
+        </section>
+
+        {/* ── Water Tracker ──────────────────────────────────────── */}
+        <section className="mt-4 bg-white border border-[#F1F5F9] rounded-[20px] p-4">
+          <WaterTracker
+            current={waterGlasses}
+            target={8}
+            onToggle={(newGlasses) => {
+              const deltaMl = (newGlasses - waterGlasses) * 250
+              if (deltaMl !== 0) waterMutation.mutate(deltaMl)
+            }}
+          />
+        </section>
+
+        {/* ── 4 Meal Slots ───────────────────────────────────────── */}
+        <div className="flex flex-col gap-3 mt-4">
+          {MEAL_TYPES.map((slot) => (
+            <MealSlotCard
+              key={slot}
+              mealType={slot}
+              items={itemsBySlot(slot)}
+              onAdd={() => handleOpenQuickAdd(slot)}
+              onOpenOptions={handleOpenOptions}
+            />
+          ))}
+        </div>
+
+        {/* ── AI CTA Card ────────────────────────────────────────── */}
+        <section className="mt-4 rounded-[20px] overflow-hidden bg-gradient-to-r from-[#F0F7E6] to-[#F8FBF0] border border-[#E2E8D0] p-5">
+          <h3
+            className="text-[16px] font-bold text-[#0F172A] mb-1"
+            style={{ fontFamily: "Inter, sans-serif" }}
+          >
+            AI Meal Planner
+          </h3>
+          <p
+            className="text-[13px] text-[#64748B] mb-4"
+            style={{ fontFamily: "Inter, sans-serif" }}
+          >
+            Get a personalized plan for today&apos;s goals
+          </p>
+          <Link
+            href="/meal-plan/ai-planner"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-[#538100] text-[14px] font-semibold border border-[#E2E8D0] hover:bg-[#F0F7E6] transition-colors"
+            style={{ fontFamily: "Inter, sans-serif" }}
+          >
+            <Sparkles className="w-4 h-4" />
+            Generate Plan
+          </Link>
+        </section>
       </div>
-      <DailyView memberId={selectedMemberId} />
-    </main>
-  );
+
+      {/* ── Sheets / Modals ──────────────────────────────────────── */}
+      <QuickAddSheet
+        open={quickAddOpen}
+        onOpenChange={setQuickAddOpen}
+        mealType={quickAddSlot}
+        date={dateStr}
+        memberId={memberId}
+        onSelectRecipe={handleQuickSelectRecipe}
+        onScanProduct={() => router.push("/scan")}
+        onManualEntry={() => {
+          setQuickAddOpen(false)
+          toast({ title: "Manual Entry", description: "Use the existing meal log page for manual entry." })
+        }}
+        onCopyYesterday={() => copyDayMutation.mutate()}
+      />
+
+      <MealOptionsSheet
+        open={optionsOpen}
+        onOpenChange={setOptionsOpen}
+        item={optionsItem}
+        onEditPortions={handleEditPortions}
+        onCopyToTomorrow={handleCopyToTomorrow}
+        onSaveToFavorites={handleSaveToFavorites}
+        onLogForFamily={handleLogForFamily}
+        onRemoveMeal={handleRemoveMeal}
+      />
+
+      <LogMealModal
+        open={logModalOpen}
+        onOpenChange={setLogModalOpen}
+        recipe={logRecipe}
+        onConfirm={handleConfirmLog}
+        loading={addMutation.isPending}
+      />
+
+      <LogConfirmation
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        calories={confirmData.calories}
+        protein={confirmData.protein}
+        carbs={confirmData.carbs}
+        fats={confirmData.fats}
+        dailyConsumed={n(totals.calories) + confirmData.calories}
+        dailyTarget={n(targets.calories)}
+        onViewDailyLog={() => {
+          setConfirmOpen(false)
+        }}
+        onBackToPlanning={() => {
+          setConfirmOpen(false)
+          router.push("/meal-plan")
+        }}
+      />
+    </div>
+  )
 }

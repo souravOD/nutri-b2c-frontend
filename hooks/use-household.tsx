@@ -5,6 +5,7 @@ import {
   apiGetHouseholdMembers,
   apiAddFamilyMember,
   apiUpdateMemberHealth,
+  apiDeleteHouseholdMember,
 } from "@/lib/api";
 import type { HouseholdMembersResponse, HouseholdMember } from "@/lib/types";
 
@@ -60,6 +61,17 @@ export function useUpdateMemberHealth() {
         conditionIds?: string[];
       };
     }) => apiUpdateMemberHealth(memberId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["household-members"] });
+    },
+  });
+}
+
+export function useDeleteMember() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (memberId: string) => apiDeleteHouseholdMember(memberId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["household-members"] });
     },

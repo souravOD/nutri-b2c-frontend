@@ -13,6 +13,7 @@ export interface ScanLookupResult {
         brand: string | null;
         imageUrl: string | null;
         allergens: string[];
+        dietTags: string[];
         nutrition: {
             calories: number | null;
             protein_g: number | null;

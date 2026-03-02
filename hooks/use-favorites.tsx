@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback } from "react"
+import { createContext, useContext, useState, useCallback, useEffect } from "react"
 import type { Recipe } from "@/lib/types"
 import { apiGetSaved, apiToggleSave } from "@/lib/api";
 import { useUser } from "@/hooks/use-user";
@@ -74,6 +74,13 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     setSavedRecipes(list);
     setFavoritesSet(new Set(list.map(r => r.id)));
   }, [isAuthed]);
+
+  // ── Auto-load saved recipes on auth ──
+  useEffect(() => {
+    if (isAuthed) {
+      loadSavedRecipes();
+    }
+  }, [isAuthed, loadSavedRecipes]);
 
   return (
     <FavoritesContext.Provider

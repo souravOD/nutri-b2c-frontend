@@ -19,10 +19,12 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
   const isPublicPath =
     pathname === "/login" ||
     pathname === "/register" ||
+    pathname === "/welcome" ||
+    pathname === "/forgot-password" ||
     pathname === "/reset-password" ||
     pathname === "/verify-email"
 
-  const isOnboardingPath = pathname === "/onboarding"
+  const isOnboardingPath = pathname?.startsWith("/onboarding") ?? false
 
   useEffect(() => {
     const go = (dest: string) => {

@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { Copy, Search, Heart, Camera, AlertTriangle, ShieldAlert } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { NutritionFactsPanel } from "@/components/nutrition-facts-panel"
+import { ProductAlternativeCard } from "./product-alternative-card"
 import type { Product } from "@/lib/types"
 
 type AllergenWarning = {
@@ -35,6 +36,7 @@ type Props = {
   }
   allergenWarnings?: AllergenWarning[]
   healthWarnings?: HealthWarning[]
+  alternatives?: { productId: string; name: string; brand: string | null; price: number | null; imageUrl: string | null; reason: string | null; savings: number | null; allergenSafe: boolean }[]
   onScanAgain: () => void
 }
 
@@ -44,6 +46,7 @@ export function ScanResultSheet({
   result,
   allergenWarnings = [],
   healthWarnings = [],
+  alternatives = [],
   onScanAgain,
 }: Props) {
   const [copied, setCopied] = useState(false)
@@ -163,6 +166,21 @@ export function ScanResultSheet({
                         <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                         <span>{w.message}</span>
                       </div>
+                    ))}
+                  </div>
+                  <Separator />
+                </>
+              )}
+
+              {/* PRD-14: Product Alternatives */}
+              {alternatives.length > 0 && (
+                <>
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">
+                      {allergenWarnings.length > 0 ? "🛡️ Safer Alternatives" : "💡 You Might Also Like"}
+                    </h4>
+                    {alternatives.map(alt => (
+                      <ProductAlternativeCard key={alt.productId} alt={alt} />
                     ))}
                   </div>
                   <Separator />

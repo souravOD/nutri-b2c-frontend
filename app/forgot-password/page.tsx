@@ -6,10 +6,7 @@ import Link from "next/link"
 import { useState } from "react"
 import { account } from "@/lib/appwrite"
 import { useToast } from "@/hooks/use-toast"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ChevronLeft, Check, Mail } from "lucide-react"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -34,38 +31,78 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle>Forgot password</CardTitle>
-          <CardDescription>Enter your email to receive a password reset link.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {emailSent ? (
-            <div className="space-y-4 text-center">
-              <p>We’ve sent a password reset link to <strong>{email}</strong>.</p>
-              <Button asChild className="w-full">
-                <Link href="/login">Back to sign in</Link>
-              </Button>
+    <div className="min-h-screen flex flex-col" style={{ background: "var(--nutri-bg)" }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <Link href="/login" className="flex items-center justify-center w-12 h-12">
+          <ChevronLeft className="w-4 h-4" style={{ color: "var(--nutri-heading)" }} />
+        </Link>
+        <span className="text-[18px] font-bold tracking-[-0.45px] pr-12" style={{ color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}>
+          Reset Password
+        </span>
+        <div className="w-12" />
+      </div>
+
+      <div className="flex-1 flex flex-col items-center px-6 pt-12">
+        {emailSent ? (
+          <div className="text-center space-y-4 w-full max-w-md">
+            <div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "var(--nutri-green)" }}>
+              <Check className="w-8 h-8 text-white" />
             </div>
-          ) : (
+            <h1 className="text-[28px] font-bold leading-[35px]" style={{ color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}>
+              Check your email
+            </h1>
+            <p className="text-[14px] leading-[20px]" style={{ color: "var(--nutri-body)", fontFamily: "Inter, sans-serif" }}>
+              We&apos;ve sent a password reset link to <strong>{email}</strong>.
+            </p>
+            <Link
+              href="/login"
+              className="flex items-center justify-center w-full h-14 rounded-full text-[16px] font-bold text-black no-underline mt-8"
+              style={{ background: "var(--nutri-green)", fontFamily: "Inter, sans-serif", boxShadow: "0px 10px 15px -3px rgba(153,204,51,0.2), 0px 4px 6px -4px rgba(153,204,51,0.2)" }}
+            >
+              Back to Sign In
+            </Link>
+          </div>
+        ) : (
+          <div className="w-full max-w-md space-y-8">
+            <div className="text-center">
+              <div className="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ background: "var(--nutri-green-10)" }}>
+                <Mail className="w-7 h-7" style={{ color: "var(--nutri-green-dark)" }} />
+              </div>
+              <h1 className="text-[28px] font-bold leading-[35px]" style={{ color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}>
+                Forgot password?
+              </h1>
+              <p className="mt-2 text-[14px] leading-[20px]" style={{ color: "var(--nutri-body)", fontFamily: "Inter, sans-serif" }}>
+                Enter your email to receive a password reset link.
+              </p>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <div>
+                <label className="block px-1 pb-2 text-[14px] font-semibold" style={{ color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}>
+                  Email Address
+                </label>
+                <input
+                  id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="Enter your email"
+                  className="w-full h-14 px-6 rounded-full border text-[16px] outline-none transition-colors focus:border-[var(--nutri-green)]"
+                  style={{ background: "white", borderColor: "var(--nutri-border)", color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}
+                />
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Sending..." : "Send reset link"}
-              </Button>
-              <div className="text-center mt-4">
-                <Link href="/login" className="text-sm text-muted-foreground hover:underline">
-                  Back to sign in
-                </Link>
-              </div>
+              <button
+                type="submit" disabled={isLoading}
+                className="w-full h-14 rounded-full text-[16px] font-bold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{ background: "var(--nutri-green)", fontFamily: "Inter, sans-serif", boxShadow: "0px 10px 15px -3px rgba(153,204,51,0.2), 0px 4px 6px -4px rgba(153,204,51,0.2)" }}
+              >
+                {isLoading ? "Sending..." : "Send Reset Link"}
+              </button>
             </form>
-          )}
-        </CardContent>
-      </Card>
+            <div className="text-center">
+              <Link href="/login" className="text-[14px] no-underline" style={{ color: "var(--nutri-link)", fontFamily: "Inter, sans-serif" }}>
+                ← Back to Sign In
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

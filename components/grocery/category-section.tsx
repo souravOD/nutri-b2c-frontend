@@ -1,8 +1,7 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { ItemRow } from "@/components/grocery/item-row";
 import type { ShoppingListItem } from "@/lib/types";
 
@@ -16,6 +15,18 @@ interface CategorySectionProps {
   onDelete: (itemId: string) => void;
 }
 
+const CATEGORY_ICONS: Record<string, string> = {
+  Produce: "🥬",
+  Dairy: "🧀",
+  Pantry: "🫙",
+  Meat: "🥩",
+  Frozen: "🧊",
+  Bakery: "🍞",
+  Beverages: "🥤",
+  Snacks: "🍿",
+  Other: "📦",
+};
+
 export function CategorySection({
   listId,
   category,
@@ -26,36 +37,53 @@ export function CategorySection({
   onDelete,
 }: CategorySectionProps) {
   const [collapsed, setCollapsed] = useState(false);
-
-  const purchasedCount = useMemo(
-    () => items.filter((item) => item.isPurchased).length,
-    [items]
-  );
-
-  const orderedItems = useMemo(
-    () => [...items].sort((a, b) => Number(a.isPurchased) - Number(b.isPurchased)),
-    [items]
-  );
+  const purchasedCount = items.filter((i) => i.isPurchased).length;
+  const icon = CATEGORY_ICONS[category] ?? CATEGORY_ICONS.Other;
 
   return (
-    <div className="space-y-2 rounded-lg border p-3">
-      <Button
-        variant="ghost"
-        className="h-auto w-full justify-between p-0 text-left"
-        onClick={() => setCollapsed((prev) => !prev)}
+    <div className="mb-3">
+      {/* Category header */}
+      <button
+        type="button"
+        onClick={() => setCollapsed(!collapsed)}
+        className="w-full flex items-center justify-between py-2 group"
       >
         <div className="flex items-center gap-2">
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          <p className="text-sm font-semibold">{category}</p>
+          <span className="text-[18px]">{icon}</span>
+          <h3
+            className="text-[15px] font-semibold text-[#0F172A]"
+            style={{ fontFamily: "Inter, sans-serif" }}
+          >
+            {category}
+          </h3>
+          <span
+            className="text-[11px] font-medium text-[#64748B] bg-[#F1F5F9] rounded-full px-2 py-0.5"
+            style={{ fontFamily: "Inter, sans-serif" }}
+          >
+            {items.length} items
+          </span>
         </div>
-        <p className="text-xs text-muted-foreground">
-          {purchasedCount}/{items.length} purchased
-        </p>
-      </Button>
+        <div className="flex items-center gap-2">
+          {purchasedCount > 0 && (
+            <span
+              className="text-[11px] font-medium text-[#538100]"
+              style={{ fontFamily: "Inter, sans-serif" }}
+            >
+              {purchasedCount}/{items.length}
+            </span>
+          )}
+          {collapsed ? (
+            <ChevronDown className="w-4 h-4 text-[#94A3B8]" />
+          ) : (
+            <ChevronUp className="w-4 h-4 text-[#94A3B8]" />
+          )}
+        </div>
+      </button>
 
+      {/* Items */}
       {!collapsed && (
         <div className="space-y-2">
-          {orderedItems.map((item) => (
+          {items.map((item) => (
             <ItemRow
               key={item.id}
               listId={listId}
@@ -71,4 +99,3 @@ export function CategorySection({
     </div>
   );
 }
-

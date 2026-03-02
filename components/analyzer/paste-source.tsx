@@ -1,7 +1,7 @@
 "use client"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import type { SourceData } from "@/app/recipe-analyzer/page"
+import type { SourceData } from "@/components/analyzer/analyzer-context"
 
 const EXAMPLE = `Chocolate Chip Cookies
 Serves: 24 cookies
@@ -26,12 +26,12 @@ Instructions:
 6. Stir in chips
 7. Bake 8–11 min`
 
-export function PasteSource({ source, onChange }: { source: SourceData; onChange: (s: SourceData)=>void }) {
+export function PasteSource({ source, onChange }: { source: SourceData; onChange: (s: SourceData) => void }) {
   return (
     <div className="h-full grid grid-cols-1 lg:grid-cols-2 gap-3">
       <div className="flex flex-col">
         <Label className="mb-2">Paste your recipe</Label>
-        <Textarea rows={18} value={source.rawText || ""} onChange={(e)=>onChange({ ...source, rawText: e.target.value })} />
+        <Textarea rows={18} value={source.rawText || ""} onChange={(e) => onChange({ ...source, rawText: e.target.value })} />
       </div>
       <div className="flex flex-col">
         <Label className="mb-2 text-muted-foreground">Example</Label>

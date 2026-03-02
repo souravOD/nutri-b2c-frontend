@@ -234,10 +234,24 @@ export async function analyzeRecipe(text: string, memberId?: string): Promise<An
     console.log("[Analyze] LLM analysis succeeded:", { title: result.title, ingredientsCount: result.ingredients?.length });
     return result;
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.warn("[Analyze] LLM analysis failed, falling back to local parser", message);
-    // Fallback to local parser
-    return analyzeRecipeLocal(text);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[Analyze] LLM analysis failed:", message);
+
+    // Extract user-friendly error message
+    let userMessage = "Recipe analysis failed";
+    if (message.includes("Budget has been exceeded")) {
+      userMessage = "AI analysis service budget exceeded. Please try again later or contact support.";
+    } else if (message.includes("401") || message.toLowerCase().includes("auth")) {
+      userMessage = "Authentication error. Please log in again.";
+    } else if (message.includes("timeout") || message.includes("ETIMEDOUT")) {
+      userMessage = "Analysis timed out. Please try again.";
+    } else if (message.includes("fetch") || message.includes("network")) {
+      userMessage = "Network error. Please check your connection and try again.";
+    } else {
+      userMessage = `Analysis failed: ${message}`;
+    }
+
+    throw new Error(userMessage);
   }
 }
 

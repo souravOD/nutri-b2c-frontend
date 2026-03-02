@@ -4,6 +4,7 @@ import { Clock, Utensils, ArrowLeftRight, BookOpen } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { MealReasonTooltip } from "./meal-reason-tooltip";
 import type { MealPlanItem } from "@/lib/types";
 
 interface MealCardProps {
@@ -42,6 +43,9 @@ export function MealCard({ item, onSwap, onLogMeal, onViewRecipe, isPastOrToday 
               >
                 {recipe?.title || "Recipe"}
               </h4>
+              {(item as any).graphReasons?.length > 0 && (
+                <MealReasonTooltip reasons={(item as any).graphReasons} />
+              )}
               <Badge variant="secondary" className={`text-[10px] shrink-0 ${statusColors[item.status] || ""}`}>
                 {item.status}
               </Badge>
