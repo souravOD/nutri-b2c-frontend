@@ -50,7 +50,9 @@ export default function RegisterPage() {
           country: "USA",
           imageUrl: null,
         }, me.$id)
-      } catch { /* ignore in client */ }
+      } catch (syncErr) {
+        console.warn("[register] Sync to Supabase failed — will auto-provision on next request:", syncErr)
+      }
       await refresh()
       router.replace(needsHealthOnboarding ? "/onboarding" : "/")
     } catch (err: unknown) {
