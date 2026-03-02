@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 interface ProfileData {
-  fullName: string;
+  fullName: string | null;
   firstName: string | null;
   email: string | null;
   phone: string | null;
@@ -84,12 +84,14 @@ export default function ProfilePage() {
   const handleDeleteAccount = async () => {
     if (!confirm("Are you sure you want to delete your account? This action cannot be undone.")) return;
     try {
-      await authFetch("/api/v1/me/profile", { method: "DELETE" });
+      const res = await authFetch("/api/v1/me/profile", { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
       const { account: appwriteAccount } = await import("@/lib/appwrite");
       await appwriteAccount.deleteSession("current");
       router.push("/login");
     } catch (err) {
-      console.error("Delete failed", err);
+      console.error("Delete account failed", err);
+      alert("Failed to delete account. Please try again.");
     }
   };
 

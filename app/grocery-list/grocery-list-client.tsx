@@ -171,11 +171,15 @@ export default function GroceryListPage() {
       .map((i) => `${i.isPurchased ? "✅" : "⬜"} ${i.itemName} (${i.quantity} ${i.unit || ""})`)
       .join("\n");
     const shareData = { title: "Grocery List", text };
-    if (navigator.share) {
+    if (typeof navigator !== "undefined" && navigator.share) {
       try { await navigator.share(shareData); } catch { /* user cancelled */ }
+    } else if (typeof navigator !== "undefined" && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(text);
+        toast({ title: "List copied to clipboard" });
+      } catch { /* clipboard failed */ }
     } else {
-      await navigator.clipboard.writeText(text);
-      toast({ title: "List copied to clipboard" });
+      toast({ title: "Sharing not available" });
     }
   };
 

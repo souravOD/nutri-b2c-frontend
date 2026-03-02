@@ -49,13 +49,15 @@ function getRecentSearches(): string[] {
 }
 
 function saveRecentSearch(query: string) {
+  if (typeof window === "undefined") return;
   const recent = getRecentSearches().filter((s: string) => s !== query)
   recent.unshift(query)
-  localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recent.slice(0, 10)))
+  try { localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recent.slice(0, 10))) } catch { }
 }
 
 function clearRecentSearches() {
-  localStorage.removeItem(RECENT_SEARCHES_KEY)
+  if (typeof window === "undefined") return;
+  try { localStorage.removeItem(RECENT_SEARCHES_KEY) } catch { }
 }
 
 /* ── Map FilterState → API SearchFilters ── */
@@ -366,7 +368,7 @@ export default function SearchPage() {
                         onClick={(e) => {
                           e.stopPropagation()
                           const updated = recentSearches.filter((r) => r !== s)
-                          localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated))
+                          try { localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated)) } catch { }
                           setRecentSearches(updated)
                         }}
                       />

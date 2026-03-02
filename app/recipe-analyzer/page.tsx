@@ -93,7 +93,11 @@ function RecipeAnalyzerInner() {
       }
     }
 
-    await runAnalysis()
+    try {
+      await runAnalysis()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Analysis failed. Please try again.")
+    }
   }
 
   // ── Select a method on mobile → jump to input step ─────────────────────
@@ -265,10 +269,10 @@ function RecipeAnalyzerInner() {
                 (source.type === "photo" && source.imageUrl)
               )}
               className={`w-full h-[52px] rounded-2xl text-[16px] font-semibold transition-colors ${((source.type === "paste" && (source.rawText || "").trim()) ||
-                  (source.type === "link" && (source.rawText || "").trim()) ||
-                  (source.type === "photo" && source.imageUrl))
-                  ? "bg-[#538100] hover:bg-[#466e00] text-white"
-                  : "bg-[#E2E8F0] text-[#94A3B8] cursor-not-allowed"
+                (source.type === "link" && (source.rawText || "").trim()) ||
+                (source.type === "photo" && source.imageUrl))
+                ? "bg-[#538100] hover:bg-[#466e00] text-white"
+                : "bg-[#E2E8F0] text-[#94A3B8] cursor-not-allowed"
                 }`}
               style={{ fontFamily: "Inter, sans-serif" }}>
               {isAnalyzing ? "Analyzing…" : "Analyze Recipe"}
@@ -396,8 +400,8 @@ function RecipeAnalyzerInner() {
                   }
                 }}
                 className={`flex-1 h-[34px] rounded-full text-[14px] font-semibold transition-all duration-200 ${source.type === tab.key
-                    ? "bg-white text-[#538100] shadow-sm"
-                    : "bg-transparent text-[#475569] hover:text-[#1E293B]"
+                  ? "bg-white text-[#538100] shadow-sm"
+                  : "bg-transparent text-[#475569] hover:text-[#1E293B]"
                   }`}>
                 {tab.label}
               </button>

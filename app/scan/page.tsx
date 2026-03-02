@@ -98,8 +98,8 @@ export default function ScanPage() {
       setIsLookingUp(false)
     }
 
-    if (navigator.vibrate) {
-      navigator.vibrate(200)
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(200);
     }
   }, [scanner, router])
 
