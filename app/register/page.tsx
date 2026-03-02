@@ -8,12 +8,8 @@ import { ID, Permission, Role } from "appwrite"
 import { account, databases } from "@/lib/appwrite"
 import { useUser } from "@/hooks/use-user"
 import { useToast } from "@/hooks/use-toast"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, EyeOff, Mail, User as UserIcon } from "lucide-react"
-import { syncProfile } from "@/lib/api";
+import { Eye, EyeOff, ChevronLeft, Shield } from "lucide-react"
+import { syncProfile } from "@/lib/api"
 
 const DB_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID as string
 const PROFILE_COLL = process.env.NEXT_PUBLIC_APPWRITE_PROFILES_COLLECTION_ID as string
@@ -26,27 +22,15 @@ export default function RegisterPage() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [confirm, setConfirm] = useState("")
   const [showPw, setShowPw] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
-
-    if (password !== confirm) {
-      toast({ title: "Passwords do not match", variant: "destructive" })
-      return
-    }
-
     setIsLoading(true)
     try {
-      // 1) Create account (unauth flow)
       await account.create(ID.unique(), email.trim(), password, name.trim())
-
-      // 2) Create session (sign in)
       await account.createEmailPasswordSession(email.trim(), password)
-
-      // 3) Create a minimal profile document that matches your schema
       try {
         const me = await account.get()
         const permissions = [
@@ -54,7 +38,6 @@ export default function RegisterPage() {
           Permission.update(Role.user(me.$id)),
           Permission.delete(Role.user(me.$id)),
         ]
-
         await databases.createDocument(DB_ID, PROFILE_COLL, me.$id, {
           displayName: me.name ?? name.trim(),
           email: me.email ?? email.trim(),
@@ -66,114 +49,141 @@ export default function RegisterPage() {
           phone: me.phone ?? null,
           country: "USA",
           imageUrl: null,
-        }, me.$id);
+        }, me.$id)
       } catch { /* ignore in client */ }
-
-      // 4) Refresh context & route
       await refresh()
       router.replace(needsHealthOnboarding ? "/onboarding" : "/")
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Please check details and try again."
-      toast({
-        title: "Registration failed",
-        description: message,
-        variant: "destructive",
-      })
+      toast({ title: "Registration failed", description: message, variant: "destructive" })
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle>Create your account</CardTitle>
-          <CardDescription>
-            Use a strong password (min 12 chars with mixed case, number &amp; symbol).
-          </CardDescription>
-        </CardHeader>
+    <div className="min-h-screen flex flex-col" style={{ background: "var(--nutri-bg)" }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <Link href="/welcome" className="flex items-center justify-center w-12 h-12">
+          <ChevronLeft className="w-4 h-4" style={{ color: "var(--nutri-heading)" }} />
+        </Link>
+        <span className="text-[18px] font-bold tracking-[-0.45px] pr-12" style={{ color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}>
+          Join Nutri
+        </span>
+        <div className="w-12" />
+      </div>
 
-        <CardContent>
-          <form onSubmit={handleRegister} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full name</Label>
-              <div className="relative">
-                <UserIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="name"
-                  type="text"
-                  className="pl-9"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  autoComplete="name"
-                />
-              </div>
-            </div>
+      {/* Hero image */}
+      <div className="px-6 py-4">
+        <div className="w-full h-[180px] rounded-[48px] overflow-hidden relative" style={{ background: "var(--nutri-green-10)" }}>
+          <img src="/images/signup-hero.png" alt="Fresh vegetables" className="w-full h-full object-cover" />
+        </div>
+      </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  className="pl-9"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                />
-              </div>
-            </div>
+      {/* Heading */}
+      <div className="px-6 pt-4 pb-2 text-center">
+        <h1 className="text-[28px] font-bold leading-[35px] tracking-[-0.7px]" style={{ color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}>
+          Start your journey to<br />better health today.
+        </h1>
+        <p className="mt-2 text-[14px] leading-[20px]" style={{ color: "var(--nutri-body)", fontFamily: "Inter, sans-serif" }}>
+          Create your account to personalized nutrition plans.
+        </p>
+      </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPw ? "text" : "password"}
-                  className="pr-10"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoComplete="new-password"
-                />
-                <button
-                  type="button"
-                  className="absolute right-2 top-2.5 p-1 text-muted-foreground"
-                  onClick={() => setShowPw((s) => !s)}
-                  aria-label={showPw ? "Hide password" : "Show password"}
-                >
-                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
+      {/* Form */}
+      <form onSubmit={handleRegister} className="px-6 pt-4 space-y-4">
+        {/* Name field (required by backend account.create) */}
+        <div>
+          <label className="block px-1 pb-2 text-[14px] font-semibold" style={{ color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}>
+            Full Name
+          </label>
+          <input
+            id="name" type="text" value={name} onChange={(e) => setName(e.target.value)}
+            required autoComplete="name" placeholder="Enter your name"
+            className="w-full h-14 px-6 rounded-full border text-[16px] outline-none transition-colors focus:border-[var(--nutri-green)]"
+            style={{ background: "white", borderColor: "var(--nutri-border)", color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}
+          />
+        </div>
+        <div>
+          <label className="block px-1 pb-2 text-[14px] font-semibold" style={{ color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}>
+            Email Address
+          </label>
+          <input
+            id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+            required autoComplete="email" placeholder="Enter your email"
+            className="w-full h-14 px-6 rounded-full border text-[16px] outline-none transition-colors focus:border-[var(--nutri-green)]"
+            style={{ background: "white", borderColor: "var(--nutri-border)", color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}
+          />
+        </div>
+        <div>
+          <label className="block px-1 pb-2 text-[14px] font-semibold" style={{ color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}>
+            Create Password
+          </label>
+          <div className="relative">
+            <input
+              id="password" type={showPw ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
+              required autoComplete="new-password" placeholder="Enter your password"
+              className="w-full h-14 px-6 pr-12 rounded-full border text-[16px] outline-none transition-colors focus:border-[var(--nutri-green)]"
+              style={{ background: "white", borderColor: "var(--nutri-border)", color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}
+            />
+            <button type="button" onClick={() => setShowPw((s) => !s)} className="absolute right-4 top-1/2 -translate-y-1/2 p-1" aria-label={showPw ? "Hide password" : "Show password"}>
+              {showPw ? <EyeOff className="w-5 h-5" style={{ color: "var(--nutri-placeholder)" }} /> : <Eye className="w-5 h-5" style={{ color: "var(--nutri-placeholder)" }} />}
+            </button>
+          </div>
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirm">Confirm password</Label>
-              <Input
-                id="confirm"
-                type={showPw ? "text" : "password"}
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                required
-                autoComplete="new-password"
-              />
-            </div>
+        {/* CTA */}
+        <button
+          type="submit" disabled={isLoading}
+          className="w-full h-14 rounded-full text-[16px] font-bold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
+          style={{ background: "var(--nutri-green)", fontFamily: "Inter, sans-serif", boxShadow: "0px 10px 15px -3px rgba(153,204,51,0.2), 0px 4px 6px -4px rgba(153,204,51,0.2)" }}
+        >
+          {isLoading ? "Creating account..." : "Continue"}
+        </button>
+      </form>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Creating account..." : "Create account"}
-            </Button>
+      {/* Social auth divider */}
+      <div className="px-6 pt-6">
+        <div className="flex items-center gap-4 py-2">
+          <div className="flex-1 h-px" style={{ background: "var(--nutri-border)" }} />
+          <span className="text-[12px] font-medium tracking-[0.6px] uppercase" style={{ color: "var(--nutri-placeholder)", fontFamily: "Inter, sans-serif" }}>
+            or sign up with
+          </span>
+          <div className="flex-1 h-px" style={{ background: "var(--nutri-border)" }} />
+        </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Already have an account?</span>
-              <Link href="/login" className="text-muted-foreground hover:underline">Sign in</Link>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+        <div className="space-y-3 pt-4">
+          <button
+            disabled title="Coming soon"
+            className="w-full h-14 rounded-full border bg-white flex items-center justify-center text-[16px] font-semibold disabled:opacity-60"
+            style={{ borderColor: "var(--nutri-border)", color: "#334155", fontFamily: "Inter, sans-serif" }}
+          >
+            Sign up with Google
+          </button>
+          <button
+            disabled title="Coming soon"
+            className="w-full h-14 rounded-full border bg-white flex items-center justify-center gap-3 text-[16px] font-semibold disabled:opacity-60"
+            style={{ borderColor: "var(--nutri-border)", color: "#334155", fontFamily: "Inter, sans-serif" }}
+          >
+            <span className="text-[14px]">🍎</span> Sign up with Apple
+          </button>
+        </div>
+      </div>
+
+      {/* Trust footer */}
+      <div className="px-6 py-8 flex flex-col items-center gap-4">
+        <div className="w-full rounded-[48px] px-4 py-4 flex items-center gap-3 border" style={{ background: "var(--nutri-green-5)", borderColor: "var(--nutri-green-10)" }}>
+          <Shield className="w-4 h-4 shrink-0" style={{ color: "var(--nutri-green-dark)" }} />
+          <p className="text-[13px] leading-[18px]" style={{ color: "var(--nutri-body)", fontFamily: "Inter, sans-serif" }}>
+            Your privacy is our priority. Your data is encrypted and secure.
+          </p>
+        </div>
+        <p className="text-[14px]" style={{ color: "var(--nutri-body-light)", fontFamily: "Inter, sans-serif" }}>
+          Already have an account?{" "}
+          <Link href="/login" className="font-extrabold no-underline" style={{ color: "var(--nutri-link)" }}>Log in</Link>
+        </p>
+      </div>
     </div>
   )
 }

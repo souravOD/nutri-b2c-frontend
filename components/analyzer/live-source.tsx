@@ -5,10 +5,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Info } from "lucide-react"
 import { LivePreview } from "@/components/scan/live-preview"
-import type { SourceData } from "@/app/recipe-analyzer/page"
+import type { SourceData } from "@/components/analyzer/analyzer-context"
 import type { BarcodeResult } from "@/lib/barcode"
 
-export function LiveSource({ source, onChange }: { source: SourceData; onChange: (s: SourceData)=>void }) {
+export function LiveSource({ source, onChange }: { source: SourceData; onChange: (s: SourceData) => void }) {
   const [error, setError] = useState<string | null>(null)
 
   const onDetected = (res: BarcodeResult) => onChange({ ...source, barcode: res.value })
@@ -27,7 +27,7 @@ export function LiveSource({ source, onChange }: { source: SourceData; onChange:
 
       <div className="space-y-2">
         <Label>Captured/typed text</Label>
-        <Textarea rows={6} placeholder="Type the recognized text here…" value={source.rawText || ""} onChange={(e)=>onChange({ ...source, rawText: e.target.value })}/>
+        <Textarea rows={6} placeholder="Type the recognized text here…" value={source.rawText || ""} onChange={(e) => onChange({ ...source, rawText: e.target.value })} />
       </div>
     </div>
   )

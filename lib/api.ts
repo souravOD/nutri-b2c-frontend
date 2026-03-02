@@ -483,6 +483,22 @@ export async function apiToggleSave(id: string): Promise<{ isSaved: boolean }> {
   return (await authFetch(`/api/v1/recipes/${id}/save`, { method: "POST" })).json();
 }
 
+// PRD-23: "Not for me"
+export async function apiRejectRecipe(id: string): Promise<{ rejected: boolean }> {
+  return (await authFetch(`/api/v1/recipes/${id}/reject`, { method: "POST" })).json();
+}
+
+// PRD-23: Popular / Trending recipes
+export async function apiGetPopularRecipes(limit = 10): Promise<any[]> {
+  try {
+    const res = await authFetch(`/api/v1/recipes/popular?limit=${limit}`);
+    if (!res.ok) return [];
+    return res.json().catch(() => []);
+  } catch {
+    return [];
+  }
+}
+
 export async function apiGetSaved(): Promise<Recipe[]> {
   const res = await authFetch(`/api/v1/me/saved`);
   const payload = await res.json().catch(() => null);
@@ -508,13 +524,13 @@ export async function apiAnalyzeText(text: string, memberId?: string): Promise<A
       method: "POST",
       body: JSON.stringify({ text, ...(memberId ? { memberId } : {}) }),
     });
-    
+
     if (!res.ok) {
       const errorText = await res.text().catch(() => "");
       console.error("[API] Analyzer text error:", res.status, errorText);
       throw new Error(`Analysis failed: ${res.status} ${errorText || res.statusText}`);
     }
-    
+
     return res.json();
   } catch (err: unknown) {
     console.error("[API] apiAnalyzeText error:", err);
@@ -527,6 +543,12 @@ export async function apiAnalyzeUrl(url: string, memberId?: string): Promise<Ana
     method: "POST",
     body: JSON.stringify({ url, ...(memberId ? { memberId } : {}) }),
   });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => "");
+    console.error("[API] Analyzer URL error:", res.status, errorText);
+    throw new Error(`URL analysis failed: ${res.status} ${errorText || res.statusText}`);
+  }
 
   return res.json();
 }
@@ -546,6 +568,12 @@ export async function apiAnalyzeImage(
     body: form,
   });
 
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => "");
+    console.error("[API] Analyzer image error:", res.status, errorText);
+    throw new Error(`Image analysis failed: ${res.status} ${errorText || res.statusText}`);
+  }
+
   return res.json();
 }
 
@@ -553,22 +581,11 @@ export async function apiAnalyzeBarcode(
   barcode: string,
   memberId?: string,
 ): Promise<AnalyzeResult> {
-  try {
-    const res = await authFetch("/api/v1/analyzer/barcode", {
-      method: "POST",
-      body: JSON.stringify({ barcode, ...(memberId ? { memberId } : {}) }),
-    });
-    return res.json();
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "";
-    try {
-      const parsed = JSON.parse(msg);
-      if (parsed.detail) throw new Error(parsed.detail);
-    } catch (parseErr) {
-      if (parseErr instanceof Error && parseErr.message !== msg) throw parseErr;
-    }
-    throw err;
-  }
+  const res = await authFetch("/api/v1/analyzer/barcode", {
+    method: "POST",
+    body: JSON.stringify({ barcode, ...(memberId ? { memberId } : {}) }),
+  });
+  return res.json();
 }
 
 export async function apiSaveAnalyzedRecipe(result: AnalyzeResult): Promise<{ id: string }> {
@@ -904,6 +921,21 @@ export async function apiDeleteProfileRows() {
 
 export async function apiDeleteAccount() {
   return authFetch("/api/v1/me/account", { method: "DELETE" });
+}
+
+// ── Settings (unified) ──────────────────────────────────────────────────────
+
+export async function apiGetSettings() {
+  const r = await authFetch("/api/v1/me/settings");
+  return r.json();
+}
+
+export async function apiPatchSettings(body: Record<string, any>) {
+  return authFetch("/api/v1/me/settings", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
 // ── Meal Logging (PRD-03) ───────────────────────────────────────────────────
@@ -1344,6 +1376,13 @@ export async function apiUpdateMemberHealth(memberId: string, data: {
   return r.json();
 }
 
+export async function apiDeleteHouseholdMember(memberId: string): Promise<void> {
+  const r = await authFetch(`/api/v1/households/members/${memberId}`, {
+    method: "DELETE",
+  });
+  if (!r.ok) throw new Error(`delete-member ${r.status}`);
+}
+
 // ── Recipe Ratings ─────────────────────────────────────────────────────────
 
 export async function apiRateRecipe(recipeId: string, data: RateRecipePayload): Promise<RecipeRating> {
@@ -1362,3 +1401,19 @@ export async function apiGetMyRating(recipeId: string): Promise<RecipeRatingResp
   return r.json();
 }
 
+
+/* -- Meal Log (Home Page Add to Log) ----------------------------------- */
+
+export async function apiAddMealLogItem(
+  data: import("./types").AddMealItemPayload,
+): Promise<import("./types").MealLogItem> {
+  const r = await authFetch(`/api/v1/meal-log/items`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!r.ok) {
+    const txt = await r.text().catch(() => "");
+    throw new Error(`add-meal-log ${r.status}: ${txt}`);
+  }
+  return r.json();
+}

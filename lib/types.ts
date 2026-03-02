@@ -330,6 +330,11 @@ export interface RecommendationSettings {
   macroWeights: { protein: number; carbs: number; fat: number };
   caps: { sodiumMax: number; addedSugarMax: number };
 
+  // Goals (persisted in b2c_customer_health_profiles)
+  healthGoal?: string | null;
+  targetWeightKg?: number;
+  targetFiberG?: number;
+
   // UX behavior flags
   behavior: {
     showScoreBadge?: boolean;
@@ -446,6 +451,7 @@ export interface MealPlanGenerateParams {
     maxCookTime?: number;
     cuisines?: string[];
     excludeRecipeIds?: string[];
+    prompt?: string;
   };
 }
 

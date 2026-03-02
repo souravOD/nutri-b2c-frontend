@@ -11,7 +11,7 @@ import { PhotoSource } from "@/components/analyzer/photo-source"
 import { BarcodeSource } from "@/components/analyzer/barcode-source"
 import { LiveSource } from "@/components/analyzer/live-source"
 
-import type { SourceData, SourceType } from "@/app/recipe-analyzer/page"
+import type { SourceData, SourceType } from "@/components/analyzer/analyzer-context"
 
 interface Props {
   source: SourceData
@@ -31,8 +31,8 @@ export function SourceForm({ source, onChange, onAnalyze, isAnalyzing }: Props) 
   const setType = (t: SourceType) => {
     // Clear input fields when switching source types (unless switching to same type)
     if (source.type !== t) {
-      onChange({ 
-        type: t, 
+      onChange({
+        type: t,
         rawText: "", // Clear text when switching tabs
         imageUrl: undefined,
         barcode: undefined
@@ -56,11 +56,11 @@ export function SourceForm({ source, onChange, onAnalyze, isAnalyzing }: Props) 
           </TabsList>
 
           <div className="flex-1 mt-4">
-            <TabsContent value="paste" className="h-full"><PasteSource source={source} onChange={onChange}/></TabsContent>
-            <TabsContent value="link" className="h-full"><LinkSource source={source} onChange={onChange}/></TabsContent>
-            <TabsContent value="photo" className="h-full"><PhotoSource source={source} onChange={onChange} onAnalyze={onAnalyze}/></TabsContent>
-            <TabsContent value="barcode" className="h-full"><BarcodeSource source={source} onChange={onChange} onAnalyze={onAnalyze}/></TabsContent>
-            <TabsContent value="live" className="h-full"><LiveSource source={source} onChange={onChange}/></TabsContent>
+            <TabsContent value="paste" className="h-full"><PasteSource source={source} onChange={onChange} /></TabsContent>
+            <TabsContent value="link" className="h-full"><LinkSource source={source} onChange={onChange} /></TabsContent>
+            <TabsContent value="photo" className="h-full"><PhotoSource source={source} onChange={onChange} onAnalyze={onAnalyze} /></TabsContent>
+            <TabsContent value="barcode" className="h-full"><BarcodeSource source={source} onChange={onChange} onAnalyze={onAnalyze} /></TabsContent>
+            <TabsContent value="live" className="h-full"><LiveSource source={source} onChange={onChange} /></TabsContent>
           </div>
         </Tabs>
 

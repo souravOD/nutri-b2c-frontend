@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Info } from "lucide-react"
 import { ImageUploadScan } from "@/components/scan/image-upload-scan"
 import { ManualCodeEntry } from "@/components/scan/manual-code-entry"
-import type { SourceData } from "@/app/recipe-analyzer/page"
+import type { SourceData } from "@/components/analyzer/analyzer-context"
 import type { BarcodeResult } from "@/lib/barcode"
 
 interface BarcodeSourceProps {

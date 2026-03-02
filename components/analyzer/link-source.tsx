@@ -1,7 +1,7 @@
 "use client"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import type { SourceData } from "@/app/recipe-analyzer/page"
+import type { SourceData } from "@/components/analyzer/analyzer-context"
 
 export function LinkSource({ source, onChange }: { source: SourceData; onChange: (s: SourceData) => void }) {
   return (
