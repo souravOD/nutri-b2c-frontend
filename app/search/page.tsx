@@ -149,10 +149,10 @@ export default function SearchPage() {
   // Sync URL search params → local state (needed for top-bar navigation via router.push)
   const urlQ = searchParams.get("q") || ""
   useEffect(() => {
-    if (urlQ && urlQ !== query) {
+    if (urlQ !== query) {
       setQuery(urlQ)
-      setCommitted(true)
-      setFocused(false)
+      setCommitted(!!urlQ)
+      if (!urlQ) setFocused(false)
     }
   }, [urlQ]) // eslint-disable-line react-hooks/exhaustive-deps
 

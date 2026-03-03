@@ -14,8 +14,7 @@ export default function CreateRecipePage() {
       <RecipeCreateForm
         onSubmit={async (draft) => {
           if (!uid) {
-            console.warn("createRecipe(): missing Appwrite user id");
-            return;
+            throw new Error("Not authenticated — please log in first");
           }
           await createRecipe(uid, draft);
         }}

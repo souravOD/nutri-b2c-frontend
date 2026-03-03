@@ -444,8 +444,13 @@ export default function RecipeCreateForm({
   async function handleSave() {
     const draft = buildDraft();
     setSavedDraft(draft);
-    await onSubmit(draft as unknown as Partial<UserRecipe>);
-    setMode("success");
+    try {
+      await onSubmit(draft as unknown as Partial<UserRecipe>);
+      setMode("success");
+    } catch (err) {
+      console.error("Recipe save failed:", err);
+      // Don't flip to success — stay on form so user can retry
+    }
   }
 
   /* ── image upload handler ── */
