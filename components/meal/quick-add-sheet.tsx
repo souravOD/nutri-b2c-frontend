@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { X, Search, Sparkles, Heart, ScanBarcode, PenLine, RotateCcw, Plus } from "lucide-react"
+import { X, Search, Sparkles, Heart, ScanBarcode, BookOpen, RotateCcw, Plus } from "lucide-react"
 import Image from "next/image"
 import { useQuery } from "@tanstack/react-query"
 import { apiGetFeed } from "@/lib/api"
@@ -15,14 +15,14 @@ interface QuickAddSheetProps {
     memberId?: string
     onSelectRecipe: (recipe: Recipe) => void
     onScanProduct: () => void
-    onManualEntry: () => void
+    onFromMyRecipes: () => void
     onCopyYesterday: () => void
 }
 
 const ACTIONS = [
     { key: "favorites", label: "Favorites Collection", icon: Heart },
     { key: "scan", label: "Scan Product", icon: ScanBarcode },
-    { key: "manual", label: "Manual Entry", icon: PenLine },
+    { key: "my-recipes", label: "From My Recipes", icon: BookOpen },
     { key: "copy", label: "Copy Yesterday", icon: RotateCcw },
 ] as const
 
@@ -34,7 +34,7 @@ export function QuickAddSheet({
     memberId,
     onSelectRecipe,
     onScanProduct,
-    onManualEntry,
+    onFromMyRecipes,
     onCopyYesterday,
 }: QuickAddSheetProps) {
     const [searchQuery, setSearchQuery] = useState("")
@@ -60,8 +60,8 @@ export function QuickAddSheet({
                 onScanProduct()
                 onOpenChange(false)
                 break
-            case "manual":
-                onManualEntry()
+            case "my-recipes":
+                onFromMyRecipes()
                 onOpenChange(false)
                 break
             case "copy":

@@ -145,6 +145,17 @@ export default function SearchPage() {
 
   // Debounced query for suggestions
   const [debouncedQuery, setDebouncedQuery] = useState(query)
+
+  // Sync URL search params → local state (needed for top-bar navigation via router.push)
+  const urlQ = searchParams.get("q") || ""
+  useEffect(() => {
+    if (urlQ && urlQ !== query) {
+      setQuery(urlQ)
+      setCommitted(true)
+      setFocused(false)
+    }
+  }, [urlQ]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 300)
     return () => clearTimeout(timer)

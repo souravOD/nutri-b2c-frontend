@@ -212,9 +212,23 @@ export default function RecipeDetailPage() {
         {/* At a Glance */}
         <AtAGlance
           servings={recipe.servings ?? undefined}
+          prepTimeMinutes={recipe.prep_time_minutes != null ? Number(recipe.prep_time_minutes) : undefined}
+          cookTimeMinutes={recipe.cook_time_minutes != null ? Number(recipe.cook_time_minutes) : undefined}
           totalTimeMinutes={totalTime}
           difficulty={recipe.difficulty ?? undefined}
           caloriesPerServing={recipe.calories ?? undefined}
+        />
+
+        {/* Nutrition — right below At a Glance */}
+        <NutritionInfo
+          calories={recipe.calories ?? undefined}
+          fat={recipe.fat_g ?? undefined}
+          protein={recipe.protein_g ?? undefined}
+          carbs={recipe.carbs_g ?? undefined}
+          fiber={recipe.fiber_g ?? undefined}
+          sugar={recipe.sugar_g ?? undefined}
+          sodium={recipe.sodium_mg ?? undefined}
+          saturatedFat={recipe.saturated_fat_g ?? undefined}
         />
 
         {/* Ingredients */}
@@ -237,17 +251,11 @@ export default function RecipeDetailPage() {
           </div>
         </div>
 
-        {/* Nutrition */}
-        <NutritionInfo
-          fat={recipe.fat_g ?? undefined}
-          protein={recipe.protein_g ?? undefined}
-          carbs={recipe.carbs_g ?? undefined}
-          fiber={recipe.fiber_g ?? undefined}
-        />
+
       </div>
 
       {/* ── Sticky CTA ── */}
-      <div className="fixed bottom-[72px] lg:bottom-0 left-0 lg:left-[220px] right-0 z-50 bg-white/90 backdrop-blur-sm border-t border-[#F1F5F9] px-5 py-3">
+      <div className="fixed bottom-[72px] lg:bottom-0 left-0 lg:left-[256px] right-0 z-50 bg-white/90 backdrop-blur-sm border-t border-[#F1F5F9] px-5 py-3">
         <div className="mx-auto max-w-[480px] lg:max-w-3xl flex flex-col sm:flex-row gap-2 sm:gap-3">
           <button
             type="button"

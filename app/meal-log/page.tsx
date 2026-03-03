@@ -24,6 +24,7 @@ import { DateNavigator } from "@/components/meal/date-navigator"
 import { WaterTracker } from "@/components/meal/water-tracker"
 import { MealSlotCard } from "@/components/meal/meal-slot-card"
 import { QuickAddSheet } from "@/components/meal/quick-add-sheet"
+import { MyRecipesPickerSheet } from "@/components/meal/my-recipes-picker-sheet"
 import { MealOptionsSheet } from "@/components/meal/meal-options-sheet"
 import { LogMealModal } from "@/components/meal/log-meal-modal"
 import { LogConfirmation } from "@/components/meal/log-confirmation"
@@ -68,6 +69,9 @@ export default function DailyLogPage() {
   const [confirmData, setConfirmData] = useState({
     calories: 0, protein: 0, carbs: 0, fats: 0,
   })
+
+  // My recipes picker
+  const [myRecipesPickerOpen, setMyRecipesPickerOpen] = useState(false)
 
   // ── Data fetching ──
   const { data: mealLog } = useQuery({
@@ -333,9 +337,9 @@ export default function DailyLogPage() {
         memberId={memberId}
         onSelectRecipe={handleQuickSelectRecipe}
         onScanProduct={() => router.push("/scan")}
-        onManualEntry={() => {
+        onFromMyRecipes={() => {
           setQuickAddOpen(false)
-          toast({ title: "Manual Entry", description: "Use the existing meal log page for manual entry." })
+          setMyRecipesPickerOpen(true)
         }}
         onCopyYesterday={() => copyDayMutation.mutate()}
       />
@@ -349,6 +353,36 @@ export default function DailyLogPage() {
         onSaveToFavorites={handleSaveToFavorites}
         onLogForFamily={handleLogForFamily}
         onRemoveMeal={handleRemoveMeal}
+      />
+
+      <MyRecipesPickerSheet
+        open={myRecipesPickerOpen}
+        onOpenChange={setMyRecipesPickerOpen}
+        mealType={quickAddSlot}
+        date={dateStr}
+        memberId={memberId}
+        onQuickAdd={(recipe) => {
+          addMutation.mutateAsync({
+            date: dateStr,
+            mealType: quickAddSlot,
+            recipeId: recipe.id,
+            servings: 1,
+            source: "recipe",
+            ...(memberId ? { memberId } : {}),
+          }).then(() => {
+            setMyRecipesPickerOpen(false)
+            setConfirmData({
+              calories: recipe.calories || 0,
+              protein: recipe.protein_g || 0,
+              carbs: recipe.carbs_g || 0,
+              fats: recipe.fat_g || 0,
+            })
+            setConfirmOpen(true)
+          }).catch(() => {
+            toast({ title: "Failed to log meal", variant: "destructive" })
+          })
+        }}
+        onSelectRecipe={handleQuickSelectRecipe}
       />
 
       <LogMealModal

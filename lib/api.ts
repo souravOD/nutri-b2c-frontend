@@ -466,11 +466,7 @@ export async function apiSearchRecipes(args: { q?: string; filters: SearchFilter
   return (Array.isArray(data) ? data : []).map(toRecipe);
 }
 
-// export async function apiGetRecipe(id: string) {
-//   const res = await authFetch(`/api/v1/recipes/${id}`);
-//   if (!res.ok) throw new Error(`Failed to load recipe ${id}`);
-//   return res.json();
-// }
+
 
 export async function apiGetRecipe(id: string) {
   const res = await authFetch(`/api/v1/recipes/${id}`);
@@ -585,6 +581,13 @@ export async function apiAnalyzeBarcode(
     method: "POST",
     body: JSON.stringify({ barcode, ...(memberId ? { memberId } : {}) }),
   });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => "");
+    console.error("[API] Analyzer barcode error:", res.status, errorText);
+    throw new Error(`Barcode analysis failed: ${res.status} ${errorText || res.statusText}`);
+  }
+
   return res.json();
 }
 
@@ -593,6 +596,13 @@ export async function apiSaveAnalyzedRecipe(result: AnalyzeResult): Promise<{ id
     method: "POST",
     body: JSON.stringify({ result }),
   });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => "");
+    console.error("[API] Save analyzed recipe error:", res.status, errorText);
+    throw new Error(`Save failed: ${res.status} ${errorText || res.statusText}`);
+  }
+
   return res.json();
 }
 
@@ -796,6 +806,61 @@ export async function deleteRecipe(appwriteUserId: string, id: string) {
   });
 }
 
+// ---------- Ingredient Search ----------
+
+export interface IngredientSearchResult {
+  id: string;
+  name: string;
+  category: string | null;
+  calories: number | null;
+  protein_g: number | null;
+  total_carbs_g: number | null;
+  total_fat_g: number | null;
+  dietary_fiber_g: number | null;
+  sodium_mg: number | null;
+  total_sugars_g: number | null;
+  saturated_fat_g: number | null;
+  cholesterol_mg: number | null;
+  calcium_mg: number | null;
+  iron_mg: number | null;
+  potassium_mg: number | null;
+  vitamin_a_mcg: number | null;
+  vitamin_c_mg: number | null;
+  vitamin_d_mcg: number | null;
+}
+
+export async function searchIngredients(q: string, limit = 10): Promise<IngredientSearchResult[]> {
+  if (q.trim().length < 2) return [];
+  const params = new URLSearchParams({ q: q.trim(), limit: String(limit) });
+  const res = await authFetch(`/api/v1/ingredients/search?${params.toString()}`);
+  if (!res.ok) return [];
+  const data = await res.json().catch(() => ({ items: [] }));
+  return Array.isArray(data?.items) ? data.items : [];
+}
+
+// ---------- Recipe Image Upload ----------
+
+export async function uploadRecipeImage(
+  file: File,
+  recipeId?: string,
+): Promise<{ url: string; recipeId: string }> {
+  const form = new FormData();
+  form.append("file", file);
+  if (recipeId) form.append("recipeId", recipeId);
+
+  const res = await authFetch("/api/v1/uploads/recipe-image", {
+    method: "POST",
+    body: form,
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Image upload failed: ${res.status} ${text}`);
+  }
+
+  return res.json();
+}
+
 // ---------- Recently Viewed / History ----------
 
 export async function apiLogHistoryView(recipeId: string) {
@@ -833,6 +898,36 @@ export async function apiGetDietaryPreferences(): Promise<TaxonomyOption[]> {
 export async function apiGetCuisines(): Promise<TaxonomyOption[]> {
   const res = await authFetch("/api/v1/taxonomy/cuisines", { method: "GET" });
   return res.json();
+}
+
+/* ── Recipe Meta (combined dropdown data for Create Recipe form) ───────── */
+
+export type RecipeMeta = {
+  cuisines: Array<{ id: string; code: string; name: string; region?: string }>;
+  mealTypes: string[];
+  diets: Array<{ id: string; code: string; name: string; category?: string; isMedical?: boolean }>;
+  allergens: Array<{ id: string; code: string; name: string; category?: string; isTop9?: boolean }>;
+};
+
+export type DetectedAllergen = {
+  allergen_id: string;
+  code: string;
+  name: string;
+  matched_ingredient: string;
+};
+
+export async function fetchRecipeMeta(): Promise<RecipeMeta> {
+  const res = await authFetch("/api/v1/recipe-meta", { method: "GET" });
+  return res.json();
+}
+
+export async function detectAllergens(ingredientNames: string[]): Promise<DetectedAllergen[]> {
+  const res = await authFetch("/api/v1/recipe-meta/detect-allergens", {
+    method: "POST",
+    body: JSON.stringify({ ingredient_names: ingredientNames }),
+  });
+  const data = await res.json();
+  return data.detected_allergens ?? [];
 }
 
 export type UserProfile = {

@@ -161,15 +161,19 @@ export function estimateNutrition(
 
 export function detectAllergens(ings: Array<{ item: string }>): string[] {
   const dict: Record<string, string[]> = {
-    milk: ["milk", "cheese", "butter", "cream", "yogurt", "dairy"],
-    egg: ["egg", "eggs"],
-    fish: ["fish", "salmon", "tuna", "cod", "mackerel"],
-    crustacean_shellfish: ["shrimp", "crab", "lobster", "prawn"],
-    tree_nuts: ["almond", "walnut", "pecan", "cashew", "pistachio", "hazelnut"],
-    peanuts: ["peanut", "peanuts"],
-    wheat: ["wheat", "flour", "bread", "pasta", "gluten"],
-    soy: ["soy", "tofu", "soy sauce", "miso"],
-    sesame: ["sesame", "tahini"],
+    Milk_dairy: ["milk", "cheese", "butter", "cream", "yogurt", "dairy", "paneer", "ghee", "whey", "casein"],
+    Egg: ["egg", "eggs", "mayonnaise"],
+    Fish_finned: ["fish", "salmon", "tuna", "cod", "mackerel", "sardine", "anchovy", "tilapia", "trout"],
+    Shellfish_crustaceans: ["shrimp", "crab", "lobster", "prawn", "crayfish"],
+    Tree_nuts: ["almond", "walnut", "pecan", "cashew", "pistachio", "hazelnut", "macadamia", "brazil nut"],
+    Peanut: ["peanut", "peanuts", "groundnut"],
+    Wheat_gluten_cereals: ["wheat", "flour", "bread", "pasta", "gluten", "seitan", "couscous", "semolina"],
+    Soy: ["soy", "tofu", "soy sauce", "miso", "edamame", "tempeh", "soybean"],
+    Sesame_seed: ["sesame", "tahini"],
+    Celery: ["celery"],
+    Corn_maize: ["corn", "maize", "cornstarch", "corn flour", "polenta"],
+    Molluscs: ["clam", "mussel", "oyster", "squid", "octopus", "scallop", "snail"],
+    Buckwheat_pseudo_cereal: ["buckwheat", "soba"],
   }
   const text = ings.map((i) => i.item.toLowerCase()).join(" ")
   return Object.entries(dict)
