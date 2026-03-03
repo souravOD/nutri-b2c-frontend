@@ -53,7 +53,6 @@ const UNIT_TO_GRAMS: Record<string, number> = {
   // count/cooking → approx grams
   pcs: 100,    // generic piece ≈ 100g (reasonable default)
   pinch: 0.5,
-  "": 100,   // no unit specified → assume 100g (per-100g pass-through)
 };
 
 /* ─── types ────────────────────────────────────────────────────────── */
@@ -337,7 +336,9 @@ export default function RecipeCreateForm({
       const qty = typeof row.qty === "number" ? row.qty : 0;
       if (qty <= 0) continue;
 
-      const factor = UNIT_TO_GRAMS[row.unit.toLowerCase()] ?? 100;
+      const unitStr = (row.unit ?? "").trim().toLowerCase();
+      if (!unitStr && !(unitStr in UNIT_TO_GRAMS)) continue; // skip rows with no unit
+      const factor = UNIT_TO_GRAMS[unitStr] ?? 100;
       const grams = qty * factor;
       const scale = grams / 100; // nutrition is per 100g
 

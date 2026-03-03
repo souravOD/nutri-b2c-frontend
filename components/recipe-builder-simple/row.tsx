@@ -39,6 +39,7 @@ export default function IngredientRowCmp({
   const [suggestions, setSuggestions] = React.useState<IngredientSearchResult[]>([])
   const [showDropdown, setShowDropdown] = React.useState(false)
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const latestQueryRef = React.useRef("")
   const wrapperRef = React.useRef<HTMLDivElement>(null)
 
   // Close dropdown on outside click
@@ -53,19 +54,24 @@ export default function IngredientRowCmp({
   }, [])
 
   function handleNameChange(value: string) {
+    latestQueryRef.current = value
     // Clear nutrition if user edits the name manually (no longer matched)
     onChange({ ...row, item: value, nutritionPer100g: undefined })
 
     // Debounced search
     clearTimeout(debounceRef.current)
-    if (value.trim().length >= 2) {
+    const trimmed = value.trim()
+    if (trimmed.length >= 2) {
       debounceRef.current = setTimeout(async () => {
+        // Skip if query has changed since this timeout was scheduled
+        if (latestQueryRef.current.trim() !== trimmed) return
         try {
-          const results = await searchIngredients(value, 6)
+          const results = await searchIngredients(trimmed, 6)
           setSuggestions(results)
           setShowDropdown(results.length > 0)
         } catch {
           setSuggestions([])
+          setShowDropdown(false)
         }
       }, 300)
     } else {
