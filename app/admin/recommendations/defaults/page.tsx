@@ -16,11 +16,7 @@ import { getAdminDefaults, setAdminDefaults, isAdminApplyEnabled, setAdminApplyE
 import { appendAudit } from "@/lib/admin/audit"
 // v12c exposes DEFAULT_SETTINGS; Vercel used a helper. We'll build our own getDefaultSettings().
 import { DEFAULT_SETTINGS as BASE_DEFAULTS } from "@/lib/settings"
-
-// --- Local constants (kept small; adjust if you like) ---
-const ALL_DIETS = ["vegan", "vegetarian", "keto", "paleo", "gluten-free", "dairy-free"]
-const ALL_ALLERGENS = ["milk", "egg", "fish", "shellfish", "tree nuts", "peanuts", "wheat", "soy", "sesame"]
-const ALL_CUISINES = ["italian", "mexican", "thai", "indian", "japanese", "mediterranean"]
+import { ALL_DIETS, ALL_ALLERGENS, ALL_CUISINES } from "@/lib/data"
 
 // Shape we use locally; avoids depending on missing exported types.
 type RecommendationSettings = {

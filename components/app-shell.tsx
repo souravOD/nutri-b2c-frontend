@@ -151,8 +151,10 @@ function FigmaSidebar({ pathname }: { pathname: string }) {
 function FigmaTopBar() {
   const { user, signOut } = useUser()
   const router = useRouter()
+  const pathname = usePathname()
   const [searchQuery, setSearchQuery] = useState("")
   const firstName = user?.name?.split(" ")[0] ?? "User"
+  const isSearchPage = pathname === "/search" || pathname?.startsWith("/search?")
 
   const onSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -174,66 +176,98 @@ function FigmaTopBar() {
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [])
 
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+    } catch { }
+    window.location.href = "/login"
+  }
+
   return (
     <div
-      className="hidden lg:flex items-center justify-between h-16 px-8 border-b border-[#E2E8F0] sticky top-0 z-20"
-      style={{ backdropFilter: "blur(6px)", backgroundColor: "rgba(255,255,255,0.8)" }}
+      className="hidden lg:flex items-center justify-between h-16 px-8 sticky top-0 z-20"
+      style={{
+        backdropFilter: "blur(12px)",
+        backgroundColor: "rgba(245,245,240,0.85)",
+        borderBottom: "1px solid var(--nutri-border, #E8E8E0)",
+        fontFamily: "Inter, sans-serif",
+      }}
     >
-      {/* Search bar */}
-      <form onSubmit={onSearchSubmit} className="flex-1 max-w-[448px]">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[#6B7280] pointer-events-none" />
-          <Input
-            id="global-search-figma"
-            className="pl-10 bg-[#F1F5F9] border-0 rounded-xl h-10 text-[14px]"
-            placeholder="Search recipes, ingredients..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ fontFamily: "Inter, sans-serif" }}
-          />
-        </div>
-      </form>
+      {/* Search bar — hidden on /search page to avoid duplicate */}
+      {!isSearchPage && (
+        <form onSubmit={onSearchSubmit} className="flex-1 max-w-[448px]">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] pointer-events-none" style={{ color: "var(--nutri-placeholder, #9CA3AF)" }} />
+            <input
+              id="global-search-figma"
+              className="w-full h-10 pl-11 pr-4 rounded-full text-[14px] outline-none transition-all"
+              placeholder="Search recipes, ingredients..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                background: "white",
+                border: "1px solid var(--nutri-border, #E8E8E0)",
+                color: "var(--nutri-heading, #1A1A2E)",
+                fontFamily: "Inter, sans-serif",
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = "var(--nutri-green, #99CC33)" }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = "var(--nutri-border, #E8E8E0)" }}
+            />
+          </div>
+        </form>
+      )}
+      {isSearchPage && <div className="flex-1" />}
 
-      {/* Right side: bell + divider + User dropdown */}
-      <div className="flex items-center gap-4">
-        {/* Bell */}
-        <Link href="/notifications" className="relative p-2 rounded-lg" aria-label="Notifications">
-          <Bell className="w-5 h-5 text-[#0F172A]" />
+      {/* Right side: bell + User dropdown */}
+      <div className="flex items-center gap-3">
+        {/* Notification bell */}
+        <Link
+          href="/notifications"
+          className="relative flex items-center justify-center w-10 h-10 rounded-full transition-colors"
+          style={{ background: "transparent" }}
+          aria-label="Notifications"
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--nutri-green-5, rgba(153,204,51,0.05))" }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent" }}
+        >
+          <Bell className="w-5 h-5" style={{ color: "var(--nutri-heading, #1A1A2E)" }} />
         </Link>
 
         {/* Divider */}
-        <div className="w-px h-8 bg-[#E2E8F0]" />
+        <div className="w-px h-8" style={{ background: "var(--nutri-border, #E8E8E0)" }} />
 
         {/* User dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex items-center gap-2 bg-[#F1F5F9] rounded-xl px-3 py-1.5 cursor-pointer hover:bg-[#E2E8F0] transition-colors outline-none"
+              className="flex items-center gap-2 rounded-full px-3 py-1.5 cursor-pointer transition-colors outline-none"
+              style={{ background: "var(--nutri-green-5, rgba(153,204,51,0.05))", border: "1px solid var(--nutri-green-10, rgba(153,204,51,0.1))" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--nutri-green-10, rgba(153,204,51,0.1))" }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "var(--nutri-green-5, rgba(153,204,51,0.05))" }}
             >
-              <div className="w-6 h-6 rounded-full bg-[#538100] flex items-center justify-center">
-                <span className="text-white text-[10px] font-bold" style={{ fontFamily: "Inter, sans-serif" }}>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: "var(--nutri-green, #99CC33)" }}>
+                <span className="text-white text-[11px] font-bold" style={{ fontFamily: "Inter, sans-serif" }}>
                   {firstName.charAt(0).toUpperCase()}
                 </span>
               </div>
               <span
-                className="text-[14px] font-medium text-[#0F172A] leading-5"
-                style={{ fontFamily: "Inter, sans-serif" }}
+                className="text-[14px] font-medium leading-5"
+                style={{ color: "var(--nutri-heading, #1A1A2E)", fontFamily: "Inter, sans-serif" }}
               >
                 {firstName}
               </span>
-              <ChevronDown className="w-3 h-3 text-[#64748B]" />
+              <ChevronDown className="w-3 h-3" style={{ color: "var(--nutri-body-light, #64748B)" }} />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={() => router.push("/profile")}>
-              <User className="mr-2 h-4 w-4" /> Profile
+          <DropdownMenuContent align="end" className="w-48 rounded-xl border shadow-lg p-1" style={{ background: "white", borderColor: "var(--nutri-border, #E8E8E0)", fontFamily: "Inter, sans-serif", ["--accent" as string]: "rgba(153,204,51,0.08)", ["--accent-foreground" as string]: "var(--nutri-heading, #1A1A2E)" }}>
+            <DropdownMenuItem onClick={() => router.push("/profile")} className="rounded-lg cursor-pointer" style={{ color: "var(--nutri-heading, #1A1A2E)" }}>
+              <User className="mr-2 h-4 w-4" style={{ color: "var(--nutri-heading, #1A1A2E)" }} /> Profile
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/settings")}>
-              <Settings className="mr-2 h-4 w-4" /> Settings
+            <DropdownMenuItem onClick={() => router.push("/settings")} className="rounded-lg cursor-pointer" style={{ color: "var(--nutri-heading, #1A1A2E)" }}>
+              <Settings className="mr-2 h-4 w-4" style={{ color: "var(--nutri-heading, #1A1A2E)" }} /> Settings
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => void signOut()}>
+            <DropdownMenuSeparator style={{ background: "var(--nutri-border, #E8E8E0)" }} />
+            <DropdownMenuItem onClick={handleSignOut} className="rounded-lg cursor-pointer" style={{ color: "#E74C3C" }}>
               <LogOut className="mr-2 h-4 w-4" /> Sign Out
             </DropdownMenuItem>
           </DropdownMenuContent>

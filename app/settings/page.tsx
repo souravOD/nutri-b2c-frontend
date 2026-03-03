@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { useSettings } from "@/hooks/use-settings"
 import { ALL_CUISINES, ALL_DIETS, ALL_ALLERGENS } from "@/lib/settings"
 import { useToast } from "@/hooks/use-toast"
@@ -19,6 +20,7 @@ import {
   RotateCcw,
   Trash2,
   ChevronDown,
+  ArrowLeft,
 } from "lucide-react"
 
 const toNum = (prev: number, v: string) => {
@@ -265,6 +267,7 @@ const TABS = [
 ]
 
 export default function SettingsPage() {
+  const router = useRouter()
   const { settings, updateSettings, apply, resetToDefaults, downloadJson } = useSettings()
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("general")
@@ -290,9 +293,14 @@ export default function SettingsPage() {
     <div style={S.page}>
       {/* Header */}
       <div style={S.header}>
-        <div>
-          <h1 style={S.heading}>Settings</h1>
-          <p style={S.subheading}>Customize your NutriFind experience</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button className="settings-back-btn" onClick={() => router.back()}>
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h1 style={S.heading}>Settings</h1>
+            <p style={S.subheading}>Customize your NutriFind experience</p>
+          </div>
         </div>
       </div>
 
@@ -587,6 +595,19 @@ export default function SettingsPage() {
             padding: 12px 20px;
             font-size: 13px;
           }
+        }
+        .settings-back-btn {
+          display: none;
+          width: 36px; height: 36px; border-radius: 10px;
+          border: 1px solid #E0E0E0; background: white;
+          align-items: center; justify-content: center;
+          cursor: pointer; color: #1A1A2E;
+          transition: background 0.15s;
+          flex-shrink: 0;
+        }
+        .settings-back-btn:hover { background: #F5F5F5; }
+        @media (max-width: 1023px) {
+          .settings-back-btn { display: flex; }
         }
       `}</style>
     </div>

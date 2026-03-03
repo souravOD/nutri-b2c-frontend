@@ -58,14 +58,14 @@ export default function ReviewPage() {
     }[data.activityLevel] || data.activityLevel
 
     return (
-        <div className="min-h-screen flex flex-col" style={{ background: "var(--nutri-bg)" }}>
+        <div className="rv-page min-h-screen flex flex-col" style={{ background: "var(--nutri-bg)" }}>
             {/* Header */}
-            <div className="flex items-center justify-between px-4 pt-4 pb-2">
-                <button onClick={() => router.back()} className="flex items-center justify-center w-10 h-10 rounded-full" style={{ background: "rgba(226,232,240,0.5)" }}>
+            <div className="rv-header flex items-center justify-between px-4 pt-4 pb-2">
+                <button onClick={() => router.back()} className="rv-back flex items-center justify-center w-10 h-10 rounded-full" style={{ background: "rgba(226,232,240,0.5)" }}>
                     <ChevronLeft className="w-4 h-4" style={{ color: "var(--nutri-heading)" }} />
                 </button>
-                <span className="text-[18px] font-bold" style={{ color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}>Review Your Profile</span>
-                <div className="w-10" />
+                <span className="rv-title text-[18px] font-bold" style={{ color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}>Review Your Profile</span>
+                <div className="rv-spacer w-10" />
             </div>
 
             {/* Dot pagination */}
@@ -76,18 +76,30 @@ export default function ReviewPage() {
                 <div className="w-6 h-2 rounded-full" style={{ background: "var(--nutri-green)" }} />
             </div>
 
-            {/* Heading */}
-            <div className="text-center px-6 pb-4">
-                <h1 className="text-[28px] font-bold leading-[35px]" style={{ color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}>
-                    Does everything look correct?
-                </h1>
-                <p className="mt-2 text-[14px] leading-[20px]" style={{ color: "var(--nutri-body-light)", fontFamily: "Inter, sans-serif" }}>
-                    Check your details before we personalize your nutrition plan.
-                </p>
+            {/* Heading + CTA (desktop: side-by-side) */}
+            <div className="rv-heading-row text-center px-6 pb-4">
+                <div className="rv-heading-text">
+                    <h1 className="text-[28px] font-bold leading-[35px]" style={{ color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}>
+                        Does everything look correct?
+                    </h1>
+                    <p className="mt-2 text-[14px] leading-[20px]" style={{ color: "var(--nutri-body-light)", fontFamily: "Inter, sans-serif" }}>
+                        Check your details before we personalize your nutrition plan.
+                    </p>
+                </div>
+                {/* Desktop-only inline Confirm button */}
+                <div className="rv-desktop-cta">
+                    <button
+                        onClick={handleFinish} disabled={isSubmitting}
+                        className="rv-confirm-btn h-14 rounded-full flex items-center justify-center gap-2 text-[16px] font-bold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
+                        style={{ background: "var(--nutri-green)", fontFamily: "Inter, sans-serif", boxShadow: "0px 10px 15px -3px rgba(153,204,51,0.25), 0px 4px 6px -4px rgba(153,204,51,0.25)", padding: "0 40px" }}
+                    >
+                        {isSubmitting ? "Saving..." : "Confirm & Finish"} <CheckCircle className="w-4 h-4" />
+                    </button>
+                </div>
             </div>
 
             {/* Cards */}
-            <div className="flex-1 px-6 pb-[140px] space-y-4 max-w-[480px] mx-auto w-full overflow-y-auto">
+            <div className="rv-cards flex-1 px-6 pb-[140px] space-y-4 max-w-[480px] mx-auto w-full overflow-y-auto">
                 {/* Personal Info */}
                 <div className="p-6 rounded-3xl border" style={{ background: "white", borderColor: "var(--nutri-border)" }}>
                     <div className="flex items-center justify-between mb-4">
@@ -152,8 +164,8 @@ export default function ReviewPage() {
                 )}
             </div>
 
-            {/* Footer */}
-            <div className="fixed bottom-0 left-0 right-0 px-6 py-6 max-w-[480px] mx-auto" style={{ background: "var(--nutri-bg)", backdropFilter: "blur(6px)" }}>
+            {/* Mobile Footer (hidden on desktop) */}
+            <div className="rv-mobile-footer fixed bottom-0 left-0 right-0 px-6 py-6 max-w-[480px] mx-auto" style={{ background: "var(--nutri-bg)", backdropFilter: "blur(6px)" }}>
                 <button
                     onClick={handleFinish} disabled={isSubmitting}
                     className="w-full h-14 rounded-full flex items-center justify-center gap-2 text-[16px] font-bold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
@@ -162,6 +174,34 @@ export default function ReviewPage() {
                     {isSubmitting ? "Saving..." : "Confirm & Finish"} <CheckCircle className="w-4 h-4" />
                 </button>
             </div>
+
+            <style jsx>{`
+                .rv-desktop-cta { display: none; }
+
+                @media (min-width: 1024px) {
+                    .rv-header {
+                        max-width: 1160px; margin: 0 auto; width: 100%;
+                        padding: 16px 60px 8px; box-sizing: border-box;
+                        justify-content: flex-start; gap: 12px;
+                    }
+                    .rv-spacer { display: none; }
+                    .rv-title { font-size: 22px; font-weight: 700; }
+                    .rv-heading-row {
+                        display: flex; align-items: center; justify-content: space-between;
+                        max-width: 1160px; margin: 0 auto; width: 100%;
+                        padding: 0 84px 16px; box-sizing: border-box;
+                        text-align: left;
+                    }
+                    .rv-heading-text { flex: 1; }
+                    .rv-desktop-cta { display: block; flex-shrink: 0; margin-left: 24px; }
+                    .rv-confirm-btn { white-space: nowrap; min-width: 240px; }
+                    .rv-cards {
+                        max-width: 1160px; padding: 0 84px 40px;
+                        box-sizing: border-box;
+                    }
+                    .rv-mobile-footer { display: none; }
+                }
+            `}</style>
         </div>
     )
 }

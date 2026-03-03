@@ -78,20 +78,27 @@ export default function ProfilePage() {
     try {
       const { account: appwriteAccount } = await import("@/lib/appwrite");
       await appwriteAccount.deleteSession("current");
-      router.push("/login");
     } catch {
-      router.push("/login");
+      // Session may already be expired — continue to redirect
+    } finally {
+      // Hard redirect to clear all React state/context
+      window.location.href = "/login";
     }
   };
 
   const handleDeleteAccount = async () => {
     if (!confirm("Are you sure you want to delete your account? This action cannot be undone.")) return;
     try {
-      const res = await authFetch("/api/v1/me/profile", { method: "DELETE" });
-      if (!res.ok) throw new Error("Delete failed");
-      const { account: appwriteAccount } = await import("@/lib/appwrite");
-      await appwriteAccount.deleteSession("current");
-      router.push("/login");
+      await authFetch("/api/v1/me/account", { method: "DELETE" });
+      // Backend deletes Supabase data + Appwrite docs + Appwrite user
+      // Just clear the local session and hard redirect
+      try {
+        const { account: appwriteAccount } = await import("@/lib/appwrite");
+        await appwriteAccount.deleteSession("current");
+      } catch {
+        // Session cleanup is best-effort since user is already deleted server-side
+      }
+      window.location.href = "/login";
     } catch (err) {
       console.error("Delete account failed", err);
       alert("Failed to delete account. Please try again.");
@@ -204,6 +211,17 @@ export default function ProfilePage() {
                 <span className="nav-link-subtitle">
                   {health?.allergens?.length || 0} allergens · {health?.diets?.length || 0} diets · {health?.conditions?.length || 0} conditions
                 </span>
+              </div>
+              <ChevronRight size={18} color="#CCC" />
+            </button>
+
+            <button className="nav-link" onClick={() => router.push("/my-recipes")}>
+              <div className="nav-link-icon" style={{ background: "#E8F5E9", color: "#4CAF50" }}>
+                <Heart size={18} />
+              </div>
+              <div className="nav-link-text">
+                <span className="nav-link-title">My Recipes</span>
+                <span className="nav-link-subtitle">View and manage your recipes</span>
               </div>
               <ChevronRight size={18} color="#CCC" />
             </button>
