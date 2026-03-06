@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { X, Search, Sparkles, Heart, ScanBarcode, BookOpen, RotateCcw, Plus } from "lucide-react"
 import Image from "next/image"
 import { useQuery } from "@tanstack/react-query"
-import { apiGetFeed } from "@/lib/api"
+import { apiGetFeed, apiSearchRecipes } from "@/lib/api"
 import type { Recipe, MealType } from "@/lib/types"
 
 interface QuickAddSheetProps {
@@ -39,6 +39,7 @@ export function QuickAddSheet({
 }: QuickAddSheetProps) {
     const [searchQuery, setSearchQuery] = useState("")
 
+    // Feed-based suggestions (when no search query)
     const { data: suggestions = [] } = useQuery({
         queryKey: ["home-feed"],
         queryFn: () => apiGetFeed(),
@@ -46,11 +47,29 @@ export function QuickAddSheet({
         enabled: open,
     })
 
-    const filtered = searchQuery.trim()
-        ? suggestions.filter((r) =>
-            r.title?.toLowerCase().includes(searchQuery.toLowerCase()),
-        )
-        : suggestions.slice(0, 6)
+    // Debounced search query for the API call
+    const [debouncedQuery, setDebouncedQuery] = useState("")
+    const debounceRef = useMemo(() => ({ timer: null as ReturnType<typeof setTimeout> | null }), [])
+
+    const handleSearchChange = (value: string) => {
+        setSearchQuery(value)
+        if (debounceRef.timer) clearTimeout(debounceRef.timer)
+        debounceRef.timer = setTimeout(() => {
+            setDebouncedQuery(value.trim())
+        }, 350)
+    }
+
+    // Real search API call when user types a query (debounced)
+    const { data: searchResults = [], isFetching: isSearching } = useQuery({
+        queryKey: ["quick-add-search", debouncedQuery],
+        queryFn: () => apiSearchRecipes({ q: debouncedQuery, filters: {}, sort: "relevance" }),
+        staleTime: 60_000,
+        enabled: open && debouncedQuery.length >= 2,
+    })
+
+    // Show search results when searching, otherwise show feed suggestions
+    const hasSearch = debouncedQuery.length >= 2
+    const filtered = hasSearch ? searchResults.slice(0, 10) : suggestions.slice(0, 6)
 
     const handleAction = (key: string) => {
         switch (key) {
@@ -125,7 +144,7 @@ export function QuickAddSheet({
                             type="text"
                             placeholder="Search foods, recipes.."
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={(e) => handleSearchChange(e.target.value)}
                             className="w-full pl-10 pr-12 py-3 rounded-full border border-[#E2E8F0] bg-white text-[14px] text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#99CC33] focus:ring-1 focus:ring-[#99CC33]"
                         />
                         <button
@@ -137,30 +156,50 @@ export function QuickAddSheet({
                         </button>
                     </div>
 
-                    {/* 2×2 Action Grid */}
-                    <div className="grid grid-cols-2 gap-3 mb-6">
-                        {ACTIONS.map((action) => {
-                            const Icon = action.icon
-                            return (
-                                <button
-                                    key={action.key}
-                                    type="button"
-                                    onClick={() => handleAction(action.key)}
-                                    className="flex flex-col items-center justify-center gap-2 py-5 rounded-[14px] bg-[#F8FBF0] hover:bg-[#F0F7E6] transition-colors border border-[#E8F0D6]"
-                                >
-                                    <Icon className="w-6 h-6 text-[#538100]" strokeWidth={1.5} />
-                                    <span className="text-[12px] font-semibold text-[#0F172A]">
-                                        {action.label}
-                                    </span>
-                                </button>
-                            )
-                        })}
-                    </div>
+                    {/* 2×2 Action Grid — hide when actively searching */}
+                    {!hasSearch && (
+                        <div className="grid grid-cols-2 gap-3 mb-6">
+                            {ACTIONS.map((action) => {
+                                const Icon = action.icon
+                                return (
+                                    <button
+                                        key={action.key}
+                                        type="button"
+                                        onClick={() => handleAction(action.key)}
+                                        className="flex flex-col items-center justify-center gap-2 py-5 rounded-[14px] bg-[#F8FBF0] hover:bg-[#F0F7E6] transition-colors border border-[#E8F0D6]"
+                                    >
+                                        <Icon className="w-6 h-6 text-[#538100]" strokeWidth={1.5} />
+                                        <span className="text-[12px] font-semibold text-[#0F172A]">
+                                            {action.label}
+                                        </span>
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    )}
 
-                    {/* Suggested Items */}
+                    {/* Results heading */}
                     <h3 className="text-[15px] font-bold text-[#0F172A] mb-3">
-                        Suggested Items
+                        {hasSearch ? `Results for "${debouncedQuery}"` : "Suggested Items"}
                     </h3>
+
+                    {/* Loading indicator */}
+                    {isSearching && (
+                        <div className="flex items-center justify-center py-6">
+                            <div className="w-5 h-5 border-2 border-[#99CC33] border-t-transparent rounded-full animate-spin" />
+                            <span className="ml-2 text-[13px] text-[#64748B]">Searching…</span>
+                        </div>
+                    )}
+
+                    {/* No results message */}
+                    {hasSearch && !isSearching && filtered.length === 0 && (
+                        <div className="text-center py-6">
+                            <p className="text-[14px] text-[#64748B]">No recipes found for &quot;{debouncedQuery}&quot;</p>
+                            <p className="text-[12px] text-[#94A3B8] mt-1">Try a different search term</p>
+                        </div>
+                    )}
+
+                    {/* Recipe list */}
                     <div className="flex flex-col divide-y divide-[#F1F5F9]">
                         {filtered.map((recipe) => (
                             <div key={recipe.id} className="flex items-center gap-3 py-3">
@@ -182,7 +221,7 @@ export function QuickAddSheet({
                                         {recipe.title}
                                     </p>
                                     <p className="text-[12px] text-[#64748B]">
-                                        1 serving · {Math.round(recipe.calories || 0)} kcal
+                                        1 serving · {Math.round(recipe.nutrition?.calories ?? recipe.calories ?? 0)} kcal
                                     </p>
                                 </div>
                                 <button

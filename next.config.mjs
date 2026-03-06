@@ -51,6 +51,17 @@ const nextConfig = {
     ];
   },
 
+  // Increase proxy timeout for long-running endpoints (e.g. meal plan generation
+  // which calls the LLM and can take 30–60 seconds). Default ~30s causes ECONNRESET.
+  experimental: {
+    proxyTimeout: 120_000,   // 120 seconds — covers RAG + LLM + DB round-trip
+  },
+
+  // Keep the HTTP agent alive so long-running proxied requests don't get dropped
+  httpAgentOptions: {
+    keepAliveMsecs: 10_000,
+  },
+
   // Keep TS checks enabled, but don't block Vercel deploys on existing lint debt.
   eslint: { ignoreDuringBuilds: IS_VERCEL },
   typescript: { ignoreBuildErrors: false },

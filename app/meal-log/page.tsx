@@ -168,10 +168,10 @@ export default function DailyLogPage() {
         })
         setLogModalOpen(false)
         setConfirmData({
-          calories: (logRecipe?.calories || 0) * servings,
-          protein: (logRecipe?.protein_g || 0) * servings,
-          carbs: (logRecipe?.carbs_g || 0) * servings,
-          fats: (logRecipe?.fat_g || 0) * servings,
+          calories: (logRecipe?.nutrition?.calories ?? logRecipe?.calories ?? 0) * servings,
+          protein: (logRecipe?.nutrition?.protein_g ?? logRecipe?.protein_g ?? 0) * servings,
+          carbs: (logRecipe?.nutrition?.carbs_g ?? logRecipe?.carbs_g ?? 0) * servings,
+          fats: (logRecipe?.nutrition?.fat_g ?? logRecipe?.fat_g ?? 0) * servings,
         })
         setConfirmOpen(true)
       } catch {
@@ -372,10 +372,10 @@ export default function DailyLogPage() {
           }).then(() => {
             setMyRecipesPickerOpen(false)
             setConfirmData({
-              calories: recipe.calories || 0,
-              protein: recipe.protein_g || 0,
-              carbs: recipe.carbs_g || 0,
-              fats: recipe.fat_g || 0,
+              calories: recipe.nutrition?.calories ?? recipe.calories ?? 0,
+              protein: recipe.nutrition?.protein_g ?? recipe.protein_g ?? 0,
+              carbs: recipe.nutrition?.carbs_g ?? recipe.carbs_g ?? 0,
+              fats: recipe.nutrition?.fat_g ?? recipe.fat_g ?? 0,
             })
             setConfirmOpen(true)
           }).catch(() => {
@@ -391,6 +391,7 @@ export default function DailyLogPage() {
         recipe={logRecipe}
         onConfirm={handleConfirmLog}
         loading={addMutation.isPending}
+        defaultMealType={quickAddSlot}
       />
 
       <LogConfirmation

@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { apiGetProfile, apiGetMyHealth } from "@/lib/api";
 import { useHouseholdMembers } from "@/hooks/use-household";
-import { useMealPlans, useActivatePlan, useGeneratePlan } from "@/hooks/use-meal-plan";
+import { useMealPlans, useActivatePlan, useGeneratePlan, useDeletePlan } from "@/hooks/use-meal-plan";
 import { AiPromptInput } from "@/components/meal-plan/ai-prompt-input";
 import { PersonalizationCard } from "@/components/meal-plan/personalization-card";
 import { PlanRecommendationCard } from "@/components/meal-plan/plan-recommendation-card";
@@ -26,6 +26,7 @@ export default function AiPlannerPage() {
     const { plans } = useMealPlans();
     const activatePlan = useActivatePlan();
     const generatePlan = useGeneratePlan();
+    const deletePlan = useDeletePlan();
 
     const { data: profile } = useQuery({
         queryKey: ["me-profile"],
@@ -111,6 +112,20 @@ export default function AiPlannerPage() {
             });
         },
         [activatePlan, toast, router],
+    );
+
+    const handleDeletePlan = useCallback(
+        (planId: string) => {
+            deletePlan.mutate(planId, {
+                onSuccess: () => {
+                    toast({ title: "Plan deleted", description: "The meal plan has been removed." });
+                },
+                onError: () => {
+                    toast({ title: "Failed to delete plan", variant: "destructive" });
+                },
+            });
+        },
+        [deletePlan, toast],
     );
 
     const scopeOptions: { value: FamilyScope; label: string }[] = [
@@ -222,7 +237,9 @@ export default function AiPlannerPage() {
                                     key={plan.id}
                                     plan={plan}
                                     onSelect={handleActivatePlan}
+                                    onDelete={handleDeletePlan}
                                     isLoading={activatePlan.isPending}
+                                    isDeleting={deletePlan.isPending}
                                 />
                             ))}
                         </div>

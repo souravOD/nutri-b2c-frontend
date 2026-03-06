@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { X, Utensils, Plus, Users, Check } from "lucide-react"
 import type { Recipe, MealType } from "@/lib/types"
 
@@ -10,6 +10,8 @@ interface LogMealModalProps {
     recipe: Recipe | null
     onConfirm: (recipeId: string, mealType: MealType, servings: number) => void
     loading?: boolean
+    /** When set, pre-selects this meal slot and hides the slot picker. */
+    defaultMealType?: MealType
 }
 
 const PORTION_OPTIONS = [
@@ -40,10 +42,16 @@ export function LogMealModal({
     recipe,
     onConfirm,
     loading,
+    defaultMealType,
 }: LogMealModalProps) {
     const [portions, setPortions] = useState("1")
-    const [slot, setSlot] = useState<MealType>("breakfast")
+    const [slot, setSlot] = useState<MealType>(defaultMealType || "breakfast")
     const [customPortions, setCustomPortions] = useState("")
+
+    // Sync slot when defaultMealType changes (e.g. user clicks Dinner "+" then Lunch "+")
+    useEffect(() => {
+        if (defaultMealType) setSlot(defaultMealType)
+    }, [defaultMealType, open])
 
     if (!open || !recipe) return null
 
@@ -51,7 +59,7 @@ export function LogMealModal({
         ? parseFloat(customPortions) || 1
         : parseInt(portions)
 
-    const kcal = Math.round((recipe.calories || 0) * servings)
+    const kcal = Math.round((recipe.nutrition?.calories ?? recipe.calories ?? 0) * servings)
     const timeDisplay = formatTime(recipe.prepTime || recipe.totalTimeMinutes)
 
     return (
@@ -169,33 +177,35 @@ export function LogMealModal({
                             )}
                         </div>
 
-                        {/* ── Meal Slot Selector — 2×2 grid ── */}
-                        <div className="mb-6">
-                            <p className="text-[14px] font-medium text-[#334155] leading-5 mb-3">
-                                Select Meal Slot
-                            </p>
-                            <div className="grid grid-cols-2 gap-2">
-                                {SLOT_OPTIONS.map((opt) => {
-                                    const selected = slot === opt.value
-                                    return (
-                                        <button
-                                            key={opt.value}
-                                            type="button"
-                                            onClick={() => setSlot(opt.value)}
-                                            className={`
-                        py-3 rounded-full border-2 text-[14px] font-bold text-center transition-colors
-                        ${selected
-                                                    ? "border-[#99CC33] bg-[rgba(153,204,51,0.05)] text-[#99CC33]"
-                                                    : "border-[#E2E8F0] bg-white text-[#475569] hover:border-[#CBD5E1]"
-                                                }
-                      `}
-                                        >
-                                            {opt.label}
-                                        </button>
-                                    )
-                                })}
+                        {/* ── Meal Slot Selector — 2×2 grid (hidden when defaultMealType is set) ── */}
+                        {!defaultMealType && (
+                            <div className="mb-6">
+                                <p className="text-[14px] font-medium text-[#334155] leading-5 mb-3">
+                                    Select Meal Slot
+                                </p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {SLOT_OPTIONS.map((opt) => {
+                                        const selected = slot === opt.value
+                                        return (
+                                            <button
+                                                key={opt.value}
+                                                type="button"
+                                                onClick={() => setSlot(opt.value)}
+                                                className={`
+                            py-3 rounded-full border-2 text-[14px] font-bold text-center transition-colors
+                            ${selected
+                                                        ? "border-[#99CC33] bg-[rgba(153,204,51,0.05)] text-[#99CC33]"
+                                                        : "border-[#E2E8F0] bg-white text-[#475569] hover:border-[#CBD5E1]"
+                                                    }
+                           `}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* ── (Optional) Log for Family ── */}
                         <div className="border-t border-[#F1F5F9] pt-6 mb-6">
