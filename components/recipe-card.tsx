@@ -1,18 +1,18 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
+import Image from "next/image"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clock, Flame, Soup, Heart, Star } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { MatchReasonBadge } from "@/components/search/match-reason-badge"
 import type { Difficulty } from "@/lib/types"
-import { DEFAULT_RECIPE_IMAGE } from "@/lib/constants"
 
 export type RecipeCardProps = {
   id: string
-  href?: string 
+  href?: string
   title?: string
   imageUrl?: string | null
   prepTime?: number
@@ -23,12 +23,13 @@ export type RecipeCardProps = {
   onSave: (id: string) => void
   tags?: string[]
   score?: number
+  reasons?: string[]
 }
 
 export function RecipeCard({
   id,
   title = "Untitled",
-  imageUrl = "/placeholder.svg",
+  imageUrl,
   prepTime = 0,
   cookTime = 0,
   servings = 1,
@@ -37,25 +38,29 @@ export function RecipeCard({
   onSave,
   tags = [],
   score,
+  reasons,
   href,
 }: RecipeCardProps) {
   const totalTime = prepTime + cookTime
   const shown = tags.slice(0, 3)
   const rest = tags.length - shown.length
   const linkHref = href ?? `/recipes/${id}`;
+  const hasImage = typeof imageUrl === "string" && imageUrl.trim().length > 0;
 
   return (
     <Card className="overflow-hidden group focus-within:ring-2 focus-within:ring-ring">
       <Link href={linkHref} prefetch={false} className="block">
-        <div className="relative aspect-[16/9] w-full overflow-hidden">
-          <Image
-            src={DEFAULT_RECIPE_IMAGE}
-            alt={title}
-            fill
-            className="object-cover transition-transform duration-300 motion-reduce:transition-none group-hover:scale-105"
-            sizes="(max-width: 640px) 100vw, 33vw"
-            priority={false}
-          />
+        <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
+          {hasImage ? (
+            <Image
+              src={imageUrl as string}
+              alt={title}
+              fill
+              unoptimized
+              sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 motion-reduce:transition-none group-hover:scale-105"
+            />
+          ) : null}
           {score !== undefined && (
             <div className="absolute top-2 right-2">
               <Badge variant="secondary" className="bg-black/70 text-white border-0 text-xs">
@@ -103,6 +108,13 @@ export function RecipeCard({
             </Badge>
           )}
         </div>
+        {reasons && reasons.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {reasons.slice(0, 3).map((reason) => (
+              <MatchReasonBadge key={reason} reason={reason} />
+            ))}
+          </div>
+        )}
       </CardContent>
       <CardFooter className="p-3 pt-0">
         <Button

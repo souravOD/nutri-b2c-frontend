@@ -39,18 +39,9 @@ type Props = {
 export function AppHeader({ showMenuButton = false, onToggleSidebar }: Props) {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
-
-  // Be compatible with both shapes:
-  // - { isAdmin: boolean }
-  // - { isAdmin: () => boolean }
-  const userCtx = useUser() as any
-  const user = userCtx?.user
-  const isAuthed = !!userCtx?.isAuthed
-  const signOut = userCtx?.signOut as (() => void) | undefined
-  const isAdmin: boolean =
-    typeof userCtx?.isAdmin === "function"
-      ? Boolean(userCtx.isAdmin())
-      : Boolean(userCtx?.isAdmin)
+  const { user, isAuthed, signOut, isAdmin: isAdminFn } = useUser()
+  const isAdmin = isAdminFn()
+  const userRecord = user && typeof user === "object" ? (user as Record<string, unknown>) : null
 
   const [searchQuery, setSearchQuery] = useState("")
 
@@ -75,10 +66,14 @@ export function AppHeader({ showMenuButton = false, onToggleSidebar }: Props) {
   }
 
   const displayName =
-    (user as any)?.name ||
-    (user as any)?.displayName ||
-    (user as any)?.email ||
+    user?.name ||
+    (userRecord && typeof userRecord.displayName === "string" ? userRecord.displayName : undefined) ||
+    user?.email ||
     "You"
+  const avatarImage =
+    (userRecord && typeof userRecord.image === "string" ? userRecord.image : undefined) ||
+    user?.prefs?.image ||
+    ""
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur">
@@ -128,7 +123,7 @@ export function AppHeader({ showMenuButton = false, onToggleSidebar }: Props) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="ml-1 h-9 px-2">
               <Avatar className="h-7 w-7">
-                <AvatarImage src={(user as any)?.image ?? ""} alt={displayName} />
+                <AvatarImage src={avatarImage} alt={displayName} />
                 <AvatarFallback>{String(displayName).slice(0, 1).toUpperCase()}</AvatarFallback>
               </Avatar>
             </Button>
@@ -137,8 +132,8 @@ export function AppHeader({ showMenuButton = false, onToggleSidebar }: Props) {
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col">
                 <span className="text-sm font-medium">{displayName}</span>
-                {isAuthed && (user as any)?.email && (
-                  <span className="text-xs text-muted-foreground">{(user as any).email}</span>
+                {isAuthed && user?.email && (
+                  <span className="text-xs text-muted-foreground">{user.email}</span>
                 )}
               </div>
             </DropdownMenuLabel>
@@ -172,7 +167,7 @@ export function AppHeader({ showMenuButton = false, onToggleSidebar }: Props) {
             )}
 
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => signOut?.()}>
+            <DropdownMenuItem onClick={() => void signOut()}>
               <LogOut className="mr-2 h-4 w-4" />
               Sign Out
             </DropdownMenuItem>

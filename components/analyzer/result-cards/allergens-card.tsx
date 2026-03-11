@@ -4,9 +4,16 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Edit, AlertTriangle, CheckCircle } from "lucide-react"
 import type { AnalyzeResult } from "@/lib/types"
+import type { AnalyzerCardResult } from "@/components/analyzer/result-cards/types"
 
-export function AllergensCard({ result, onEdit }: { result: any; onEdit?: (r: AnalyzeResult)=>void }) {
-  const has = (result.allergens || []).length > 0
+interface AllergensCardProps {
+  result: AnalyzerCardResult
+  onEdit?: (r: AnalyzeResult) => void
+}
+
+export function AllergensCard({ result, onEdit }: AllergensCardProps) {
+  const allergens = result.allergens ?? []
+  const has = allergens.length > 0
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -17,7 +24,7 @@ export function AllergensCard({ result, onEdit }: { result: any; onEdit?: (r: An
       </CardHeader>
       <CardContent>
         {has ? (
-          <div className="flex flex-wrap gap-2">{result.allergens.map((a: string)=> <Badge key={a} variant="secondary">{a}</Badge>)}</div>
+          <div className="flex flex-wrap gap-2">{allergens.map((a: string)=> <Badge key={a} variant="secondary">{a}</Badge>)}</div>
         ) : (
           <p className="text-sm text-muted-foreground">No common allergens detected.</p>
         )}

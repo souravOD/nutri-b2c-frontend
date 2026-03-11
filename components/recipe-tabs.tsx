@@ -11,16 +11,23 @@ import type { Recipe, Nutrition } from "@/lib/types"
 // ----- local types & helpers -----
 
 type Ingr = { amount: string | number | null; unit: string | null; name: string }
+type JsonRecord = Record<string, unknown>
+
+const asRecord = (value: unknown): JsonRecord =>
+  value && typeof value === "object" ? (value as JsonRecord) : {}
+
+const asStringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
 
 function num(x: unknown, fallback = 0): number {
-  const n = Number(x as any)
+  const n = Number(x)
   return Number.isFinite(n) ? n : fallback
 }
 
 // Accept both camelCase and backend snake_case keys and coerce to what NutritionFactsPanel expects
-function normalizeNutrition(recipe: any): Nutrition {
-  const n = (recipe?.nutrition ?? {}) as any
-  const r = recipe ?? ({} as any)
+function normalizeNutrition(recipe: Recipe): Nutrition {
+  const n = asRecord(recipe.nutrition)
+  const r = asRecord(recipe)
 
   const calories = num(n.calories ?? r.calories)
   const protein = num(n.protein ?? n.protein_g ?? r.protein_g ?? r.proteinG)
@@ -30,28 +37,28 @@ function normalizeNutrition(recipe: any): Nutrition {
   const sugar = num(n.sugar ?? n.sugar_g ?? r.sugar_g ?? r.sugarG)
   const sodium = num(n.sodium ?? n.sodium_mg ?? r.sodium_mg ?? r.sodiumMg) // mg
   const saturatedFat = num(
-    n.saturatedFat ?? n.saturated_fat ?? n.saturated_fat_g ?? r.saturated_fat_g ?? r.saturatedFatG
+    n.saturatedFat ?? n.saturated_fat ?? n.saturated_fat_g ?? r.saturated_fat_g ?? r.saturatedFatG,
   )
   const transFat = num(
-    n.transFat ?? n.trans_fat ?? n.trans_fat_g ?? r.trans_fat_g ?? r.transFatG
+    n.transFat ?? n.trans_fat ?? n.trans_fat_g ?? r.trans_fat_g ?? r.transFatG,
   )
   const cholesterol = num(
-    n.cholesterol ?? n.cholesterol_mg ?? r.cholesterol_mg ?? r.cholesterolMg
+    n.cholesterol ?? n.cholesterol_mg ?? r.cholesterol_mg ?? r.cholesterolMg,
   ) // mg
   const addedSugars = num(
-    n.addedSugars ?? n.added_sugars ?? n.added_sugars_g ?? r.added_sugars_g ?? r.addedSugarsG
+    n.addedSugars ?? n.added_sugars ?? n.added_sugars_g ?? r.added_sugars_g ?? r.addedSugarsG,
   )
   const calcium = num(n.calcium ?? n.calcium_mg ?? r.calcium_mg ?? r.calciumMg) // mg
   const iron = num(n.iron ?? n.iron_mg ?? r.iron_mg ?? r.ironMg) // mg
   const potassium = num(n.potassium ?? n.potassium_mg ?? r.potassium_mg ?? r.potassiumMg) // mg
   const vitaminD = num(
-    n.vitaminD ?? n.vitamin_d ?? n.vitamin_d_mcg ?? r.vitamin_d_mcg ?? r.vitaminDMcg
+    n.vitaminD ?? n.vitamin_d ?? n.vitamin_d_mcg ?? r.vitamin_d_mcg ?? r.vitaminDMcg,
   ) // mcg
   const vitaminA = num(
-    n.vitaminA ?? n.vitamin_a ?? n.vitamin_a_mcg ?? r.vitamin_a_mcg ?? r.vitaminAMcg
+    n.vitaminA ?? n.vitamin_a ?? n.vitamin_a_mcg ?? r.vitamin_a_mcg ?? r.vitaminAMcg,
   ) // mcg
   const vitaminC = num(
-    n.vitaminC ?? n.vitamin_c ?? n.vitamin_c_mg ?? r.vitamin_c_mg ?? r.vitaminCMg
+    n.vitaminC ?? n.vitamin_c ?? n.vitamin_c_mg ?? r.vitamin_c_mg ?? r.vitaminCMg,
   ) // mg
 
   return {
@@ -77,21 +84,38 @@ function normalizeNutrition(recipe: any): Nutrition {
 
 // ----- components -----
 
-function Ingredients({ ingredients = [] as any[] }) {
-  const toIngr = (i: any): Ingr => {
+function Ingredients({ ingredients = [] }: { ingredients?: unknown[] }) {
+  const toIngr = (i: unknown): Ingr => {
     if (typeof i === "string") return { amount: "", unit: "", name: i }
+
+    const source = asRecord(i)
     // Accept multiple shapes: {qty, unit, item}, {amount, unit, name}, {quantity, measure, ingredient}, {text}
-    const amount = i?.amount ?? i?.qty ?? i?.quantity ?? i?.value ?? null
-    const unit = i?.unit ?? i?.measure ?? null
-    const name = i?.name ?? i?.item ?? i?.ingredient ?? i?.text ?? ""
+    const amountValue = source.amount ?? source.qty ?? source.quantity ?? source.value ?? null
+    const unitValue = source.unit ?? source.measure ?? null
+    const nameValue = source.name ?? source.item ?? source.ingredient ?? source.text ?? ""
+
+    let amount: Ingr["amount"] = null
+    if (typeof amountValue === "number" || typeof amountValue === "string") {
+      amount = amountValue
+    } else if (amountValue != null) {
+      amount = String(amountValue)
+    }
+
+    const unit = unitValue == null ? null : String(unitValue)
+    const name = typeof nameValue === "string" ? nameValue : String(nameValue)
+
     return { amount, unit, name }
   }
+
   const items = (Array.isArray(ingredients) ? ingredients : []).map(toIngr)
+
   return (
     <ol className="list-decimal pl-6 space-y-2 text-sm">
       {items.map((ing, i) => (
         <li key={i}>
-          {ing.amount ? `${ing.amount} ` : ""}{ing.unit ? `${ing.unit} ` : ""}{ing.name}
+          {ing.amount ? `${ing.amount} ` : ""}
+          {ing.unit ? `${ing.unit} ` : ""}
+          {ing.name}
         </li>
       ))}
     </ol>
@@ -100,23 +124,37 @@ function Ingredients({ ingredients = [] as any[] }) {
 
 export function RecipeTabs({ recipe }: { recipe: Recipe }) {
   const [showMetric, setShowMetric] = useState(false)
+  const recipeRecord = recipe as unknown as JsonRecord
 
   // Normalize nutrition (root cause of zeros on the details page)
-  const canonNutrition = useMemo(() => normalizeNutrition(recipe as any), [recipe])
+  const canonNutrition = useMemo(() => normalizeNutrition(recipe), [recipe])
 
   // Ensure a numeric servings value for NutritionFactsPanel prop
-  const servings = useMemo(
-    () => num((recipe as any)?.servings ?? (recipe as any)?.servings_count ?? 1, 1),
-    [recipe]
-  )
+  const servings = num(recipe.servings ?? recipeRecord.servings_count ?? 1, 1)
 
-  const instructions: string[] = (
-    Array.isArray((recipe as any)?.instructions) ? (recipe as any)?.instructions : []
-  )
+  const instructions: string[] = (Array.isArray(recipeRecord.instructions) ? recipeRecord.instructions : [])
     .slice()
-    .sort((a: any, b: any) => (Number(a?.order) || 0) - (Number(b?.order) || 0))
-    .map((s: any) => (typeof s === "string" ? s : s?.text ?? s?.step ?? ""))
-    .filter((s: any) => typeof s === "string" && s.trim().length > 0)
+    .sort((a, b) => {
+      const aOrder = num(asRecord(a).order)
+      const bOrder = num(asRecord(b).order)
+      return aOrder - bOrder
+    })
+    .map((step) => {
+      if (typeof step === "string") return step
+      const source = asRecord(step)
+      const value = source.text ?? source.step ?? ""
+      return typeof value === "string" ? value : String(value)
+    })
+    .filter((step) => step.trim().length > 0)
+
+  const dietTags = asStringArray(recipeRecord.diet_tags ?? recipeRecord.dietTags)
+  const totalTimeMin = num(recipeRecord.total_time_minutes ?? recipe.totalTimeMinutes ?? 0)
+  const difficulty =
+    typeof recipe.difficulty === "string"
+      ? recipe.difficulty
+      : typeof recipeRecord.difficulty === "string"
+        ? recipeRecord.difficulty
+        : "-"
 
   return (
     <Tabs defaultValue="overview" className="w-full">
@@ -138,20 +176,15 @@ export function RecipeTabs({ recipe }: { recipe: Recipe }) {
           <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
               <div className="text-muted-foreground">Servings</div>
-              <div className="font-medium">{(recipe as any)?.servings ?? 0}</div>
+              <div className="font-medium">{recipe.servings ?? 0}</div>
             </div>
             <div>
               <div className="text-muted-foreground">Total time</div>
-              <div className="font-medium">
-                {(recipe as any)?.total_time_minutes ??
-                  (recipe as any)?.totalTimeMinutes ??
-                  0}{" "}
-                min
-              </div>
+              <div className="font-medium">{totalTimeMin} min</div>
             </div>
             <div>
               <div className="text-muted-foreground">Difficulty</div>
-              <div className="font-medium capitalize">{(recipe as any)?.difficulty ?? "—"}</div>
+              <div className="font-medium capitalize">{difficulty}</div>
             </div>
             <div>
               <div className="text-muted-foreground">Calories / serving</div>
@@ -177,7 +210,7 @@ export function RecipeTabs({ recipe }: { recipe: Recipe }) {
             </div>
           </CardHeader>
           <CardContent>
-            <Ingredients ingredients={(recipe as any)?.ingredients ?? []} />
+            <Ingredients ingredients={Array.isArray(recipe.ingredients) ? recipe.ingredients : []} />
           </CardContent>
         </Card>
       </TabsContent>
@@ -216,16 +249,13 @@ export function RecipeTabs({ recipe }: { recipe: Recipe }) {
         </Card>
         <Card>
           <CardContent>
-            {/* FIX: pass required `servings` prop */}
             <NutritionFactsPanel nutrition={canonNutrition} servings={servings} />
             <div className="mt-2 flex flex-wrap gap-2">
-              {((recipe as any)?.diet_tags ?? (recipe as any)?.dietTags ?? []).map(
-                (tag: string) => (
-                  <Badge key={tag} variant="secondary">
-                    {tag}
-                  </Badge>
-                )
-              )}
+              {dietTags.map((tag: string) => (
+                <Badge key={tag} variant="secondary">
+                  {tag}
+                </Badge>
+              ))}
             </div>
           </CardContent>
         </Card>

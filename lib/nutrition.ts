@@ -2,12 +2,29 @@ import db from "@/app/_mock/ingredients-db.json"
 import { convertToGrams } from "./units"
 
 type Row = { qty: number | ""; unit: string; item: string }
+type IngredientRecord = {
+  name: string
+  aliases?: string[]
+  calories?: number
+  protein?: number
+  carbs?: number
+  fat?: number
+  sodium?: number
+  sugars?: number
+  fiber?: number
+  potassium?: number
+  iron?: number
+  calcium?: number
+  vitaminD?: number
+}
 
-function matchIngredient(name: string) {
+const ingredientDb = db as IngredientRecord[]
+
+function matchIngredient(name: string): IngredientRecord | undefined {
   const q = name.toLowerCase().trim()
-  const exact = db.find((r) => r.name === q)
-  if (exact) return exact as any
-  return db.find((r: any) => r.name.includes(q) || r.aliases?.some((a: string) => q.includes(a))) as any
+  const exact = ingredientDb.find((r) => r.name === q)
+  if (exact) return exact
+  return ingredientDb.find((r) => r.name.includes(q) || r.aliases?.some((a) => q.includes(a)))
 }
 
 /** very rough estimate using per-100g nutrition × weight */
@@ -19,20 +36,20 @@ export function estimateNutrition(rows: Row[], servings: number) {
 
   for (const r of rows) {
     if (r.qty === "" || !r.item) continue
-    const rec = matchIngredient(r.item) || {}
+    const rec = matchIngredient(r.item)
     const grams = convertToGrams(Number(r.qty), r.unit || "g", r.item)
     const mul = grams / 100 // db values are per 100g
-    totals.calories += (rec.calories || 0) * mul
-    totals.protein  += (rec.protein  || 0) * mul
-    totals.carbs    += (rec.carbs    || 0) * mul
-    totals.fat      += (rec.fat      || 0) * mul
-    totals.sodium   += (rec.sodium   || 0) * mul
-    totals.sugars   += (rec.sugars   || 0) * mul
-    totals.fiber    += (rec.fiber    || 0) * mul
-    totals.potassium+= (rec.potassium|| 0) * mul
-    totals.iron     += (rec.iron     || 0) * mul
-    totals.calcium  += (rec.calcium  || 0) * mul
-    totals.vitaminD += (rec.vitaminD || 0) * mul
+    totals.calories += (rec?.calories || 0) * mul
+    totals.protein  += (rec?.protein  || 0) * mul
+    totals.carbs    += (rec?.carbs    || 0) * mul
+    totals.fat      += (rec?.fat      || 0) * mul
+    totals.sodium   += (rec?.sodium   || 0) * mul
+    totals.sugars   += (rec?.sugars   || 0) * mul
+    totals.fiber    += (rec?.fiber    || 0) * mul
+    totals.potassium+= (rec?.potassium|| 0) * mul
+    totals.iron     += (rec?.iron     || 0) * mul
+    totals.calcium  += (rec?.calcium  || 0) * mul
+    totals.vitaminD += (rec?.vitaminD || 0) * mul
   }
 
   const per = Math.max(1, servings || 1)

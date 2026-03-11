@@ -11,6 +11,8 @@ type BarcodeEngine = "native" | "zxing" | "none";
 
 // Accept anything the detector might return and normalize to one shape
 type SupportShape = { engine?: string; torch?: boolean } | string | string[] | null | undefined;
+type SupportObject = { engine?: unknown; torch?: unknown };
+type TorchConstraint = MediaTrackConstraintSet & { torch?: boolean };
 
 function normalizeSupport(input: SupportShape): { engine: BarcodeEngine; torch: boolean } {
   let engineStr = "none";
@@ -21,9 +23,10 @@ function normalizeSupport(input: SupportShape): { engine: BarcodeEngine; torch: 
   } else if (typeof input === "string") {
     engineStr = input;
   } else if (input && typeof input === "object") {
-    const eng = (input as any).engine;
+    const support = input as SupportObject;
+    const eng = support.engine;
     if (typeof eng === "string") engineStr = eng;
-    torch = Boolean((input as any).torch);
+    torch = Boolean(support.torch);
   }
 
   // Guard against unexpected strings
@@ -167,8 +170,9 @@ export function useBarcodeScanner() {
 
     try {
       const track = streamRef.current.getVideoTracks()[0]
+      const torchConstraint: TorchConstraint = { torch: enabled }
       await track.applyConstraints({
-        advanced: [{ torch: enabled } as any],
+        advanced: [torchConstraint],
       })
       return true
     } catch (error) {

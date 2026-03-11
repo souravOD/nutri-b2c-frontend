@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clock, Users, ChefHat, Heart, Share2, Star } from "lucide-react"
 import type { Recipe } from "@/lib/types"
-import { DEFAULT_RECIPE_IMAGE } from "@/lib/constants"
 
 interface RecipeHeroProps {
   recipe: Recipe
@@ -15,50 +14,62 @@ interface RecipeHeroProps {
 
 
 export function RecipeHero({ recipe, onToggleSave, onShare }: RecipeHeroProps) {
-  const totalTime = (recipe.prepTime ?? 0) + (recipe.cookTime ?? 0)
+  const recipeRecord = recipe as unknown as Record<string, unknown>
+  const getNumber = (...values: unknown[]): number => {
+    for (const value of values) {
+      if (typeof value === "number" && Number.isFinite(value)) return value
+      if (typeof value === "string") {
+        const parsed = Number(value)
+        if (Number.isFinite(parsed)) return parsed
+      }
+    }
+    return 0
+  }
   const title = recipe.title ?? "Untitled"
-  const src = DEFAULT_RECIPE_IMAGE
-  const imageAlt = recipe.imageAlt ?? recipe.title ?? "Recipe image";
-  const rating = "rating" in recipe ? (recipe as any).rating ?? 0 : 0;
-  const reviewCount =
-    "reviewCount" in recipe ? (recipe as any).reviewCount ?? 0 : 0;
-  const tags = recipe.tags ?? [];
-  const cuisines = recipe.cuisines ?? [];
+  const src = recipe.imageUrl ?? recipe.image_url ?? null
+  const hasImage = typeof src === "string" && src.trim().length > 0
+  const imageAlt = recipe.imageAlt ?? recipe.title ?? "Recipe image"
+  const rating = getNumber(recipe.rating, recipeRecord["rating"])
+  const reviewCount = getNumber(recipe.reviewCount, recipeRecord["reviewCount"])
+  const tags = recipe.tags ?? []
+  const cuisines = recipe.cuisines ?? []
 
-  const prepMinutes =
-  Number(
-    (recipe as any)?.prepTimeMinutes ??
-    (recipe as any)?.prep_time_minutes ??
-    (recipe as any)?.prep_minutes ??
-    0
-  );
+  const prepMinutes = getNumber(
+    recipe.prepTimeMinutes,
+    recipeRecord["prep_time_minutes"],
+    recipeRecord["prep_minutes"],
+  )
 
-const cookMinutes =
-  Number(
-    (recipe as any)?.cookTimeMinutes ??
-    (recipe as any)?.cook_time_minutes ??
-    (recipe as any)?.cook_minutes ??
-    0
-  );
+  const cookMinutes = getNumber(
+    recipe.cookTimeMinutes,
+    recipeRecord["cook_time_minutes"],
+    recipeRecord["cook_minutes"],
+  )
 
   // Unified display values (fallback to legacy props if minutes missing)
-  const prepDisplayMin = prepMinutes || Number((recipe as any)?.prepTime ?? 0) || 0;
-  const cookDisplayMin = cookMinutes || Number((recipe as any)?.cookTime ?? 0) || 0;
-  const servings = Number((recipe as any)?.servings ?? 1);
-  const difficulty = String((recipe as any)?.difficulty ?? "easy");
+  const prepDisplayMin = prepMinutes || getNumber(recipe.prepTime, recipeRecord["prepTime"])
+  const cookDisplayMin = cookMinutes || getNumber(recipe.cookTime, recipeRecord["cookTime"])
+  const servings = getNumber(recipe.servings, recipeRecord["servings"]) || 1
+  const difficulty = String(recipe.difficulty ?? recipeRecord["difficulty"] ?? "easy")
 
   return (
     <div className="space-y-4">
       {/* Hero Image */}
-      <div className="relative w-full">
-        <Image
-          src={src}
-          alt={imageAlt ?? title}
-          width={1280}
-          height={720}
-          className="w-full aspect-[16/9] object-cover rounded-lg"
-          priority
-        />
+      <div className="relative w-full aspect-[16/9] overflow-hidden rounded-lg bg-muted">
+        {hasImage ? (
+          <Image
+            src={src as string}
+            alt={imageAlt ?? title}
+            fill
+            unoptimized
+            sizes="100vw"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">
+            No image available
+          </div>
+        )}
         <div className="absolute top-4 right-4 flex gap-2">
           <Button
             variant="secondary"
@@ -83,7 +94,7 @@ const cookMinutes =
 
       {/* Recipe Title and Description */}
       <div className="space-y-3">
-        <h1 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight">{recipe.title}</h1>
+        <h1 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight">{title}</h1>
         {recipe.description && (
           <p className="text-muted-foreground text-base md:text-lg leading-relaxed max-w-3xl">
             {recipe.description}

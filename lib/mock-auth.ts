@@ -95,7 +95,8 @@ export class MockAuth {
     return { ...this.state }
   }
 
-  async login(email: string, password: string): Promise<{ success: boolean; user?: User }> {
+  async login(email: string, _password: string): Promise<{ success: boolean; user?: User }> {
+    void _password
     // Mock login - always succeeds
     const user: User = {
       id: `user-${Date.now()}`,
@@ -114,7 +115,8 @@ export class MockAuth {
     return { success: true, user }
   }
 
-  async register(name: string, email: string, password: string): Promise<{ success: boolean; user?: User }> {
+  async register(name: string, email: string, _password: string): Promise<{ success: boolean; user?: User }> {
+    void _password
     // Mock register - always succeeds
     const user: User = {
       id: `user-${Date.now()}`,

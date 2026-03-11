@@ -21,7 +21,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Shield, Key, Trash2, RotateCcw, AlertTriangle } from "lucide-react"
-import { useUser } from "@/hooks/use-user"
 import { useToast } from "@/hooks/use-toast"
 import type { User } from "@/lib/mock-auth"
 import { apiDeleteAccount } from "@/lib/api"
@@ -31,7 +30,6 @@ interface ProfileSecurityProps {
 }
 
 export function ProfileSecurity({ user }: ProfileSecurityProps) {
-  const _userCtx = useUser()
   const { toast } = useToast()
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -116,7 +114,9 @@ export function ProfileSecurity({ user }: ProfileSecurityProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Email Verification</p>
-                <p className="text-sm text-muted-foreground">Your email address is verified</p>
+                <p className="text-sm text-muted-foreground">
+                  {user.email ? `Signed in as ${user.email}` : "Your email address is verified"}
+                </p>
               </div>
               <Badge variant="secondary">✓ Verified</Badge>
             </div>

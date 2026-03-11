@@ -4,8 +4,17 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Edit, Tag } from "lucide-react"
 import type { AnalyzeResult } from "@/lib/types"
+import type { AnalyzerCardResult } from "@/components/analyzer/result-cards/types"
 
-export function TagsCard({ result, onEdit }: { result: any; onEdit?: (r: AnalyzeResult)=>void }) {
+interface TagsCardProps {
+  result: AnalyzerCardResult
+  onEdit?: (r: AnalyzeResult) => void
+}
+
+export function TagsCard({ result, onEdit }: TagsCardProps) {
+  const diets = result.diets ?? []
+  const cuisines = result.cuisines ?? []
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -15,16 +24,16 @@ export function TagsCard({ result, onEdit }: { result: any; onEdit?: (r: Analyze
         {onEdit && <Button variant="ghost" size="sm" onClick={()=>onEdit(result)}><Edit className="h-4 w-4"/></Button>}
       </CardHeader>
       <CardContent className="space-y-4">
-        {result.diets?.length > 0 && (
+        {diets.length > 0 && (
           <div>
             <h4 className="text-sm font-medium mb-1">Diets</h4>
-            <div className="flex flex-wrap gap-2">{result.diets.map((d: string)=> <Badge key={d} variant="secondary">{d.replace(/_/g," ")}</Badge>)}</div>
+            <div className="flex flex-wrap gap-2">{diets.map((d: string)=> <Badge key={d} variant="secondary">{d.replace(/_/g," ")}</Badge>)}</div>
           </div>
         )}
-        {result.cuisines?.length > 0 && (
+        {cuisines.length > 0 && (
           <div>
             <h4 className="text-sm font-medium mb-1">Cuisines</h4>
-            <div className="flex flex-wrap gap-2">{result.cuisines.map((c: string)=> <Badge key={c} variant="outline">{c}</Badge>)}</div>
+            <div className="flex flex-wrap gap-2">{cuisines.map((c: string)=> <Badge key={c} variant="outline">{c}</Badge>)}</div>
           </div>
         )}
       </CardContent>

@@ -148,7 +148,7 @@ export function DataTable<T extends { id: string | number }>({
                     const raw = row[col.key]
                     return (
                       <TableCell key={String(col.key)}>
-                        {col.render ? col.render(raw as any, row) : String(raw ?? "")}
+                        {col.render ? col.render(raw, row) : String(raw ?? "")}
                       </TableCell>
                     )
                   })}

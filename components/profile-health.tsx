@@ -80,7 +80,7 @@ export function ProfileHealth({ user }: ProfileHealthProps) {
         title: "Profile updated",
         description: "Your health information has been saved successfully.",
       })
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to update profile. Please try again.",

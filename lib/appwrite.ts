@@ -9,13 +9,11 @@ import { Client, Account, Databases, Teams } from "appwrite"
  */
 function makeClient() {
   const endpoint = (process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT ?? "").trim()
-  const project =
-    (process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID ?? "").trim() ||
-    (process.env.NEXT_PUBLIC_APPWRITE_PROJECT ?? "").trim()
+  const project = (process.env.NEXT_PUBLIC_APPWRITE_PROJECT ?? "").trim()
 
   if (typeof window !== "undefined") {
     if (!endpoint) throw new Error("Missing NEXT_PUBLIC_APPWRITE_ENDPOINT")
-    if (!project) throw new Error("Missing NEXT_PUBLIC_APPWRITE_PROJECT or NEXT_PUBLIC_APPWRITE_PROJECT_ID")
+    if (!project) throw new Error("Missing NEXT_PUBLIC_APPWRITE_PROJECT")
   }
 
   const client = new Client()

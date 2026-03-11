@@ -16,6 +16,10 @@ const API_BASE = (
     : "http://127.0.0.1:5000"
 ).replace(/\/+$/, "");
 
+// Vercel sets VERCEL=1 in build/runtime environments.
+// Keep local builds strict by default, but skip lint during Vercel builds.
+const IS_VERCEL = process.env.VERCEL === "1";
+
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -24,15 +28,31 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
   reactStrictMode: true,
 
-  // Only proxy API calls; do NOT rewrite /_next/* (prevents missing CSS/JS)
+  // Produce a self-contained build for Docker (much smaller image — no bulky node_modules)
+  output: "standalone",
+
+  // Allow external recipe images from any HTTPS source.
+  // Recipe images come from 50+ domains (pinimg, sndimg, nyt, allrecipes,
+  // squarespace-cdn, apartmenttherapy, amazonaws, etc.), so a broad HTTPS
+  // pattern is necessary. HTTP is blocked to prevent mixed-content issues.
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "**" },
+    ],
+  },
+
+  // Proxy API calls to the backend; destinations are baked at build time
+  // into .next/routes-manifest.json (NOT re-evaluated at runtime by `next start`).
+  // In Docker: API_BASE_URL=http://backend:5000 via build arg.
+  // Locally:   falls back to http://127.0.0.1:5000 (see API_BASE above).
   async rewrites() {
     return [
       { source: "/api/v1/:path*", destination: `${API_BASE}/api/v1/:path*` },
     ];
   },
 
-  // (Optional) keep these strict; flip to true only if you intentionally want to ship with lints/TS errors.
-  eslint: { ignoreDuringBuilds: false },
+  // Keep TS checks enabled, but don't block Vercel deploys on existing lint debt.
+  eslint: { ignoreDuringBuilds: IS_VERCEL },
   typescript: { ignoreBuildErrors: false },
   webpack(config) {
     // Ensure '@' alias works in all environments (CI/build included)

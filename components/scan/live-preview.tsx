@@ -12,18 +12,7 @@ type LivePreviewProps = {
 export function LivePreview({ deviceId, onDetected, onError }: LivePreviewProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-
-  // Normalize any vendor/library result to the shared shape
-  function normalize(raw: any): BarcodeResult {
-    if (typeof raw?.value === "string") {
-      return { value: raw.value, format: raw.format, raw };
-    }
-    // common alt field is "text"
-    if (typeof raw?.text === "string") {
-      return { value: raw.text, format: raw.format, raw };
-    }
-    return { value: String(raw ?? ""), raw };
-  }
+  void onDetected;
 
   useEffect(() => {
     let cancelled = false;
@@ -46,7 +35,7 @@ export function LivePreview({ deviceId, onDetected, onError }: LivePreviewProps)
 
         // TODO: hook your barcode library here. When it yields a result `raw`,
         // call: onDetected(normalize(raw));
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!cancelled) onError(e instanceof Error ? e : new Error(String(e)));
       }
     }

@@ -4,8 +4,14 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Edit, Activity } from "lucide-react"
 import type { AnalyzeResult } from "@/lib/types"
+import type { AnalyzerCardResult } from "@/components/analyzer/result-cards/types"
 
-export function NutritionCard({ result, onEdit }: { result: any; onEdit?: (r: AnalyzeResult)=>void }) {
+interface NutritionCardProps {
+  result: AnalyzerCardResult
+  onEdit?: (r: AnalyzeResult) => void
+}
+
+export function NutritionCard({ result, onEdit }: NutritionCardProps) {
   const n = result.nutrition || {}
   const calories = n.calories || 0
   const pct = (v: number, kcalPerGram: number) => (calories ? Math.min(100, ((v * kcalPerGram) / calories) * 100) : 0)

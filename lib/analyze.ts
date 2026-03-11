@@ -39,7 +39,6 @@ export function parseRecipeText(text: string) {
 
   for (const raw of lines) {
     const line = raw.trim()
-    const lower = line.toLowerCase()
 
     // servings detection
     if (/serv(es|ings?)\s*[:\-]?\s*(\d+)/i.test(line) || /makes\s+(\d+)/i.test(line)) {
@@ -139,15 +138,15 @@ export function estimateNutrition(
     const mul = grams / 100
 
     totals.calories += (rec?.calories ?? 0) * mul
-    totals.protein  += (rec?.protein  ?? 0) * mul
-    totals.carbs    += (rec?.carbs    ?? 0) * mul
-    totals.fat      += (rec?.fat      ?? 0) * mul
-    totals.sodium   += (rec?.sodium   ?? 0) * mul
-    totals.sugars   += (rec?.sugars   ?? 0) * mul
-    totals.fiber    += (rec?.fiber    ?? 0) * mul
-    totals.potassium+= (rec?.potassium?? 0) * mul
-    totals.iron     += (rec?.iron     ?? 0) * mul
-    totals.calcium  += (rec?.calcium  ?? 0) * mul
+    totals.protein += (rec?.protein ?? 0) * mul
+    totals.carbs += (rec?.carbs ?? 0) * mul
+    totals.fat += (rec?.fat ?? 0) * mul
+    totals.sodium += (rec?.sodium ?? 0) * mul
+    totals.sugars += (rec?.sugars ?? 0) * mul
+    totals.fiber += (rec?.fiber ?? 0) * mul
+    totals.potassium += (rec?.potassium ?? 0) * mul
+    totals.iron += (rec?.iron ?? 0) * mul
+    totals.calcium += (rec?.calcium ?? 0) * mul
     totals.vitaminD += (rec?.vitaminD ?? 0) * mul
   }
 
@@ -162,15 +161,19 @@ export function estimateNutrition(
 
 export function detectAllergens(ings: Array<{ item: string }>): string[] {
   const dict: Record<string, string[]> = {
-    milk: ["milk", "cheese", "butter", "cream", "yogurt", "dairy"],
-    egg: ["egg", "eggs"],
-    fish: ["fish", "salmon", "tuna", "cod", "mackerel"],
-    crustacean_shellfish: ["shrimp", "crab", "lobster", "prawn"],
-    tree_nuts: ["almond", "walnut", "pecan", "cashew", "pistachio", "hazelnut"],
-    peanuts: ["peanut", "peanuts"],
-    wheat: ["wheat", "flour", "bread", "pasta", "gluten"],
-    soy: ["soy", "tofu", "soy sauce", "miso"],
-    sesame: ["sesame", "tahini"],
+    Milk_dairy: ["milk", "cheese", "butter", "cream", "yogurt", "dairy", "paneer", "ghee", "whey", "casein"],
+    Egg: ["egg", "eggs", "mayonnaise"],
+    Fish_finned: ["fish", "salmon", "tuna", "cod", "mackerel", "sardine", "anchovy", "tilapia", "trout"],
+    Shellfish_crustaceans: ["shrimp", "crab", "lobster", "prawn", "crayfish"],
+    Tree_nuts: ["almond", "walnut", "pecan", "cashew", "pistachio", "hazelnut", "macadamia", "brazil nut"],
+    Peanut: ["peanut", "peanuts", "groundnut"],
+    Wheat_gluten_cereals: ["wheat", "flour", "bread", "pasta", "gluten", "seitan", "couscous", "semolina"],
+    Soy: ["soy", "tofu", "soy sauce", "miso", "edamame", "tempeh", "soybean"],
+    Sesame_seed: ["sesame", "tahini"],
+    Celery: ["celery"],
+    Corn_maize: ["corn", "maize", "cornstarch", "corn flour", "polenta"],
+    Molluscs: ["clam", "mussel", "oyster", "squid", "octopus", "scallop", "snail"],
+    Buckwheat_pseudo_cereal: ["buckwheat", "soba"],
   }
   const text = ings.map((i) => i.item.toLowerCase()).join(" ")
   return Object.entries(dict)
@@ -224,7 +227,42 @@ export function generateSuggestions(r: AnalyzeResult) {
 
 /** ---------- Main Analyzer ---------- */
 
-export async function analyzeRecipe(text: string): Promise<AnalyzeResult> {
+/**
+ * Analyze recipe with LLM backend, fallback to local parser on error.
+ */
+export async function analyzeRecipe(text: string, memberId?: string): Promise<AnalyzeResult> {
+  // Try backend LLM analysis first
+  try {
+    const { apiAnalyzeText } = await import("./api");
+    const result = await apiAnalyzeText(text, memberId);
+    console.log("[Analyze] LLM analysis succeeded:", { title: result.title, ingredientsCount: result.ingredients?.length });
+    return result;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[Analyze] LLM analysis failed:", message);
+
+    // Extract user-friendly error message
+    let userMessage = "Recipe analysis failed";
+    if (message.includes("Budget has been exceeded")) {
+      userMessage = "AI analysis service budget exceeded. Please try again later or contact support.";
+    } else if (message.includes("401") || message.toLowerCase().includes("auth")) {
+      userMessage = "Authentication error. Please log in again.";
+    } else if (message.includes("timeout") || message.includes("ETIMEDOUT")) {
+      userMessage = "Analysis timed out. Please try again.";
+    } else if (message.includes("fetch") || message.includes("network")) {
+      userMessage = "Network error. Please check your connection and try again.";
+    } else {
+      userMessage = `Analysis failed: ${message}`;
+    }
+
+    throw new Error(userMessage);
+  }
+}
+
+/**
+ * Local recipe parser (fallback when LLM is unavailable).
+ */
+export function analyzeRecipeLocal(text: string): AnalyzeResult {
   const parsed = parseRecipeText(text)
   const ingredients = parsed.ingredients.map(parseIngredient)
 
@@ -243,7 +281,7 @@ export async function analyzeRecipe(text: string): Promise<AnalyzeResult> {
     carbs: Number(nutritionMap.carbs ?? 0),
     fat: Number(nutritionMap.fat ?? 0),
     sodium: nutritionMap.sodium,
-    sugars: nutritionMap.sugars,
+    sugar: nutritionMap.sugars,
     fiber: nutritionMap.fiber,
     potassium: nutritionMap.potassium,
     iron: nutritionMap.iron,

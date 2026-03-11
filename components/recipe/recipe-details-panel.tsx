@@ -1,11 +1,30 @@
 "use client"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
+
+type RecipeDetails = {
+  title?: string
+  imageUrl?: string
+  cuisine?: string | { name?: string | null; code?: string | null } | null
+  course?: string
+  difficulty?: string
+  servings?: number
+  time?: { prepMin?: number; cookMin?: number }
+  tags?: { diets?: string[]; allergens?: string[] }
+  ingredients?: Array<{ qty?: number | string; unit?: string; item?: string }>
+  steps?: string[]
+  nutrition?: Record<string, string | number | null | undefined>
+}
 
 export default function RecipeDetailsPanel({
   recipe, onBack, onSave, mode = "preview",
-}: { recipe: any; onBack: () => void; onSave?: () => void; mode?: "preview" | "saved" }) {
+}: { recipe: RecipeDetails; onBack: () => void; onSave?: () => void; mode?: "preview" | "saved" }) {
   const n = recipe.nutrition || {}
   const isPreview = mode === "preview"
+  const cuisineLabel =
+    typeof recipe.cuisine === "string"
+      ? recipe.cuisine
+      : recipe.cuisine?.name ?? recipe.cuisine?.code ?? null;
 
   return (
     <div className="space-y-6">
@@ -17,12 +36,20 @@ export default function RecipeDetailsPanel({
       <div className="grid gap-4 md:grid-cols-3">
         <div className="md:col-span-1">
           {recipe.imageUrl ? (
-            <img className="h-48 w-full rounded-md object-cover border" src={recipe.imageUrl} alt={recipe.title} />
+            <div className="relative h-48 w-full overflow-hidden rounded-md border">
+              <Image
+                src={recipe.imageUrl}
+                alt={recipe.title ?? "Recipe image"}
+                fill
+                unoptimized
+                className="object-cover"
+              />
+            </div>
           ) : (
             <div className="h-48 rounded-md border grid place-items-center text-sm text-muted-foreground">No image</div>
           )}
           <div className="mt-3 text-sm text-muted-foreground">
-            {recipe.cuisine && <span>• {recipe.cuisine} </span>}
+            {cuisineLabel && <span>• {cuisineLabel} </span>}
             {recipe.course && <span>• {recipe.course} </span>}
             {recipe.difficulty && <span>• {recipe.difficulty}</span>}
           </div>
@@ -32,7 +59,7 @@ export default function RecipeDetailsPanel({
           <section>
             <h3 className="font-medium">Summary</h3>
             <p className="text-sm text-muted-foreground">
-              A {recipe.cuisine || ""} {recipe.course || "dish"} for {recipe.servings || 1} serving(s),
+              A {cuisineLabel || ""} {recipe.course || "dish"} for {recipe.servings || 1} serving(s),
               about {(recipe.time?.prepMin ?? 0) + (recipe.time?.cookMin ?? 0)} minutes total.
               Fits your preferences.
             </p>
@@ -51,7 +78,7 @@ export default function RecipeDetailsPanel({
           <section>
             <h3 className="font-medium mb-2">Ingredients</h3>
             <ul className="list-disc pl-5 text-sm space-y-1">
-              {recipe.ingredients?.map((r: any, i: number) => (
+              {recipe.ingredients?.map((r, i: number) => (
                 <li key={i}>{r.qty}{r.unit && ` ${r.unit}`} {r.item}</li>
               ))}
             </ul>

@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import RecipeForm from "@/components/recipe-builder-simple/form";
-import { createRecipe } from "@/lib/api";
+import { createRecipe, type UserRecipe } from "@/lib/api";
 import { useUser } from "@/hooks/use-user";
 
 export default function NewRecipePage() {
@@ -9,7 +9,7 @@ export default function NewRecipePage() {
   const router = useRouter();
   const uid = user?.$id;
 
-  async function onSubmit(data: any) {
+  async function onSubmit(data: Partial<UserRecipe>) {
     if (!uid) throw new Error("Not signed in");
     const created = await createRecipe(uid, data);
     router.push(`/recipes/${created.id}/edit`);

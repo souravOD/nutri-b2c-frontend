@@ -16,11 +16,7 @@ import { getAdminDefaults, setAdminDefaults, isAdminApplyEnabled, setAdminApplyE
 import { appendAudit } from "@/lib/admin/audit"
 // v12c exposes DEFAULT_SETTINGS; Vercel used a helper. We'll build our own getDefaultSettings().
 import { DEFAULT_SETTINGS as BASE_DEFAULTS } from "@/lib/settings"
-
-// --- Local constants (kept small; adjust if you like) ---
-const ALL_DIETS = ["vegan", "vegetarian", "keto", "paleo", "gluten-free", "dairy-free"]
-const ALL_ALLERGENS = ["milk", "egg", "fish", "shellfish", "tree nuts", "peanuts", "wheat", "soy", "sesame"]
-const ALL_CUISINES = ["italian", "mexican", "thai", "indian", "japanese", "mediterranean"]
+import { ALL_DIETS, ALL_ALLERGENS, ALL_CUISINES } from "@/lib/data"
 
 // Shape we use locally; avoids depending on missing exported types.
 type RecommendationSettings = {
@@ -36,6 +32,23 @@ type RecommendationSettings = {
     healthyOnly: boolean
   }
 }
+
+type LooseSettingsInput = {
+  recommendations?: unknown
+  defaults?: unknown
+  weights?: { tasteVsHealth?: unknown }
+  filters?: {
+    calories?: unknown
+    prepTime?: unknown
+    diets?: unknown
+    allergens?: unknown
+    cuisines?: unknown
+    healthyOnly?: unknown
+  }
+}
+
+const asArrayOfStrings = (value: unknown): string[] =>
+  Array.isArray(value) ? value.map((item) => String(item)) : []
 
 // Build defaults from your v12c DEFAULT_SETTINGS if present; otherwise fall back.
 function getDefaultSettings(): RecommendationSettings {
@@ -54,25 +67,28 @@ function getDefaultSettings(): RecommendationSettings {
   // Many v12c setups keep recommendation knobs under something like DEFAULT_SETTINGS.recommendations
   // If your structure differs, tweak the mapping below — it’s defensive and won’t break if keys are missing.
   try {
-    const anyBase = BASE_DEFAULTS as any
-    const rec = anyBase?.recommendations ?? anyBase?.defaults ?? anyBase // be permissive
+    const base = BASE_DEFAULTS as unknown as LooseSettingsInput
+    const rec = (base.recommendations ?? base.defaults ?? base) as LooseSettingsInput // be permissive
     if (!rec) return fallback
+    const filters = rec.filters ?? {}
+    const calories = Array.isArray(filters.calories)
+      ? [Number(filters.calories[0] ?? 0), Number(filters.calories[1] ?? 800)] as [number, number]
+      : [0, 800] as [number, number]
+    const prepTime = Array.isArray(filters.prepTime)
+      ? [Number(filters.prepTime[0] ?? 0), Number(filters.prepTime[1] ?? 120)] as [number, number]
+      : [0, 120] as [number, number]
 
     return {
       weights: {
         tasteVsHealth: Number(rec?.weights?.tasteVsHealth ?? 50),
       },
       filters: {
-        calories: Array.isArray(rec?.filters?.calories)
-          ? [Number(rec.filters.calories[0] ?? 0), Number(rec.filters.calories[1] ?? 800)]
-          : [0, 800],
-        prepTime: Array.isArray(rec?.filters?.prepTime)
-          ? [Number(rec.filters.prepTime[0] ?? 0), Number(rec.filters.prepTime[1] ?? 120)]
-          : [0, 120],
-        diets: Array.isArray(rec?.filters?.diets) ? rec.filters.diets.slice() : [],
-        allergens: Array.isArray(rec?.filters?.allergens) ? rec.filters.allergens.slice() : [],
-        cuisines: Array.isArray(rec?.filters?.cuisines) ? rec.filters.cuisines.slice() : [],
-        healthyOnly: Boolean(rec?.filters?.healthyOnly ?? false),
+        calories,
+        prepTime,
+        diets: asArrayOfStrings(filters.diets),
+        allergens: asArrayOfStrings(filters.allergens),
+        cuisines: asArrayOfStrings(filters.cuisines),
+        healthyOnly: Boolean(filters.healthyOnly ?? false),
       },
     }
   } catch {
@@ -85,8 +101,8 @@ function ScorePreview({ settings }: { settings: RecommendationSettings }) {
   const score = useMemo(() => {
     // Toy formula: higher taste weight reduces health score a bit; penalties for calories/time; bonuses for healthyOnly.
     const taste = settings.weights.tasteVsHealth
-    const [cMin, cMax] = settings.filters.calories
-    const [tMin, tMax] = settings.filters.prepTime
+    const cMax = settings.filters.calories[1]
+    const tMax = settings.filters.prepTime[1]
 
     let s = 100
     s -= taste * 0.2
@@ -173,7 +189,7 @@ export default function AdminRecommendationDefaults() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
   useEffect(() => {
-    const saved = getAdminDefaults()
+    const saved = getAdminDefaults<RecommendationSettings>()
     const apply = isAdminApplyEnabled()
     if (saved) setSettings(saved)
     setApplyToDevice(apply)
@@ -205,7 +221,8 @@ export default function AdminRecommendationDefaults() {
   const toggleInArray = (key: "diets" | "allergens" | "cuisines", value: string) => {
     setSettings((prev) => {
       const next = new Set(prev.filters[key])
-      next.has(value) ? next.delete(value) : next.add(value)
+      if (next.has(value)) next.delete(value)
+      else next.add(value)
       return { ...prev, filters: { ...prev.filters, [key]: Array.from(next) } }
     })
   }

@@ -4,16 +4,12 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ID } from "appwrite"
+import { ID, Permission, Role } from "appwrite"
 import { account, databases } from "@/lib/appwrite"
 import { useUser } from "@/hooks/use-user"
 import { useToast } from "@/hooks/use-toast"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, EyeOff, Mail, User as UserIcon } from "lucide-react"
-import { syncProfile } from "@/lib/api";
+import { Eye, EyeOff, ChevronLeft, Shield } from "lucide-react"
+import { syncProfile } from "@/lib/api"
 
 const DB_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID as string
 const PROFILE_COLL = process.env.NEXT_PUBLIC_APPWRITE_PROFILES_COLLECTION_ID as string
@@ -26,145 +22,307 @@ export default function RegisterPage() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [confirm, setConfirm] = useState("")
   const [showPw, setShowPw] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
-
-    if (password !== confirm) {
-      toast({ title: "Passwords do not match", variant: "destructive" })
-      return
-    }
-
     setIsLoading(true)
     try {
-      // 1) Create account (unauth flow)
       await account.create(ID.unique(), email.trim(), password, name.trim())
-
-      // 2) Create session (sign in)
       await account.createEmailPasswordSession(email.trim(), password)
-
-      // 3) Create a minimal profile document that matches your schema
       try {
         const me = await account.get()
+        const permissions = [
+          Permission.read(Role.user(me.$id)),
+          Permission.update(Role.user(me.$id)),
+          Permission.delete(Role.user(me.$id)),
+        ]
         await databases.createDocument(DB_ID, PROFILE_COLL, me.$id, {
           displayName: me.name ?? name.trim(),
+          email: me.email ?? email.trim(),
           image: "",
-        })
+        }, permissions)
         await syncProfile({
           displayName: me.name,
+          email: me.email ?? email.trim(),
           phone: me.phone ?? null,
           country: "USA",
           imageUrl: null,
-        }, me.$id);
-      } catch { /* ignore in client */ }
-
-      // 4) Refresh context & route
+        }, me.$id)
+      } catch (syncErr) {
+        console.warn("[register] Sync to Supabase failed — will auto-provision on next request:", syncErr)
+      }
       await refresh()
       router.replace(needsHealthOnboarding ? "/onboarding" : "/")
-    } catch (err: any) {
-      toast({
-        title: "Registration failed",
-        description: err?.message ?? "Please check details and try again.",
-        variant: "destructive",
-      })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Please check details and try again."
+      toast({ title: "Registration failed", description: message, variant: "destructive" })
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle>Create your account</CardTitle>
-          <CardDescription>
-            Use a strong password (min 12 chars with mixed case, number &amp; symbol).
-          </CardDescription>
-        </CardHeader>
+    <div className="reg-page" style={{ fontFamily: "Inter, sans-serif" }}>
+      {/* ── Mobile header (hidden on desktop) ── */}
+      <div className="reg-mobile-header">
+        <Link href="/welcome" className="reg-back-link">
+          <ChevronLeft className="w-4 h-4" style={{ color: "var(--nutri-heading)" }} />
+        </Link>
+        <span className="reg-page-title">Join Nutri</span>
+        <div style={{ width: 48 }} />
+      </div>
 
-        <CardContent>
-          <form onSubmit={handleRegister} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full name</Label>
-              <div className="relative">
-                <UserIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="name"
-                  type="text"
-                  className="pl-9"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  autoComplete="name"
-                />
-              </div>
+      {/* ── Desktop header ── */}
+      <div className="reg-desktop-header">
+        <h1 className="reg-desktop-title">Join Nutri</h1>
+      </div>
+
+      {/* ── Desktop: 2-column layout | Mobile: single column ── */}
+      <div className="reg-body">
+        {/* LEFT PANEL: image + tagline */}
+        <div className="reg-left">
+          <div className="reg-hero-img">
+            <img src="/images/signup-hero.png" alt="Fresh vegetables" />
+          </div>
+          <div className="reg-tagline">
+            <h2 className="reg-tagline-h">
+              Start your journey to<br />better health today.
+            </h2>
+            <p className="reg-tagline-p">
+              Create your account to personalized nutrition plans.
+            </p>
+          </div>
+        </div>
+
+        {/* RIGHT PANEL: form + social + trust (ALL INLINED) */}
+        <div className="reg-right">
+          {/* ── Form ── */}
+          <form onSubmit={handleRegister} className="reg-form">
+            <div>
+              <label className="reg-label">Full Name</label>
+              <input
+                id="name" type="text" value={name} onChange={(e) => setName(e.target.value)}
+                required autoComplete="name" placeholder="Enter your name"
+                className="reg-input"
+              />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  className="pl-9"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                />
-              </div>
+            <div>
+              <label className="reg-label">Email Address</label>
+              <input
+                id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                required autoComplete="email" placeholder="Enter your email"
+                className="reg-input"
+              />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPw ? "text" : "password"}
-                  className="pr-10"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoComplete="new-password"
+            <div>
+              <label className="reg-label">Create Password</label>
+              <div className="reg-pw-wrap">
+                <input
+                  id="password" type={showPw ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
+                  required autoComplete="new-password" placeholder="Enter your password"
+                  className="reg-input reg-input-pw"
                 />
-                <button
-                  type="button"
-                  className="absolute right-2 top-2.5 p-1 text-muted-foreground"
-                  onClick={() => setShowPw((s) => !s)}
-                  aria-label={showPw ? "Hide password" : "Show password"}
-                >
-                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                <button type="button" onClick={() => setShowPw((s) => !s)} className="reg-pw-toggle" aria-label={showPw ? "Hide password" : "Show password"}>
+                  {showPw ? <EyeOff className="w-5 h-5" style={{ color: "var(--nutri-placeholder)" }} /> : <Eye className="w-5 h-5" style={{ color: "var(--nutri-placeholder)" }} />}
                 </button>
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="confirm">Confirm password</Label>
-              <Input
-                id="confirm"
-                type={showPw ? "text" : "password"}
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                required
-                autoComplete="new-password"
-              />
-            </div>
-
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Creating account..." : "Create account"}
-            </Button>
-
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Already have an account?</span>
-              <Link href="/login" className="text-muted-foreground hover:underline">Sign in</Link>
-            </div>
+            <button type="submit" disabled={isLoading} className="reg-cta">
+              {isLoading ? "Creating account..." : "Continue"}
+            </button>
           </form>
-        </CardContent>
-      </Card>
+
+          {/* ── Social auth ── */}
+          <div className="reg-social">
+            <div className="reg-divider">
+              <div className="reg-divider-line" />
+              <span className="reg-divider-text">or sign up with</span>
+              <div className="reg-divider-line" />
+            </div>
+            <div className="reg-social-btns">
+              <button disabled title="Coming soon" className="reg-social-btn">Sign up with Google</button>
+              <button disabled title="Coming soon" className="reg-social-btn">
+                <span style={{ fontSize: 14 }}>🍎</span> Sign up with Apple
+              </button>
+            </div>
+          </div>
+
+          {/* ── Trust footer ── */}
+          <div className="reg-trust">
+            <div className="reg-trust-badge">
+              <Shield className="w-4 h-4 shrink-0" style={{ color: "var(--nutri-green-dark)" }} />
+              <p className="reg-trust-text">Your privacy is our priority. Your data is encrypted and secure.</p>
+            </div>
+            <p className="reg-login-link">
+              Already have an account?{" "}
+              <Link href="/login" className="font-extrabold no-underline" style={{ color: "var(--nutri-link)" }}>Log in</Link>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        /* ── Design tokens ── */
+        .reg-page {
+          min-height: 100vh;
+          background: var(--nutri-bg, #F5F5F0);
+        }
+
+        /* ── Mobile header ── */
+        .reg-mobile-header {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 16px 16px 8px;
+        }
+        .reg-back-link {
+          display: flex; align-items: center; justify-content: center; width: 48px; height: 48px;
+        }
+        .reg-page-title {
+          font-size: 18px; font-weight: 700; letter-spacing: -0.45px;
+          color: var(--nutri-heading);
+        }
+
+        /* ── Desktop header ── */
+        .reg-desktop-header { display: none; }
+        .reg-desktop-title {
+          font-size: 28px; font-weight: 800; letter-spacing: -0.7px;
+          color: var(--nutri-heading); text-align: center; margin: 0;
+        }
+
+        /* ── Body / layout ── */
+        .reg-body { display: flex; flex-direction: column; }
+
+        /* ── Left panel ── */
+        .reg-left { padding: 0 24px 16px; }
+        .reg-hero-img {
+          width: 100%; height: 180px; border-radius: 48px; overflow: hidden;
+          background: var(--nutri-green-10); position: relative;
+        }
+        .reg-hero-img img { width: 100%; height: 100%; object-fit: cover; }
+        .reg-tagline { text-align: center; padding: 16px 0 8px; }
+        .reg-tagline-h {
+          font-size: 28px; font-weight: 700; line-height: 35px;
+          letter-spacing: -0.7px; color: var(--nutri-heading); margin: 0;
+        }
+        .reg-tagline-p {
+          margin-top: 8px; font-size: 14px; line-height: 20px;
+          color: var(--nutri-body);
+        }
+
+        /* ── Right panel ── */
+        .reg-right { padding: 0 24px; }
+
+        /* ── Form ── */
+        .reg-form { display: flex; flex-direction: column; gap: 16px; }
+        .reg-label {
+          display: block; padding: 0 4px 8px; font-size: 14px; font-weight: 600;
+          color: var(--nutri-heading);
+        }
+        .reg-input {
+          width: 100%; height: 56px; padding: 0 24px; border-radius: 9999px;
+          border: 1px solid var(--nutri-border); background: white;
+          font-size: 16px; color: var(--nutri-heading); outline: none;
+          font-family: Inter, sans-serif;
+          transition: border-color 0.15s;
+          box-sizing: border-box;
+        }
+        .reg-input:focus { border-color: var(--nutri-green); }
+        .reg-input-pw { padding-right: 48px; }
+        .reg-pw-wrap { position: relative; }
+        .reg-pw-toggle {
+          position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+          padding: 4px; background: none; border: none; cursor: pointer;
+        }
+        .reg-cta {
+          width: 100%; height: 56px; border-radius: 9999px; border: none;
+          background: var(--nutri-green); font-size: 16px; font-weight: 700;
+          color: #0F172A; cursor: pointer;
+          box-shadow: 0px 10px 15px -3px rgba(153,204,51,0.2), 0px 4px 6px -4px rgba(153,204,51,0.2);
+          transition: opacity 0.15s;
+          font-family: Inter, sans-serif;
+        }
+        .reg-cta:hover { opacity: 0.9; }
+        .reg-cta:disabled { opacity: 0.5; }
+
+        /* ── Social ── */
+        .reg-social { padding: 24px 0 0; }
+        .reg-divider { display: flex; align-items: center; gap: 16px; padding: 8px 0; }
+        .reg-divider-line { flex: 1; height: 1px; background: var(--nutri-border); }
+        .reg-divider-text {
+          font-size: 12px; font-weight: 500; letter-spacing: 0.6px;
+          text-transform: uppercase; color: var(--nutri-placeholder); white-space: nowrap;
+        }
+        .reg-social-btns { display: flex; flex-direction: column; gap: 12px; padding-top: 16px; }
+        .reg-social-btn {
+          width: 100%; height: 56px; border-radius: 9999px;
+          border: 1px solid var(--nutri-border); background: white;
+          display: flex; align-items: center; justify-content: center; gap: 12px;
+          font-size: 16px; font-weight: 600; color: #334155; cursor: pointer;
+          font-family: Inter, sans-serif;
+        }
+        .reg-social-btn:disabled { opacity: 0.6; }
+
+        /* ── Trust ── */
+        .reg-trust {
+          display: flex; flex-direction: column; align-items: center; gap: 16px;
+          padding: 32px 0;
+        }
+        .reg-trust-badge {
+          width: 100%; border-radius: 48px; padding: 16px;
+          display: flex; align-items: center; gap: 12px;
+          background: var(--nutri-green-5); border: 1px solid var(--nutri-green-10);
+          box-sizing: border-box;
+        }
+        .reg-trust-text {
+          font-size: 13px; line-height: 18px; color: var(--nutri-body); margin: 0;
+        }
+        .reg-login-link {
+          font-size: 14px; color: var(--nutri-body-light); margin: 0;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           DESKTOP (≥1024px) — 2-column split layout
+           ═══════════════════════════════════════════════════════ */
+        @media (min-width: 1024px) {
+          .reg-mobile-header { display: none; }
+          .reg-desktop-header {
+            display: flex; justify-content: center; align-items: center;
+            padding: 49px 61px 0; max-width: 1280px; margin: 0 auto;
+          }
+          .reg-desktop-title { font-size: 28px; }
+
+          .reg-body {
+            flex-direction: row; gap: 0;
+            max-width: 1280px; margin: 28px auto 0; padding: 0 61px;
+          }
+          .reg-left {
+            flex: 0 0 54%; padding: 0;
+          }
+          .reg-hero-img {
+            width: 550px; height: 360px; border-radius: 48px;
+            margin: 16px 0 0 54px;
+          }
+          .reg-tagline {
+            text-align: left; padding: 0; margin: 0 0 0 54px;
+          }
+          .reg-tagline-h {
+            font-size: 28px; line-height: 35px; margin-top: 24px;
+          }
+          .reg-tagline-p { margin-top: 8px; }
+
+          .reg-right {
+            flex: 0 0 46%; padding: 24px 32px 0;
+          }
+          .reg-input { border-radius: 16px; padding: 0 25px; }
+          .reg-input-pw { padding-right: 48px; }
+          .reg-cta { border-radius: 16px; margin-top: 8px; }
+          .reg-social-btn { border-radius: 16px; }
+          .reg-trust-badge {
+            border-radius: 12px; max-width: 340px; margin: 0 auto;
+          }
+        }
+      `}</style>
     </div>
   )
 }

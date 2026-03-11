@@ -1,6 +1,5 @@
 // app/admin/layout.tsx
 import type { ReactNode } from "react"
-import { RoleGuard } from "@/components/role-guard"
 import AdminGuard from "@/components/admin/admin-guard"
 
 export const dynamic = 'force-dynamic'

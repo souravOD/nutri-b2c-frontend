@@ -2,15 +2,15 @@
 const ADMIN_DEFAULTS_KEY = "admin_reco_defaults_v1"
 const ADMIN_APPLY_KEY = "admin_apply_defaults_v1"
 
-export function getAdminDefaults() {
+export function getAdminDefaults<T = unknown>(): T | null {
   try {
-    return JSON.parse(localStorage.getItem(ADMIN_DEFAULTS_KEY) || "null")
+    return JSON.parse(localStorage.getItem(ADMIN_DEFAULTS_KEY) || "null") as T | null
   } catch {
     return null
   }
 }
 
-export function setAdminDefaults(value: any) {
+export function setAdminDefaults(value: unknown) {
   localStorage.setItem(ADMIN_DEFAULTS_KEY, JSON.stringify(value))
 }
 

@@ -15,13 +15,16 @@ const DENSITY = {
 
 export function convertToGrams(quantity: number, unit: string, ingredient?: string): number {
   const u = unit.toLowerCase().trim()
+  const weightMap = WEIGHT_TO_G as Record<string, number>
+  const volumeMap = VOLUME_TO_ML as Record<string, number>
+  const densityMap = DENSITY as Record<string, number>
 
   // direct weight
-  if (u in WEIGHT_TO_G) return quantity * (WEIGHT_TO_G as any)[u]
+  if (u in weightMap) return quantity * weightMap[u]
 
   // volume => grams using density
-  if (u in VOLUME_TO_ML) {
-    const ml = quantity * (VOLUME_TO_ML as any)[u]
+  if (u in volumeMap) {
+    const ml = quantity * volumeMap[u]
     const key =
       ingredient?.includes("oil") ? "olive_oil"
       : ingredient?.includes("milk") ? "milk"
@@ -29,7 +32,7 @@ export function convertToGrams(quantity: number, unit: string, ingredient?: stri
       : ingredient?.includes("flour") ? "flour"
       : ingredient?.includes("rice") ? "rice"
       : "default"
-    const density = (DENSITY as any)[key] ?? DENSITY.default
+    const density = densityMap[key] ?? DENSITY.default
     return ml * density
   }
 

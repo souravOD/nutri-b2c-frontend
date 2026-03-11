@@ -25,7 +25,6 @@ import {
   Settings as SettingsIcon,
   LayoutDashboard,
   LogOut,
-  User as UserIcon,
 } from "lucide-react"
 
 function initials(nameOrEmail?: string) {

@@ -1,804 +1,651 @@
 "use client";
 
-import * as React from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { authFetch } from "@/lib/api";
+import { useHouseholdMembers } from "@/hooks/use-household";
+import { useUnreadCount } from "@/hooks/use-notifications";
+import { useFavorites } from "@/hooks/use-favorites";
+import Link from "next/link";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/components/ui/use-toast";
+  Edit2,
+  Users,
+  Heart,
+  Settings,
+  LogOut,
+  ChevronRight,
+  Calendar,
+  Trophy,
+  Flame,
+  Bell,
+  Trash2,
+} from "lucide-react";
 
-import {
-  apiGetMyOverview,
-  apiGetMyHealth,
-  apiDeleteProfileRows,
-  apiDeleteAccount,
-  apiUpdateOverview,
-  apiUpdateHealth,
-} from "@/lib/api";
-
-// 👉 single source of truth lists
-import {
-  ALL_MAJOR_CONDITIONS,
-  ALL_ALLERGENS,
-  ALL_DIETS,
-  ALL_CUISINES,
-} from "@/lib/data";
-
-/* If lib/data.ts already exports these, import them instead of defining here */
-const activityOptions = [
-  { value: "sedentary", label: "Sedentary" },
-  { value: "lightly_active", label: "Lightly active" },
-  { value: "moderately_active", label: "Moderately active" },
-  { value: "very_active", label: "Very active" },
-  { value: "extremely_active", label: "Extremely active" },
-] as const;
-
-const goalOptions = [
-  { value: "lose_weight", label: "Lose weight" },
-  { value: "maintain_weight", label: "Maintain weight" },
-  { value: "gain_weight", label: "Gain weight" },
-  { value: "build_muscle", label: "Build muscle" },
-] as const;
-
-// ---------- types ----------
-type Overview = {
-  display_name?: string | null;
-  image_url?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  country?: string | null;
-  profile_diets?: string[] | null;
-  profile_allergens?: string[] | null;
-  preferred_cuisines?: string[] | null;
-  target_calories?: number | null;
-  target_protein_g?: number | null;
-  target_carbs_g?: number | null;
-  target_fat_g?: number | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-  [k: string]: any;
-};
-
-type Health = {
-  date_of_birth?: string | null;
-  sex?: "male" | "female" | "other" | null;
-  activity_level?: string | null;
-  goal?: string | null;
-  diets?: string[] | null;
-  allergies?: string[] | null;
-  intolerances?: string[] | null;
-  disliked_ingredients?: string[] | null;
-  onboarding_complete?: boolean | null;
-  height_display?: string | null;
-  weight_display?: string | null;
-  height_cm?: number | null;
-  weight_kg?: number | null;
-  majorConditions?: string[] | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-  [k: string]: any;
-};
-
-// ---------- helpers ----------
-const show = (v: unknown, fallback = "Not set") =>
-  v === null || v === undefined || v === "" ? fallback : String(v);
-
-const list = (arr?: string[] | null, fallback = "None specified") =>
-  arr && arr.length ? arr.join(", ") : fallback;
-
-function normalizeOverview(row: any): Overview {
-  if (!row) return {};
-  return {
-    display_name: row.display_name ?? row.displayName ?? null,
-    image_url: row.image_url ?? row.imageUrl ?? null,
-    email: row.email ?? null,
-    phone: row.phone ?? null,
-    country: row.country ?? null,
-    profile_diets: row.profile_diets ?? row.profileDiets ?? [],
-    profile_allergens: row.profile_allergens ?? row.profileAllergens ?? [],
-    preferred_cuisines: row.preferred_cuisines ?? row.preferredCuisines ?? [],
-    target_calories: row.target_calories ?? row.targetCalories ?? null,
-    target_protein_g: row.target_protein_g ?? row.targetProteinG ?? null,
-    target_carbs_g: row.target_carbs_g ?? row.targetCarbsG ?? null,
-    target_fat_g: row.target_fat_g ?? row.targetFatG ?? null,
-    created_at: row.created_at ?? row.createdAt ?? null,
-    updated_at: row.updated_at ?? row.updatedAt ?? null,
-  };
+interface ProfileData {
+  fullName: string | null;
+  firstName: string | null;
+  email: string | null;
+  phone: string | null;
+  gender: string | null;
+  age: number | null;
+  dateOfBirth: string | null;
 }
 
-function normalizeHealth(row: any): Health {
-  if (!row) return {};
-  const height_display =
-    row.height_display ?? row.heightDisplay ?? (row.height_cm ? `${row.height_cm} cm` : null);
-  const weight_display =
-    row.weight_display ?? row.weightDisplay ?? (row.weight_kg ? `${row.weight_kg} kg` : null);
-  return {
-    date_of_birth: row.date_of_birth ?? row.dateOfBirth ?? null,
-    sex: row.sex ?? null,
-    activity_level: row.activity_level ?? row.activityLevel ?? null,
-    goal: row.goal ?? null,
-    diets: row.diets ?? [],
-    allergies: row.allergies ?? row.allergens ?? [],
-    intolerances: row.intolerances ?? [],
-    disliked_ingredients: row.disliked_ingredients ?? row.dislikedIngredients ?? [],
-    onboarding_complete: (row.onboarding_complete ?? row.onboardingComplete) ?? null,
-    height_display,
-    weight_display,
-    height_cm: row.height_cm ?? row.heightCm ?? null,
-    weight_kg: row.weight_kg ?? row.weightKg ?? null,
-    majorConditions: row.majorConditions ?? row.major_conditions ?? [],
-    created_at: row.created_at ?? row.createdAt ?? null,
-    updated_at: row.updated_at ?? row.updatedAt ?? null,
-  };
+interface HealthData {
+  heightCm: number | null;
+  weightKg: number | null;
+  bmi: number | null;
+  activityLevel: string | null;
+  healthGoal: string | null;
+  targetCalories: number | null;
+  allergens: string[];
+  diets: string[];
+  conditions: string[];
 }
 
-function ageFromISO(iso?: string | null) {
-  if (!iso) return undefined;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return undefined;
-  const today = new Date();
-  let age = today.getFullYear() - d.getFullYear();
-  const m = today.getMonth() - d.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
-  return age;
-}
-
-function bmiFrom(heightCm?: number | null, weightKg?: number | null) {
-  if (!heightCm || !weightKg) return undefined;
-  const m = heightCm / 100;
-  const bmi = weightKg / (m * m);
-  return Math.round(bmi * 10) / 10;
-}
-
-// chip group used for multi-select lists
-function ChipGroup({
-  options,
-  value,
-  onChange,
-}: {
-  options: string[];
-  value: string[];
-  onChange: (next: string[]) => void;
-}) {
-  const toggle = (item: string) =>
-    onChange(value.includes(item) ? value.filter((x) => x !== item) : [...value, item]);
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((opt) => (
-        <Button
-          key={opt}
-          type="button"
-          variant={value.includes(opt) ? "default" : "outline"}
-          size="sm"
-          className="rounded-full"
-          onClick={() => toggle(opt)}
-        >
-          {opt}
-        </Button>
-      ))}
-    </div>
-  );
-}
-
-// ---------- page ----------
 export default function ProfilePage() {
-  const { toast } = useToast();
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"account" | "activity">("account");
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [health, setHealth] = useState<HealthData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { members = [] } = useHouseholdMembers();
+  const { data: unreadCount = 0 } = useUnreadCount();
+  const { savedRecipes = [] } = useFavorites();
 
-  const [loading, setLoading] = React.useState(true);
-  const [overview, setOverview] = React.useState<Overview | null>(null);
-  const [health, setHealth] = React.useState<Health | null>(null);
-
-  const [editOverview, setEditOverview] = React.useState(false);
-  const [editHealth, setEditHealth] = React.useState(false);
-
-  // local editable copies (arrays, not CSV)
-  const [ovForm, setOvForm] = React.useState<any>({});
-  const [hpForm, setHpForm] = React.useState<any>({});
-
-  async function load() {
-    try {
-      setLoading(true);
-      const [ovRaw, hpRaw] = await Promise.all([apiGetMyOverview(), apiGetMyHealth()]);
-      const ov = normalizeOverview(ovRaw);
-      const hp = normalizeHealth(hpRaw);
-      setOverview(ov);
-      setHealth(hp);
-
-      // seed edit state with arrays & scalars
-      setOvForm({
-        display_name: ov.display_name ?? "",
-        image_url: ov.image_url ?? "",
-        email: ov.email ?? "",
-        phone: ov.phone ?? "",
-        country: ov.country ?? "",
-        preferred_cuisines: ov.preferred_cuisines ?? [],
-        profile_allergens: ov.profile_allergens ?? [],
-        profile_diets: ov.profile_diets ?? [],
-        target_calories: ov.target_calories ?? "",
-        target_protein_g: ov.target_protein_g ?? "",
-        target_carbs_g: ov.target_carbs_g ?? "",
-        target_fat_g: ov.target_fat_g ?? "",
-      });
-      setHpForm({
-        date_of_birth: hp.date_of_birth ?? "",
-        sex: hp.sex ?? "",
-        activity_level: hp.activity_level ?? "",
-        goal: hp.goal ?? "",
-        height_display: hp.height_display ?? "",
-        weight_display: hp.weight_display ?? "",
-        height_cm: hp.height_cm ?? "",
-        weight_kg: hp.weight_kg ?? "",
-        diets: hp.diets ?? [],
-        allergies: hp.allergies ?? [],
-        intolerances: hp.intolerances ?? [],
-        disliked_ingredients: hp.disliked_ingredients ?? [],
-        major_conditions: hp.majorConditions ?? [],
-        onboarding_complete: !!hp.onboarding_complete,
-      });
-    } catch (e) {
-      console.error("profile load error", e);
-      toast({ description: "Failed to load profile.", variant: "destructive" });
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    async function load() {
+      try {
+        const [pRes, hRes] = await Promise.all([
+          authFetch("/api/v1/me/profile"),
+          authFetch("/api/v1/me/health"),
+        ]);
+        if (!pRes.ok || !hRes.ok) {
+          throw new Error(`Profile load failed: ${pRes.status}/${hRes.status}`);
+        }
+        setProfile(await pRes.json());
+        setHealth(await hRes.json());
+      } catch (err) {
+        console.error("Failed to load profile", err);
+      } finally {
+        setLoading(false);
+      }
     }
-  }
-
-  React.useEffect(() => {
     load();
   }, []);
 
-  const completeness = React.useMemo(() => {
-    const fields = [
-      overview?.display_name,
-      overview?.email,
-      health?.height_display ?? health?.height_cm,
-      health?.weight_display ?? health?.weight_kg,
-      health?.activity_level,
-      health?.goal,
-    ];
-    const have = fields.filter((f) => !(f === null || f === undefined || f === "")).length;
-    return Math.round((have / fields.length) * 100) || 0;
-  }, [overview, health]);
-
-  async function onDeleteRows() {
-    if (!confirm("Delete profile rows in Supabase (overview & health)?")) return;
+  const handleLogout = async () => {
     try {
-      await apiDeleteProfileRows();
-      await load();
-      toast({ description: "Profile rows deleted." });
-    } catch (e) {
-      console.error(e);
-      toast({ description: "Delete failed.", variant: "destructive" });
-    }
-  }
-
-  async function onDeleteAccount() {
-    if (!confirm("This permanently deletes your account and all data. Continue?")) return;
-    try {
-      await apiDeleteAccount();
+      const { account: appwriteAccount } = await import("@/lib/appwrite");
+      await appwriteAccount.deleteSession("current");
+    } catch {
+      // Session may already be expired — continue to redirect
+    } finally {
+      // Hard redirect to clear all React state/context
       window.location.href = "/login";
-    } catch (e) {
-      console.error(e);
-      toast({ description: "Delete account failed.", variant: "destructive" });
     }
-  }
+  };
 
-  // ----- saves (arrays, not CSV) -----
-  async function saveOverviewInline() {
+  const handleDeleteAccount = async () => {
+    if (!confirm("Are you sure you want to delete your account? This action cannot be undone.")) return;
     try {
-      const body = {
-        displayName: ovForm.display_name || null,
-        imageUrl: ovForm.image_url || null,
-        email: ovForm.email || null,
-        phone: ovForm.phone || null,
-        country: ovForm.country || null,
-        preferredCuisines: ovForm.preferred_cuisines || [],
-        profileAllergens: ovForm.profile_allergens || [],
-        profileDiets: ovForm.profile_diets || [],
-        targetCalories: ovForm.target_calories === "" ? null : Number(ovForm.target_calories),
-        targetProteinG: ovForm.target_protein_g === "" ? null : Number(ovForm.target_protein_g),
-        targetCarbsG: ovForm.target_carbs_g === "" ? null : Number(ovForm.target_carbs_g),
-        targetFatG: ovForm.target_fat_g === "" ? null : Number(ovForm.target_fat_g),
-      };
-      const r = await apiUpdateOverview(body);
-      if (!r.ok) throw new Error(`overview save ${r.status}`);
-      toast({ description: "Overview saved." });
-      setEditOverview(false);
-      await load();
-    } catch (e) {
-      console.error(e);
-      toast({ description: "Failed to save overview.", variant: "destructive" });
+      await authFetch("/api/v1/me/account", { method: "DELETE" });
+      // Backend deletes Supabase data + Appwrite docs + Appwrite user
+      // Just clear the local session and hard redirect
+      try {
+        const { account: appwriteAccount } = await import("@/lib/appwrite");
+        await appwriteAccount.deleteSession("current");
+      } catch {
+        // Session cleanup is best-effort since user is already deleted server-side
+      }
+      window.location.href = "/login";
+    } catch (err) {
+      console.error("Delete account failed", err);
+      alert("Failed to delete account. Please try again.");
     }
+  };
+
+  if (loading) {
+    return (
+      <div className="profile-loading">
+        <div className="loading-spinner" />
+        <style jsx>{`
+          .profile-loading { display: flex; justify-content: center; padding: 80px 0; }
+          .loading-spinner {
+            width: 36px; height: 36px;
+            border: 3px solid #E0E0E0; border-top-color: #99CC33;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+          }
+          @keyframes spin { to { transform: rotate(360deg); } }
+        `}</style>
+      </div>
+    );
   }
-
-  async function saveHealthInline() {
-    try {
-      const body = {
-        dateOfBirth: hpForm.date_of_birth || null,
-        sex: hpForm.sex || null,
-        activityLevel: hpForm.activity_level || null,
-        goal: hpForm.goal || null,
-        heightDisplay: hpForm.height_display || null,
-        weightDisplay: hpForm.weight_display || null,
-        heightCm: hpForm.height_cm === "" ? null : Number(hpForm.height_cm),
-        weightKg: hpForm.weight_kg === "" ? null : Number(hpForm.weight_kg),
-        diets: hpForm.diets || [],
-        allergens: hpForm.allergies || [],
-        intolerances: hpForm.intolerances || [],
-        dislikedIngredients: hpForm.disliked_ingredients || [],
-        majorConditions: hpForm.major_conditions || [],
-        onboardingComplete: !!hpForm.onboarding_complete,
-      };
-      const r = await apiUpdateHealth(body);
-      if (!r.ok) throw new Error(`health save ${r.status}`);
-      toast({ description: "Health saved." });
-      setEditHealth(false);
-      await load();
-    } catch (e) {
-      console.error(e);
-      toast({ description: "Failed to save health.", variant: "destructive" });
-    }
-  }
-
-  // derived display fallbacks
-  const dietsDisplay = React.useMemo(() => {
-    const fromOverview = overview?.profile_diets ?? [];
-    return (fromOverview.length ? fromOverview : (health?.diets ?? [])) as string[];
-  }, [overview?.profile_diets, health?.diets]);
-
-  const allergiesDisplay = React.useMemo(() => {
-    const fromOverview = overview?.profile_allergens ?? [];
-    return (fromOverview.length ? fromOverview : (health?.allergies ?? [])) as string[];
-  }, [overview?.profile_allergens, health?.allergies]);
-
-  const cuisinesDisplay = React.useMemo(() => {
-    return (overview?.preferred_cuisines ?? []) as string[];
-  }, [overview?.preferred_cuisines]);
-
-  const bmiEdit =
-    hpForm && hpForm.height_cm && hpForm.weight_kg
-      ? bmiFrom(Number(hpForm.height_cm), Number(hpForm.weight_kg))
-      : undefined;
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage your account and health information
-          </p>
+    <div className="profile-page">
+      {/* Profile Header */}
+      <div className="profile-header">
+        <div className="avatar-section">
+          <div className="avatar">
+            {(profile?.firstName || profile?.fullName || "U")[0].toUpperCase()}
+          </div>
+          <div className="user-info">
+            <h1>{profile?.fullName || "User"}</h1>
+            <p className="email">{profile?.email || ""}</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant={editOverview ? "secondary" : "default"} onClick={() => setEditOverview((v) => !v)}>
-            {editOverview ? "Cancel Overview" : "Edit Overview"}
-          </Button>
-          <Button variant={editHealth ? "secondary" : "default"} onClick={() => setEditHealth((v) => !v)}>
-            {editHealth ? "Cancel Health" : "Edit Health"}
-          </Button>
-          <Button variant="destructive" onClick={onDeleteRows}>
-            Delete Profile Rows
-          </Button>
-        </div>
+        <button className="edit-profile-btn" onClick={() => router.push("/profile/edit")}>
+          <Edit2 size={16} />
+          <span>Edit</span>
+        </button>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="w-full justify-start">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="health">Health</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-        </TabsList>
+      {/* Tab Bar */}
+      <div className="tab-bar">
+        <button
+          className={`tab ${activeTab === "account" ? "active" : ""}`}
+          onClick={() => setActiveTab("account")}
+        >
+          Account
+        </button>
+        <button
+          className={`tab ${activeTab === "activity" ? "active" : ""}`}
+          onClick={() => setActiveTab("activity")}
+        >
+          Activity
+        </button>
+      </div>
 
-        {/* ---------------- Overview ---------------- */}
-        <TabsContent value="overview">
-          <Card className="mb-6">
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-4">
-                <Avatar className="h-14 w-14">
-                  <AvatarImage
-                    src={(editOverview ? ovForm.image_url : overview?.image_url) || undefined}
-                    alt={(overview?.display_name || "User")}
-                  />
-                  <AvatarFallback>
-                    {(overview?.display_name || "U").slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
-                  <div className="font-semibold text-lg truncate">
-                    {editOverview ? (ovForm.display_name || "") : show(overview?.display_name)}
-                  </div>
-                  <div className="text-sm text-muted-foreground truncate">
-                    {editOverview ? (ovForm.email || "") : show(overview?.email)}
-                  </div>
-                </div>
+      {/* Tab Content */}
+      {activeTab === "account" ? (
+        <div className="tab-content">
+          {/* Personal Info Card */}
+          <div className="info-card">
+            <h3 className="card-title">Personal Information</h3>
+            <div className="info-grid">
+              <div className="info-item">
+                <span className="label">Name</span>
+                <span className="value">{profile?.fullName || "—"}</span>
               </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Profile Completeness</span>
-                  <span className="text-muted-foreground">{completeness}%</span>
-                </div>
-                <Progress value={completeness} />
+              <div className="info-item">
+                <span className="label">Email</span>
+                <span className="value">{profile?.email || "—"}</span>
               </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Basic Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div>Age: {ageFromISO(health?.date_of_birth) ?? "Age not set"}</div>
-                <div>Sex: {show(health?.sex, "Not Specified")}</div>
-                <div>Height: {health?.height_display ?? (health?.height_cm ? `${health.height_cm} cm` : "Not set")}</div>
-                <div>Weight: {health?.weight_display ?? (health?.weight_kg ? `${health.weight_kg} kg` : "Not set")}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Health Metrics</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div>
-                  {(() => {
-                    const bmi = bmiFrom(health?.height_cm, health?.weight_kg);
-                    return bmi ? `BMI ${bmi}` : "Complete height and weight to see BMI";
-                  })()}
-                </div>
-                <div>Activity Level: {show(health?.activity_level, "Not Set")}</div>
-                <div>Goal: {show(health?.goal, "Not Set")}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Dietary Preferences</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                {!editOverview && (
-                  <>
-                    <div><span className="font-medium">Diets: </span>{list(dietsDisplay)}</div>
-                    <div><span className="font-medium">Allergies: </span>{list(allergiesDisplay)}</div>
-                    <div><span className="font-medium">Preferred cuisines: </span>{list(cuisinesDisplay)}</div>
-                  </>
-                )}
-                {editOverview && (
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="mb-1 block">Diets</Label>
-                      <ChipGroup
-                        options={ALL_DIETS}
-                        value={ovForm.profile_diets || []}
-                        onChange={(next) => setOvForm((s: any) => ({ ...s, profile_diets: next }))}
-                      />
-                    </div>
-                    <div>
-                      <Label className="mb-1 block">Allergies</Label>
-                      <ChipGroup
-                        options={ALL_ALLERGENS}
-                        value={ovForm.profile_allergens || []}
-                        onChange={(next) => setOvForm((s: any) => ({ ...s, profile_allergens: next }))}
-                      />
-                    </div>
-                    <div>
-                      <Label className="mb-1 block">Preferred cuisines</Label>
-                      <ChipGroup
-                        options={ALL_CUISINES}
-                        value={ovForm.preferred_cuisines || []}
-                        onChange={(next) => setOvForm((s: any) => ({ ...s, preferred_cuisines: next }))}
-                      />
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Account & Targets</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                {!editOverview && (
-                  <>
-                    <div>Account Name: {show(overview?.display_name)}</div>
-                    <div>Email: {show(overview?.email)}</div>
-                    <div>Phone: {show(overview?.phone)}</div>
-                    <div>Country: {show(overview?.country)}</div>
-                    <div>Target Calories: {show(overview?.target_calories)}</div>
-                    <div>Target Protein (g): {show(overview?.target_protein_g)}</div>
-                    <div>Target Carbs (g): {show(overview?.target_carbs_g)}</div>
-                    <div>Target Fat (g): {show(overview?.target_fat_g)}</div>
-                  </>
-                )}
-                {editOverview && (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="col-span-2">
-                      <Label htmlFor="ov-display-name">Display name</Label>
-                      <Input id="ov-display-name" value={ovForm.display_name} onChange={(e) => setOvForm((s: any) => ({...s, display_name: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="ov-email">Email</Label>
-                      <Input id="ov-email" type="email" value={ovForm.email} onChange={(e) => setOvForm((s: any) => ({...s, email: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="ov-phone">Phone</Label>
-                      <Input id="ov-phone" value={ovForm.phone} onChange={(e) => setOvForm((s: any) => ({...s, phone: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="ov-country">Country</Label>
-                      <Input id="ov-country" value={ovForm.country} onChange={(e) => setOvForm((s: any) => ({...s, country: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="ov-img">Image URL</Label>
-                      <Input id="ov-img" value={ovForm.image_url} onChange={(e) => setOvForm((s: any) => ({...s, image_url: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="ov-cal">Target Calories</Label>
-                      <Input id="ov-cal" type="number" value={ovForm.target_calories} onChange={(e) => setOvForm((s: any) => ({...s, target_calories: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="ov-pro">Target Protein (g)</Label>
-                      <Input id="ov-pro" type="number" value={ovForm.target_protein_g} onChange={(e) => setOvForm((s: any) => ({...s, target_protein_g: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="ov-carbs">Target Carbs (g)</Label>
-                      <Input id="ov-carbs" type="number" value={ovForm.target_carbs_g} onChange={(e) => setOvForm((s: any) => ({...s, target_carbs_g: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="ov-fat">Target Fat (g)</Label>
-                      <Input id="ov-fat" type="number" value={ovForm.target_fat_g} onChange={(e) => setOvForm((s: any) => ({...s, target_fat_g: e.target.value}))} />
-                    </div>
-                    <div className="col-span-2 flex gap-2">
-                      <Button onClick={saveOverviewInline}>Save</Button>
-                      <Button variant="secondary" onClick={() => (setEditOverview(false), load())}>Cancel</Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              <div className="info-item">
+                <span className="label">Phone</span>
+                <span className="value">{profile?.phone || "—"}</span>
+              </div>
+              <div className="info-item">
+                <span className="label">Gender</span>
+                <span className="value" style={{ textTransform: "capitalize" }}>
+                  {profile?.gender?.replace(/_/g, " ") || "—"}
+                </span>
+              </div>
+              <div className="info-item">
+                <span className="label">Age</span>
+                <span className="value">{profile?.age ?? "—"}</span>
+              </div>
+            </div>
           </div>
-        </TabsContent>
 
-        {/* ---------------- Health ---------------- */}
-        <TabsContent value="health">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Personal</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                {!editHealth && (
-                  <>
-                    <div>DOB: {show(health?.date_of_birth)}</div>
-                    <div>Sex: {show(health?.sex, "Not Specified")}</div>
-                    <div>Activity Level: {show(health?.activity_level, "Not Set")}</div>
-                    <div>Goal: {show(health?.goal, "Not Set")}</div>
-                  </>
-                )}
-                {editHealth && (
-                  <div className="space-y-3">
-                    <div>
-                      <Label htmlFor="hp-dob">Date of Birth</Label>
-                      <Input id="hp-dob" type="date" value={hpForm.date_of_birth} onChange={(e) => setHpForm((s: any) => ({...s, date_of_birth: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="hp-sex">Sex</Label>
-                      <Input id="hp-sex" placeholder="male | female | other" value={hpForm.sex} onChange={(e) => setHpForm((s: any) => ({...s, sex: e.target.value}))} />
-                    </div>
+          {/* Navigation Links */}
+          <div className="nav-links">
+            <button className="nav-link" onClick={() => router.push("/profile/family")}>
+              <div className="nav-link-icon" style={{ background: "#F0F9E8", color: "#99CC33" }}>
+                <Users size={18} />
+              </div>
+              <div className="nav-link-text">
+                <span className="nav-link-title">Manage Family Members</span>
+                <span className="nav-link-subtitle">{members.length} member{members.length !== 1 ? "s" : ""}</span>
+              </div>
+              <ChevronRight size={18} color="#CCC" />
+            </button>
 
-                    <div>
-                      <Label>Activity Level</Label>
-                      <Select
-                        value={hpForm.activity_level ?? ""}
-                        onValueChange={(v) => setHpForm((s: any) => ({ ...s, activity_level: v }))}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select activity level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {activityOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+            <button className="nav-link" onClick={() => router.push("/profile/edit-health")}>
+              <div className="nav-link-icon" style={{ background: "#FFF0E5", color: "#FF6B35" }}>
+                <Heart size={18} />
+              </div>
+              <div className="nav-link-text">
+                <span className="nav-link-title">Health & Dietary</span>
+                <span className="nav-link-subtitle">
+                  {health?.allergens?.length || 0} allergens · {health?.diets?.length || 0} diets · {health?.conditions?.length || 0} conditions
+                </span>
+              </div>
+              <ChevronRight size={18} color="#CCC" />
+            </button>
 
-                    <div>
-                      <Label>Goal</Label>
-                      <Select
-                        value={hpForm.goal ?? ""}
-                        onValueChange={(v) => setHpForm((s: any) => ({ ...s, goal: v }))}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select goal" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {goalOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <button className="nav-link" onClick={() => router.push("/my-recipes")}>
+              <div className="nav-link-icon" style={{ background: "#E8F5E9", color: "#4CAF50" }}>
+                <Heart size={18} />
+              </div>
+              <div className="nav-link-text">
+                <span className="nav-link-title">My Recipes</span>
+                <span className="nav-link-subtitle">View and manage your recipes</span>
+              </div>
+              <ChevronRight size={18} color="#CCC" />
+            </button>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Measurements</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                {!editHealth && (
-                  <>
-                    <div>Height: {health?.height_display ?? (health?.height_cm ? `${health.height_cm} cm` : "Not set")}</div>
-                    <div>Weight: {health?.weight_display ?? (health?.weight_kg ? `${health.weight_kg} kg` : "Not set")}</div>
-                    <div>
-                      BMI: {(() => {
-                        const bmi = bmiFrom(health?.height_cm, health?.weight_kg);
-                        return bmi ? bmi : "—";
-                      })()}
-                    </div>
-                  </>
-                )}
-                {editHealth && (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div>
-                      <Label htmlFor="hp-hdisp">Height (display)</Label>
-                      <Input id="hp-hdisp" value={hpForm.height_display} onChange={(e) => setHpForm((s: any) => ({...s, height_display: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="hp-wdisp">Weight (display)</Label>
-                      <Input id="hp-wdisp" value={hpForm.weight_display} onChange={(e) => setHpForm((s: any) => ({...s, weight_display: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="hp-hcm">Height (cm)</Label>
-                      <Input id="hp-hcm" type="number" value={hpForm.height_cm} onChange={(e) => setHpForm((s: any) => ({...s, height_cm: e.target.value}))} />
-                    </div>
-                    <div>
-                      <Label htmlFor="hp-wkg">Weight (kg)</Label>
-                      <Input id="hp-wkg" type="number" value={hpForm.weight_kg} onChange={(e) => setHpForm((s: any) => ({...s, weight_kg: e.target.value}))} />
-                    </div>
-                    <div className="col-span-2 text-sm text-muted-foreground">
-                      BMI (live): {bmiEdit ?? "—"}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <button className="nav-link" onClick={() => router.push("/settings")}>
+              <div className="nav-link-icon" style={{ background: "#F0F0FF", color: "#6C5CE7" }}>
+                <Settings size={18} />
+              </div>
+              <div className="nav-link-text">
+                <span className="nav-link-title">Settings</span>
+                <span className="nav-link-subtitle">Preferences, goals, privacy</span>
+              </div>
+              <ChevronRight size={18} color="#CCC" />
+            </button>
 
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-base">Restrictions & Intolerances</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-3 text-sm">
-                {!editHealth && (
-                  <>
-                    <div>
-                      <div className="font-medium">Major Health Conditions</div>
-                      <div>{list(health?.majorConditions)}</div>
-                    </div>
-                    <div>
-                      <div className="font-medium">Allergies</div>
-                      <div>{list(health?.allergies)}</div>
-                    </div>
-                    <div>
-                      <div className="font-medium">Intolerances</div>
-                      <div>{list(health?.intolerances)}</div>
-                    </div>
-                    <div className="md:col-span-3">
-                      <div className="font-medium">Disliked Ingredients</div>
-                      <div>{list(health?.disliked_ingredients)}</div>
-                    </div>
-                  </>
-                )}
-                {editHealth && (
-                  <>
-                    <div className="md:col-span-3 space-y-2">
-                      <Label>Major Health Conditions</Label>
-                      <ChipGroup
-                        options={ALL_MAJOR_CONDITIONS}
-                        value={hpForm.major_conditions || []}
-                        onChange={(next) => setHpForm((s: any) => ({ ...s, major_conditions: next }))}
-                      />
-                    </div>
-                    <div className="md:col-span-3 space-y-2">
-                      <Label>Allergies</Label>
-                      <ChipGroup
-                        options={ALL_ALLERGENS}
-                        value={hpForm.allergies || []}
-                        onChange={(next) => setHpForm((s: any) => ({ ...s, allergies: next }))}
-                      />
-                    </div>
-                    <div className="md:col-span-3 space-y-2">
-                      <Label>Intolerances (CSV quick entry)</Label>
-                      <Input
-                        placeholder="e.g., lactose, sorbitol"
-                        value={(hpForm.intolerances || []).join(", ")}
-                        onChange={(e) =>
-                          setHpForm((s: any) => ({
-                            ...s,
-                            intolerances: e.target.value
-                              .split(",")
-                              .map((x) => x.trim())
-                              .filter(Boolean),
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="md:col-span-3 space-y-2">
-                      <Label>Disliked Ingredients (CSV quick entry)</Label>
-                      <Input
-                        placeholder="e.g., cilantro, olives"
-                        value={(hpForm.disliked_ingredients || []).join(", ")}
-                        onChange={(e) =>
-                          setHpForm((s: any) => ({
-                            ...s,
-                            disliked_ingredients: e.target.value
-                              .split(",")
-                              .map((x) => x.trim())
-                              .filter(Boolean),
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="md:col-span-3 flex items-center gap-2">
-                      <Checkbox id="hp-onboard" checked={!!hpForm.onboarding_complete} onCheckedChange={(v) => setHpForm((s: any) => ({...s, onboarding_complete: !!v}))} />
-                      <Label htmlFor="hp-onboard">Onboarding Complete</Label>
-                    </div>
-                    <div className="md:col-span-3 flex gap-2">
-                      <Button onClick={saveHealthInline}>Save</Button>
-                      <Button variant="secondary" onClick={() => (setEditHealth(false), load())}>Cancel</Button>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+            <button className="nav-link" onClick={() => router.push("/notifications")}>
+              <div className="nav-link-icon" style={{ background: "#FFF8E5", color: "#FFB300" }}>
+                <Bell size={18} />
+              </div>
+              <div className="nav-link-text">
+                <span className="nav-link-title">Notifications</span>
+                <span className="nav-link-subtitle">
+                  {unreadCount ? `${unreadCount} unread` : "All caught up"}
+                </span>
+              </div>
+              <ChevronRight size={18} color="#CCC" />
+            </button>
           </div>
-        </TabsContent>
 
-        {/* ---------------- Security ---------------- */}
-        <TabsContent value="security">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Danger Zone</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              <p className="text-sm text-muted-foreground">
-                Permanently delete your account and all associated data from Supabase and Appwrite.
-              </p>
+          {/* Account Actions */}
+          <div className="account-actions">
+            <button className="action-btn logout" onClick={handleLogout}>
+              <LogOut size={18} />
+              <span>Log Out</span>
+            </button>
+            <button className="action-btn delete" onClick={handleDeleteAccount}>
+              <Trash2 size={18} />
+              <span>Delete Account</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="tab-content">
+          {/* Activity Tab */}
+          <div className="info-card activity-card">
+            <div className="activity-stat">
+              <Flame size={28} color="#FF6B35" />
               <div>
-                <Button variant="destructive" onClick={onDeleteAccount}>Delete Account</Button>
+                <span className="stat-value">0</span>
+                <span className="stat-label">Day Streak</span>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+          </div>
 
-      {loading && <div className="text-sm text-muted-foreground">Loading…</div>}
+          <div className="info-card">
+            <h3 className="card-title">
+              <Trophy size={18} color="#FFD93D" />
+              Achievements
+            </h3>
+            <div className="achievements-empty">
+              <p>Start logging meals to earn achievements!</p>
+            </div>
+          </div>
+
+          {/* Liked Recipes */}
+          <div className="info-card">
+            <div className="liked-header">
+              <h3 className="card-title">
+                <Heart size={18} color="#E74C3C" />
+                Liked Recipes
+                {savedRecipes.length > 0 && (
+                  <span className="liked-count">{savedRecipes.length}</span>
+                )}
+              </h3>
+              {savedRecipes.length > 0 && (
+                <Link href="/favorites" className="see-all-link">View All</Link>
+              )}
+            </div>
+            {savedRecipes.length === 0 ? (
+              <div className="achievements-empty">
+                <p>Save recipes by tapping the heart icon on any recipe card.</p>
+              </div>
+            ) : (
+              <div className="liked-grid">
+                {savedRecipes.slice(0, 6).map((recipe) => (
+                  <Link key={recipe.id} href={`/recipes/${recipe.id}`} className="liked-card">
+                    <div className="liked-card-img-wrap">
+                      <img
+                        src={recipe.imageUrl || "/placeholder-recipe.jpg"}
+                        alt={recipe.title}
+                        className="liked-card-img"
+                      />
+                    </div>
+                    <span className="liked-card-name">{recipe.title}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="info-card">
+            <h3 className="card-title">
+              <Calendar size={18} color="#4ECDC4" />
+              Recent Activity
+            </h3>
+            <div className="achievements-empty">
+              <p>Your recent activity will appear here.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        .profile-page {
+          max-width: 680px;
+          margin: 0 auto;
+          padding: 0 16px 100px;
+        }
+        .profile-page a {
+          text-decoration: none;
+          color: inherit;
+        }
+        .profile-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 24px 0 20px;
+        }
+        .avatar-section {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+        .avatar {
+          width: 72px;
+          height: 72px;
+          border-radius: 20px;
+          background: linear-gradient(135deg, #99CC33, #77AA11);
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 28px;
+          font-weight: 700;
+        }
+        .user-info h1 {
+          margin: 0 0 2px;
+          font-size: 22px;
+          font-weight: 700;
+          color: #1A1A2E;
+        }
+        .email {
+          margin: 0;
+          font-size: 14px;
+          color: #999;
+        }
+        .edit-profile-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 16px;
+          border-radius: 10px;
+          border: 1px solid #E0E0E0;
+          background: white;
+          color: #555;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          font-family: inherit;
+          transition: all 0.2s;
+        }
+        .edit-profile-btn:hover {
+          border-color: #99CC33;
+          color: #99CC33;
+        }
+        .tab-bar {
+          display: flex;
+          gap: 4px;
+          background: #F5F5F5;
+          padding: 4px;
+          border-radius: 12px;
+          margin-bottom: 20px;
+        }
+        .tab {
+          flex: 1;
+          padding: 10px;
+          border-radius: 10px;
+          border: none;
+          background: transparent;
+          color: #999;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          font-family: inherit;
+          transition: all 0.2s;
+        }
+        .tab.active {
+          background: white;
+          color: #1A1A2E;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .tab-content {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .info-card {
+          background: white;
+          border-radius: 16px;
+          padding: 20px;
+          border: 1px solid #F0F0F0;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .card-title {
+          margin: 0 0 16px;
+          font-size: 15px;
+          font-weight: 600;
+          color: #1A1A2E;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        .info-item {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .label {
+          font-size: 12px;
+          color: #999;
+          font-weight: 500;
+        }
+        .value {
+          font-size: 14px;
+          color: #333;
+          font-weight: 500;
+        }
+        .nav-links {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .nav-link {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 16px;
+          background: white;
+          border-radius: 16px;
+          border: 1px solid #F0F0F0;
+          cursor: pointer;
+          transition: all 0.2s;
+          text-align: left;
+          font-family: inherit;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .nav-link:hover {
+          border-color: #E0E0E0;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .nav-link-icon {
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .nav-link-text {
+          flex: 1;
+          min-width: 0;
+        }
+        .nav-link-title {
+          display: block;
+          font-size: 14px;
+          font-weight: 600;
+          color: #1A1A2E;
+          margin-bottom: 2px;
+        }
+        .nav-link-subtitle {
+          display: block;
+          font-size: 12px;
+          color: #999;
+        }
+        .account-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-top: 8px;
+        }
+        .action-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 14px;
+          border-radius: 12px;
+          border: 1px solid;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          font-family: inherit;
+          transition: all 0.2s;
+        }
+        .action-btn.logout {
+          border-color: #E0E0E0;
+          background: white;
+          color: #666;
+        }
+        .action-btn.logout:hover {
+          background: #F5F5F5;
+        }
+        .action-btn.delete {
+          border-color: #FFE0E0;
+          background: #FFF5F5;
+          color: #E74C3C;
+        }
+        .action-btn.delete:hover {
+          background: #FFE0E0;
+        }
+        .activity-card {
+          display: flex;
+          align-items: center;
+        }
+        .activity-stat {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+        .stat-value {
+          display: block;
+          font-size: 28px;
+          font-weight: 700;
+          color: #1A1A2E;
+          line-height: 1;
+        }
+        .stat-label {
+          display: block;
+          font-size: 13px;
+          color: #999;
+          margin-top: 2px;
+        }
+        .achievements-empty {
+          text-align: center;
+          padding: 24px;
+          color: #999;
+          font-size: 14px;
+        }
+        .achievements-empty p { margin: 0; }
+
+        /* Liked Recipes */
+        .liked-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 12px;
+        }
+        .liked-header .card-title {
+          margin: 0;
+        }
+        .liked-count {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 20px;
+          height: 20px;
+          padding: 0 6px;
+          border-radius: 10px;
+          background: #E74C3C;
+          color: white;
+          font-size: 11px;
+          font-weight: 700;
+          margin-left: 6px;
+        }
+        .see-all-link {
+          font-size: 13px;
+          font-weight: 600;
+          color: #99CC33 !important;
+          white-space: nowrap;
+        }
+        .liked-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+        .liked-card {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .liked-card-img-wrap {
+          width: 100%;
+          aspect-ratio: 4 / 3;
+          border-radius: 14px;
+          overflow: hidden;
+        }
+        .liked-card-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .liked-card-name {
+          font-size: 13px;
+          font-weight: 600;
+          color: #1A1A2E;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          line-height: 1.3;
+        }
+
+        @media (max-width: 480px) {
+          .info-grid { grid-template-columns: 1fr; }
+          .avatar { width: 60px; height: 60px; font-size: 24px; border-radius: 16px; }
+          .user-info h1 { font-size: 18px; }
+        }
+      `}</style>
     </div>
   );
 }

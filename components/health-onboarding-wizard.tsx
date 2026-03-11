@@ -1,7 +1,7 @@
 // components/health-onboarding-wizard.tsx
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useUser } from "@/hooks/use-user"
 import { Button } from "@/components/ui/button"
@@ -10,8 +10,13 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { ALL_MAJOR_CONDITIONS } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
+import {
+  apiGetAllergens,
+  apiGetDietaryPreferences,
+  apiGetHealthConditions,
+} from "@/lib/api"
+import type { TaxonomyOption } from "@/lib/api"
 
 type Step = 1 | 2 | 3 | 4
 const toggleArray = (arr: string[], val: string) =>
@@ -30,19 +35,20 @@ const goalOptions = [
   { value: "gain_weight", label: "Gain weight" },
   { value: "build_muscle", label: "Build muscle" },
 ] as const
+type Sex = "male" | "female" | "other"
+type HeightUnit = "cm" | "ft"
+type WeightUnit = "kg" | "lb"
+type ActivityValue = typeof activityOptions[number]["value"]
+type GoalValue = typeof goalOptions[number]["value"]
 
-const dietChoices = ["Vegan", "Vegetarian", "Keto", "Paleo", "Gluten-Free", "Dairy-Free", "Low-Carb"]
-const allergenChoices = [
-  "Peanuts",
-  "Tree Nuts",
-  "Milk",
-  "Eggs",
-  "Soy",
-  "Wheat",
-  "Fish",
-  "Shellfish",
-  "Sesame",
-]
+const isSex = (value: string): value is Sex =>
+  value === "male" || value === "female" || value === "other"
+const isHeightUnit = (value: string): value is HeightUnit => value === "cm" || value === "ft"
+const isWeightUnit = (value: string): value is WeightUnit => value === "kg" || value === "lb"
+const isActivityValue = (value: string): value is ActivityValue =>
+  activityOptions.some((option) => option.value === value)
+const isGoalValue = (value: string): value is GoalValue =>
+  goalOptions.some((option) => option.value === value)
 
 export default function HealthOnboardingWizard() {
   const { user, updateUser } = useUser()
@@ -51,20 +57,43 @@ export default function HealthOnboardingWizard() {
 
   const [step, setStep] = useState<Step>(1)
   const [saving, setSaving] = useState(false)
-  const [conditions, setConditions] = useState<string[]>([])
+  const [dietOptions, setDietOptions] = useState<TaxonomyOption[]>([])
+  const [allergenOptions, setAllergenOptions] = useState<TaxonomyOption[]>([])
+  const [conditionOptions, setConditionOptions] = useState<TaxonomyOption[]>([])
 
   // --- form state (accepts whatever the user enters; we normalize on save)
   const [dateOfBirth, setDateOfBirth] = useState<string>("")
-  const [sex, setSex] = useState<"male" | "female" | "other" | "">("")
+  const [sex, setSex] = useState<Sex | "">("")
   const [heightValue, setHeightValue] = useState<string>("")
-  const [heightUnit, setHeightUnit] = useState<"cm" | "ft">("cm")
+  const [heightUnit, setHeightUnit] = useState<HeightUnit>("cm")
   const [weightValue, setWeightValue] = useState<string>("")
-  const [weightUnit, setWeightUnit] = useState<"kg" | "lb">("kg")
-  const [activityLevel, setActivityLevel] = useState<typeof activityOptions[number]["value"] | "">("")
-  const [goal, setGoal] = useState<typeof goalOptions[number]["value"] | "">("")
+  const [weightUnit, setWeightUnit] = useState<WeightUnit>("kg")
+  const [activityLevel, setActivityLevel] = useState<ActivityValue | "">("")
+  const [goal, setGoal] = useState<GoalValue | "">("")
   const [diets, setDiets] = useState<string[]>([])
   const [allergens, setAllergens] = useState<string[]>([])
+  const [conditions, setConditions] = useState<string[]>([])
   const [disliked, setDisliked] = useState<string>("") // comma-separated
+
+  useEffect(() => {
+    let active = true
+    Promise.all([apiGetDietaryPreferences(), apiGetAllergens(), apiGetHealthConditions()])
+      .then(([dietsRes, allergensRes, conditionsRes]) => {
+        if (!active) return
+        setDietOptions(dietsRes || [])
+        setAllergenOptions(allergensRes || [])
+        setConditionOptions(conditionsRes || [])
+      })
+      .catch((err) => {
+        console.error("Failed to load taxonomy choices", err)
+        if (active) {
+          setDietOptions([])
+          setAllergenOptions([])
+          setConditionOptions([])
+        }
+      })
+    return () => { active = false }
+  }, [])
 
   const pct = useMemo(() => {
     const total = 4
@@ -82,6 +111,32 @@ export default function HealthOnboardingWizard() {
         .map((s) => s.trim())
         .filter(Boolean)
 
+      const resolveSelection = (selected: string[], options: TaxonomyOption[]) => {
+        const byCode = new Map<string, TaxonomyOption>()
+        for (const opt of options || []) {
+          const key = opt.code || opt.name
+          if (key) byCode.set(key, opt)
+        }
+        const names = selected
+          .map((code) => byCode.get(code)?.name ?? code)
+          .filter(Boolean)
+        const codes = selected
+          .map((code) => byCode.get(code)?.code ?? code)
+          .filter(Boolean)
+        const ids = selected
+          .map((code) => byCode.get(code)?.gold_id)
+          .filter(Boolean)
+        return {
+          names: Array.from(new Set(names)),
+          codes: Array.from(new Set(codes)),
+          ids: Array.from(new Set(ids)),
+        }
+      }
+
+      const dietSel = resolveSelection(diets, dietOptions)
+      const allergenSel = resolveSelection(allergens, allergenOptions)
+      const conditionSel = resolveSelection(conditions, conditionOptions)
+
       // Normalize for our hook’s accepted shapes
       const payload = {
         // allow empty DoB (wizard UI shows optional)
@@ -95,10 +150,16 @@ export default function HealthOnboardingWizard() {
         ...(weightValue
           ? { weight: { value: Number(weightValue), unit: weightUnit } as const }
           : {}),
-        ...(diets.length ? { diets } : {}),
-        ...(allergens.length ? { allergens } : {}),
+        ...(dietSel.names.length ? { diets: dietSel.names } : {}),
+        ...(dietSel.codes.length ? { diet_codes: dietSel.codes } : {}),
+        ...(dietSel.ids.length ? { diet_ids: dietSel.ids } : {}),
+        ...(allergenSel.names.length ? { allergens: allergenSel.names } : {}),
+        ...(allergenSel.codes.length ? { allergen_codes: allergenSel.codes } : {}),
+        ...(allergenSel.ids.length ? { allergen_ids: allergenSel.ids } : {}),
         ...(dislikedIngredients.length ? { dislikedIngredients } : {}),
-        ...(conditions.length ? { majorConditions: conditions } : {}),
+        ...(conditionSel.names.length ? { major_conditions: conditionSel.names } : {}),
+        ...(conditionSel.codes.length ? { condition_codes: conditionSel.codes } : {}),
+        ...(conditionSel.ids.length ? { condition_ids: conditionSel.ids } : {}),
         // ✅ important: mark onboarding completed
         onboardingComplete: true,
       }
@@ -106,8 +167,9 @@ export default function HealthOnboardingWizard() {
       await updateUser(payload)
       toast({ title: "Profile saved", description: "Your recommendations are ready." })
       router.replace("/")
-    } catch (e: any) {
-      toast({ title: "Could not save profile", description: e?.message || "", variant: "destructive" })
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : ""
+      toast({ title: "Could not save profile", description: message, variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -143,7 +205,13 @@ export default function HealthOnboardingWizard() {
 
               <div className="space-y-2">
                 <Label>Sex</Label>
-                <RadioGroup value={sex} onValueChange={(v) => setSex(v as any)} className="grid grid-cols-3 gap-3">
+                <RadioGroup
+                  value={sex}
+                  onValueChange={(v) => {
+                    if (isSex(v)) setSex(v)
+                  }}
+                  className="grid grid-cols-3 gap-3"
+                >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem id="male" value="male" />
                     <Label htmlFor="male">Male</Label>
@@ -170,7 +238,9 @@ export default function HealthOnboardingWizard() {
                       value={heightValue}
                       onChange={(e) => setHeightValue(e.target.value)}
                     />
-                    <Select value={heightUnit} onValueChange={(v) => setHeightUnit(v as any)}>
+                    <Select value={heightUnit} onValueChange={(v) => {
+                      if (isHeightUnit(v)) setHeightUnit(v)
+                    }}>
                       <SelectTrigger className="w-[110px]">
                         <SelectValue />
                       </SelectTrigger>
@@ -192,7 +262,9 @@ export default function HealthOnboardingWizard() {
                       value={weightValue}
                       onChange={(e) => setWeightValue(e.target.value)}
                     />
-                    <Select value={weightUnit} onValueChange={(v) => setWeightUnit(v as any)}>
+                    <Select value={weightUnit} onValueChange={(v) => {
+                      if (isWeightUnit(v)) setWeightUnit(v)
+                    }}>
                       <SelectTrigger className="w-[110px]">
                         <SelectValue />
                       </SelectTrigger>
@@ -211,7 +283,9 @@ export default function HealthOnboardingWizard() {
             <section className="space-y-6">
               <div className="space-y-2">
                 <Label>Activity Level</Label>
-                <Select value={activityLevel} onValueChange={(v) => setActivityLevel(v as any)}>
+                <Select value={activityLevel} onValueChange={(v) => {
+                  if (isActivityValue(v)) setActivityLevel(v)
+                }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select activity level" />
                   </SelectTrigger>
@@ -227,7 +301,9 @@ export default function HealthOnboardingWizard() {
 
               <div className="space-y-2">
                 <Label>Goal</Label>
-                <Select value={goal} onValueChange={(v) => setGoal(v as any)}>
+                <Select value={goal} onValueChange={(v) => {
+                  if (isGoalValue(v)) setGoal(v)
+                }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select primary goal" />
                   </SelectTrigger>
@@ -248,16 +324,16 @@ export default function HealthOnboardingWizard() {
               <div className="space-y-2">
                 <Label>Dietary Preferences</Label>
                 <div className="flex flex-wrap gap-2">
-                  {dietChoices.map((d) => (
+                  {dietOptions.map((d) => (
                     <Button
-                      key={d}
+                      key={d.code || d.name}
                       type="button"
-                      variant={diets.includes(d) ? "default" : "outline"}
-                      onClick={() => setDiets((arr) => toggleArray(arr, d))}
+                      variant={diets.includes(d.code || d.name || "") ? "default" : "outline"}
+                      onClick={() => setDiets((arr) => toggleArray(arr, d.code || d.name || ""))}
                       className="rounded-full"
                       size="sm"
                     >
-                      {d}
+                      {d.name || d.code}
                     </Button>
                   ))}
                 </div>
@@ -266,16 +342,16 @@ export default function HealthOnboardingWizard() {
               <div className="space-y-2">
                 <Label>Allergens</Label>
                 <div className="flex flex-wrap gap-2">
-                  {allergenChoices.map((a) => (
+                  {allergenOptions.map((a) => (
                     <Button
-                      key={a}
+                      key={a.code || a.name}
                       type="button"
-                      variant={allergens.includes(a) ? "default" : "outline"}
-                      onClick={() => setAllergens((arr) => toggleArray(arr, a))}
+                      variant={allergens.includes(a.code || a.name || "") ? "default" : "outline"}
+                      onClick={() => setAllergens((arr) => toggleArray(arr, a.code || a.name || ""))}
                       className="rounded-full"
                       size="sm"
                     >
-                      {a}
+                      {a.name || a.code}
                     </Button>
                   ))}
                 </div>
@@ -284,16 +360,16 @@ export default function HealthOnboardingWizard() {
               <div className="space-y-2">
                 <Label>Major Health Conditions</Label>
                 <div className="flex flex-wrap gap-2">
-                  {ALL_MAJOR_CONDITIONS.map((c) => (
+                  {conditionOptions.map((c) => (
                     <Button
-                      key={c}
+                      key={c.code || c.name}
                       type="button"
-                      variant={conditions.includes(c) ? "default" : "outline"}
-                      onClick={() => setConditions((arr) => toggleArray(arr, c))}
+                      variant={conditions.includes(c.code || c.name || "") ? "default" : "outline"}
+                      onClick={() => setConditions((arr) => toggleArray(arr, c.code || c.name || ""))}
                       className="rounded-full"
                       size="sm"
                     >
-                      {c}
+                      {c.name || c.code}
                     </Button>
                   ))}
                 </div>

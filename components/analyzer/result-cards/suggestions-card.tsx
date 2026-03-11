@@ -3,8 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Edit, Lightbulb } from "lucide-react"
 import type { AnalyzeResult } from "@/lib/types"
+import type { AnalyzerCardResult } from "@/components/analyzer/result-cards/types"
 
-export function SuggestionsCard({ result, onEdit }: { result: any; onEdit?: (r: AnalyzeResult)=>void }) {
+interface SuggestionsCardProps {
+  result: AnalyzerCardResult
+  onEdit?: (r: AnalyzeResult) => void
+}
+
+export function SuggestionsCard({ result, onEdit }: SuggestionsCardProps) {
   const suggestions: string[] = result.suggestions || []
   return (
     <Card>

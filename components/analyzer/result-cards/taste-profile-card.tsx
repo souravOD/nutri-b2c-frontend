@@ -4,8 +4,14 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Edit, Palette } from "lucide-react"
 import type { AnalyzeResult } from "@/lib/types"
+import type { AnalyzerCardResult } from "@/components/analyzer/result-cards/types"
 
-export function TasteProfileCard({ result, onEdit }: { result: any; onEdit?: (r: AnalyzeResult)=>void }) {
+interface TasteProfileCardProps {
+  result: AnalyzerCardResult
+  onEdit?: (r: AnalyzeResult) => void
+}
+
+export function TasteProfileCard({ result, onEdit }: TasteProfileCardProps) {
   const tastes: string[] = result.tasteList || []
   return (
     <Card>

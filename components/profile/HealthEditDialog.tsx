@@ -24,6 +24,8 @@ const schema = z.object({
   intolerances: z.array(z.string()).optional(),
   disliked_ingredients: z.array(z.string()).optional(),
 });
+type HealthFormValues = z.infer<typeof schema>
+type HealthInitialValues = Partial<HealthFormValues> | null | undefined
 
 export function HealthEditDialog({
   open,
@@ -33,11 +35,11 @@ export function HealthEditDialog({
 }: {
   open: boolean;
   onOpenChange(v: boolean): void;
-  initial: any;
+  initial: HealthInitialValues;
   onSaved(): void;
 }) {
-  const form = useForm<z.infer<typeof schema>>({
-    resolver: zodResolver(schema) as unknown as Resolver<z.infer<typeof schema>>, // <-- cast clears 2719
+  const form = useForm<HealthFormValues>({
+    resolver: zodResolver(schema) as unknown as Resolver<HealthFormValues>, // <-- cast clears 2719
     defaultValues: {
       ...initial,
       diets: initial?.diets ?? [],
