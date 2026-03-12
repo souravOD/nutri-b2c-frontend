@@ -14,6 +14,7 @@ import {
     useDeleteMealPlanItem,
 } from "@/hooks/use-meal-plan";
 import { useHouseholdMembers } from "@/hooks/use-household";
+import { useActiveMember } from "@/contexts/member-context";
 import { useToast } from "@/hooks/use-toast";
 import { WeeklyDayCard } from "@/components/meal-plan/weekly-day-card";
 import { RecipeDetailDrawer } from "@/components/meal-plan/recipe-detail-drawer";
@@ -86,15 +87,18 @@ export default function WeeklyMealPlanPage() {
 
     // Household members
     const { members } = useHouseholdMembers();
+    const { activeMemberId } = useActiveMember();
     const [selectedMemberId, setSelectedMemberId] = useState<string | undefined>(undefined);
 
-    // Auto-select owner as default member
+    // Auto-select: prefer global active member, fall back to owner
     useEffect(() => {
         if (members.length > 0 && !selectedMemberId) {
-            const owner = members.find((m) => m.isProfileOwner) ?? members[0];
-            if (owner) setSelectedMemberId(owner.id);
+            const initial = (activeMemberId && members.find((m) => m.id === activeMemberId))
+                ? activeMemberId
+                : (members.find((m) => m.isProfileOwner) ?? members[0])?.id;
+            if (initial) setSelectedMemberId(initial);
         }
-    }, [members]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [members, activeMemberId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Fetch active + draft plans (filtered by member)
     const { plans: activePlans, isLoading: activePlansLoading } = useMealPlans("active", selectedMemberId);

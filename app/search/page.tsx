@@ -12,7 +12,7 @@ import { useFilters } from "@/hooks/use-filters"
 import { useSettings } from "@/hooks/use-settings"
 import { useToast } from "@/hooks/use-toast"
 import { useActiveMember } from "@/contexts/member-context"
-import { useHouseholdMembers } from "@/hooks/use-household-members"
+import { useHouseholdMembers } from "@/hooks/use-household"
 import { rank } from "@/lib/recommendation"
 import type { ScoredRecipe } from "@/lib/recommendation"
 import type { Recipe } from "@/lib/types"
@@ -131,7 +131,7 @@ export default function SearchPage() {
   const { toast } = useToast()
   const inputRef = useRef<HTMLInputElement>(null)
   const { activeMemberId } = useActiveMember()
-  const { data: householdMembers = [] } = useHouseholdMembers()
+  const { members: householdMembers = [] } = useHouseholdMembers()
 
   // State
   const [query, setQuery] = useState(searchParams.get("q") || "")

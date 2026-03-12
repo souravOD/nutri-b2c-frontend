@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { ArrowLeft, Sparkles, UtensilsCrossed, Target, Wallet, Check, ChevronRight, Salad, Flame, Leaf, Vegan, Heart, Dumbbell, Scale, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useHouseholdMembers } from "@/hooks/use-household";
+import { useActiveMember } from "@/contexts/member-context";
 import { useGeneratePlan } from "@/hooks/use-meal-plan";
 import { useToast } from "@/hooks/use-toast";
 import type { MealPlanGenerateParams } from "@/lib/types";
@@ -53,6 +54,7 @@ export default function AiPlannerPage() {
     const router = useRouter();
     const { toast } = useToast();
     const { members, household } = useHouseholdMembers();
+    const { activeMemberId } = useActiveMember();
     const generatePlan = useGeneratePlan();
 
     // Determine if household is single — skip family scope step
@@ -77,13 +79,15 @@ export default function AiPlannerPage() {
         return m?.householdRole === "child" || m?.householdRole === "dependent";
     });
 
-    // Initialise selection with owner once members load
+    // Initialise selection: prefer global active member, fall back to owner
     useEffect(() => {
         if (members.length > 0 && selectedMemberIds.size === 0) {
-            const owner = members.find((m) => m.isProfileOwner) ?? members[0];
-            if (owner) setSelectedMemberIds(new Set([owner.id]));
+            const initial = (activeMemberId && members.find((m) => m.id === activeMemberId))
+                ? activeMemberId
+                : (members.find((m) => m.isProfileOwner) ?? members[0])?.id;
+            if (initial) setSelectedMemberIds(new Set([initial]));
         }
-    }, [members]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [members, activeMemberId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Auto-skip step 1 when household data loads and reveals single
     useEffect(() => {

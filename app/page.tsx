@@ -10,7 +10,7 @@ import { useUser } from "@/hooks/use-user"
 import { useFavorites } from "@/hooks/use-favorites"
 import { useActiveMember } from "@/contexts/member-context"
 import { MemberSwitcher } from "@/components/member-switcher"
-import { useHouseholdMembers } from "@/hooks/use-household-members"
+import { useHouseholdMembers } from "@/hooks/use-household"
 import { CalorieRing } from "@/components/home/calorie-ring"
 import { MacroBar } from "@/components/home/macro-bar"
 import { RecipeCardHome } from "@/components/home/recipe-card-home"
@@ -33,7 +33,7 @@ export default function HomePage() {
   const { toast } = useToast()
   const { data: unreadCount = 0 } = useUnreadCount()
   const { activeMemberId, setActiveMember } = useActiveMember()
-  const { data: householdMembers = [] } = useHouseholdMembers()
+  const { members: householdMembers = [] } = useHouseholdMembers()
 
   const [logRecipe, setLogRecipe] = useState<Recipe | null>(null)
   const [logOpen, setLogOpen] = useState(false)

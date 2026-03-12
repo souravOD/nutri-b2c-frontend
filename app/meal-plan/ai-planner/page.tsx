@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { apiGetProfile, apiGetMyHealth } from "@/lib/api";
 import { useHouseholdMembers } from "@/hooks/use-household";
+import { useActiveMember } from "@/contexts/member-context";
 import { useMealPlans, useActivatePlan, useGeneratePlan, useDeletePlan } from "@/hooks/use-meal-plan";
 import { AiPromptInput } from "@/components/meal-plan/ai-prompt-input";
 import { PersonalizationCard } from "@/components/meal-plan/personalization-card";
@@ -20,6 +21,7 @@ export default function AiPlannerPage() {
 
     // Data hooks
     const { members } = useHouseholdMembers();
+    const { activeMemberId } = useActiveMember();
     const { plans } = useMealPlans();
     const activatePlan = useActivatePlan();
     const generatePlan = useGeneratePlan();
@@ -40,13 +42,15 @@ export default function AiPlannerPage() {
     // ── Dynamic member selection ──
     const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
 
-    // Initialise selection with owner once members load
+    // Initialise selection: prefer global active member, fall back to owner
     useEffect(() => {
         if (members.length > 0 && selectedMemberIds.size === 0) {
-            const owner = members.find((m) => m.isProfileOwner) ?? members[0];
-            if (owner) setSelectedMemberIds(new Set([owner.id]));
+            const initial = (activeMemberId && members.find((m) => m.id === activeMemberId))
+                ? activeMemberId
+                : (members.find((m) => m.isProfileOwner) ?? members[0])?.id;
+            if (initial) setSelectedMemberIds(new Set([initial]));
         }
-    }, [members]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [members, activeMemberId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const toggleMember = useCallback((id: string) => {
         setSelectedMemberIds((prev) => {
