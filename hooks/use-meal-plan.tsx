@@ -10,6 +10,9 @@ import {
   apiRegenerateMealPlan,
   apiDeleteMealPlan,
   apiLogMealFromPlan,
+  apiAddMealPlanItem,
+  apiReorderMealPlanItems,
+  apiDeleteMealPlanItem,
 } from "@/lib/api";
 import type {
   MealPlan,
@@ -18,10 +21,10 @@ import type {
   MealPlanDetailResponse,
 } from "@/lib/types";
 
-export function useMealPlans(status?: string) {
+export function useMealPlans(status?: string, memberId?: string) {
   const { data, isLoading, error, refetch } = useQuery<{ plans: MealPlan[] }>({
-    queryKey: ["meal-plans", status],
-    queryFn: () => apiGetMealPlans(status),
+    queryKey: ["meal-plans", status, memberId],
+    queryFn: () => apiGetMealPlans(status, memberId),
     staleTime: 30_000,
   });
 
@@ -117,6 +120,65 @@ export function useLogMealFromPlan() {
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ["meal-plan", variables.planId] });
       qc.invalidateQueries({ queryKey: ["meal-log"] });
+    },
+  });
+}
+
+export function useAddMealPlanItem() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      planId,
+      recipeId,
+      mealDate,
+      mealType,
+      servings,
+      replaceItemId,
+    }: {
+      planId: string;
+      recipeId: string;
+      mealDate: string;
+      mealType: string;
+      servings?: number;
+      replaceItemId?: string;
+    }) => apiAddMealPlanItem(planId, { recipeId, mealDate, mealType, servings, replaceItemId }),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["meal-plan", variables.planId] });
+    },
+  });
+}
+
+export function useReorderMealPlanItems() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      planId,
+      moves,
+    }: {
+      planId: string;
+      moves: { itemId: string; mealDate: string; mealType: string }[];
+    }) => apiReorderMealPlanItems(planId, moves),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["meal-plan", variables.planId] });
+    },
+  });
+}
+
+export function useDeleteMealPlanItem() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      planId,
+      itemId,
+    }: {
+      planId: string;
+      itemId: string;
+    }) => apiDeleteMealPlanItem(planId, itemId),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["meal-plan", variables.planId] });
     },
   });
 }

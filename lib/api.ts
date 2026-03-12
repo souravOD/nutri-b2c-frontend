@@ -5,6 +5,7 @@ import { account } from "./appwrite";
 import type {
   Recipe,
   MealPlan,
+  MealPlanItem,
   MealPlanGenerateParams,
   MealPlanGenerateResponse,
   MealPlanDetailResponse,
@@ -26,6 +27,7 @@ import type {
   BudgetType,
   NutritionDashboardDailyResponse,
   NutritionDashboardWeeklyResponse,
+  NutritionDashboardRangeResponse,
   NutritionMemberSummaryResponse,
   NutritionHealthMetricsResponse,
   HouseholdMembersResponse,
@@ -256,6 +258,9 @@ export async function authFetch(path: string, opts: FetchOpts = {}) {
   if (opts.body && !headers.has("content-type") && !(opts.body instanceof FormData)) headers.set("content-type", "application/json");
   if (jwt) headers.set("x-appwrite-jwt", jwt);
   if (method !== "GET") headers.set("idempotency-key", makeIdemKey());
+  if (typeof window !== "undefined") {
+    try { headers.set("x-timezone", Intl.DateTimeFormat().resolvedOptions().timeZone); } catch { /* skip */ }
+  }
 
   try {
     const res = await fetch(url, {
@@ -406,19 +411,23 @@ function normalizeUserRecipe(row: unknown): UserRecipe {
   } as UserRecipe;
 }
 
-export async function apiGetFeed(): Promise<Recipe[]> {
-  const res = await authFetch(`/api/v1/feed`);
+export async function apiGetFeed(memberId?: string): Promise<Recipe[]> {
+  const params = new URLSearchParams();
+  if (memberId) params.set("memberId", memberId);
+  const qs = params.toString();
+  const res = await authFetch(`/api/v1/feed${qs ? `?${qs}` : ""}`);
   const data = await res.json().catch(() => []);
   const arr = Array.isArray(data) ? data : [];
   return arr.map((it: unknown) => toRecipe(it));
 }
 
 
-export async function apiSearchRecipes(args: { q?: string; filters: SearchFilters; sort?: string }): Promise<Recipe[]> {
-  const { q, filters, sort } = args;
+export async function apiSearchRecipes(args: { q?: string; filters: SearchFilters; sort?: string; memberId?: string }): Promise<Recipe[]> {
+  const { q, filters, sort, memberId } = args;
   const p = new URLSearchParams();
 
   if (q && q.trim()) p.set("q", q.trim());
+  if (memberId) p.set("memberId", memberId);
 
   // arrays
   if (filters?.dietaryRestrictions?.length) p.set("diets", filters.dietaryRestrictions.join(","));
@@ -1169,8 +1178,11 @@ export async function apiGenerateMealPlan(params: MealPlanGenerateParams): Promi
   return r.json();
 }
 
-export async function apiGetMealPlans(status?: string): Promise<{ plans: MealPlan[] }> {
-  const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+export async function apiGetMealPlans(status?: string, memberId?: string): Promise<{ plans: MealPlan[] }> {
+  const params = new URLSearchParams();
+  if (status) params.set("status", status);
+  if (memberId) params.set("memberId", memberId);
+  const qs = params.toString() ? `?${params.toString()}` : "";
   const r = await authFetch(`/api/v1/meal-plans${qs}`);
   if (!r.ok) throw new Error(`get-meal-plans ${r.status}`);
   return r.json();
@@ -1217,6 +1229,43 @@ export async function apiLogMealFromPlan(planId: string, itemId: string) {
     body: JSON.stringify({ itemId }),
   });
   if (!r.ok) throw new Error(`log-meal-from-plan ${r.status}`);
+  return r.json();
+}
+
+export async function apiAddMealPlanItem(
+  planId: string,
+  data: { recipeId: string; mealDate: string; mealType: string; servings?: number; replaceItemId?: string }
+): Promise<{ item: MealPlanItem }> {
+  const r = await authFetch(`/api/v1/meal-plans/${planId}/add-item`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!r.ok) throw new Error(`add-meal-plan-item ${r.status}`);
+  return r.json();
+}
+
+export async function apiReorderMealPlanItems(
+  planId: string,
+  moves: { itemId: string; mealDate: string; mealType: string }[]
+): Promise<{ items: MealPlanItem[] }> {
+  const r = await authFetch(`/api/v1/meal-plans/${planId}/reorder`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ moves }),
+  });
+  if (!r.ok) throw new Error(`reorder-meal-plan ${r.status}`);
+  return r.json();
+}
+
+export async function apiDeleteMealPlanItem(
+  planId: string,
+  itemId: string
+): Promise<{ deleted: boolean; itemId: string }> {
+  const r = await authFetch(`/api/v1/meal-plans/${planId}/items/${itemId}`, {
+    method: "DELETE",
+  });
+  if (!r.ok) throw new Error(`delete-meal-plan-item ${r.status}`);
   return r.json();
 }
 
@@ -1403,6 +1452,34 @@ export async function apiGetNutritionWeekly(params?: {
   return r.json();
 }
 
+export async function apiGetNutritionMonthly(params?: {
+  month?: string;
+  memberId?: string;
+}): Promise<NutritionDashboardRangeResponse> {
+  const query = new URLSearchParams();
+  if (params?.month) query.set("month", params.month);
+  if (params?.memberId) query.set("memberId", params.memberId);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  const r = await authFetch(`/api/v1/nutrition-dashboard/monthly${qs}`);
+  if (!r.ok) throw new Error(`nutrition-monthly ${r.status}`);
+  return r.json();
+}
+
+export async function apiGetNutritionRange(params?: {
+  startDate?: string;
+  endDate?: string;
+  memberId?: string;
+}): Promise<NutritionDashboardRangeResponse> {
+  const query = new URLSearchParams();
+  if (params?.startDate) query.set("startDate", params.startDate);
+  if (params?.endDate) query.set("endDate", params.endDate);
+  if (params?.memberId) query.set("memberId", params.memberId);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  const r = await authFetch(`/api/v1/nutrition-dashboard/range${qs}`);
+  if (!r.ok) throw new Error(`nutrition-range ${r.status}`);
+  return r.json();
+}
+
 export async function apiGetNutritionMemberSummary(params?: {
   date?: string;
 }): Promise<NutritionMemberSummaryResponse> {
@@ -1434,6 +1511,8 @@ export async function apiGetHouseholdMembers(): Promise<HouseholdMembersResponse
 export async function apiAddFamilyMember(data: {
   fullName: string;
   firstName?: string;
+  email?: string | null;
+  dateOfBirth?: string | null;
   age?: number;
   gender?: string;
   householdRole?: string;
@@ -1458,9 +1537,12 @@ export async function apiUpdateMemberHealth(memberId: string, data: {
   targetProteinG?: number;
   targetCarbsG?: number;
   targetFatG?: number;
+  healthGoal?: string | null;
+  dislikedIngredients?: string[];
   allergenIds?: string[];
   dietIds?: string[];
   conditionIds?: string[];
+  cuisineIds?: string[];
 }): Promise<{ member: HouseholdMember }> {
   const r = await authFetch(`/api/v1/households/members/${memberId}/health`, {
     method: "PATCH",
@@ -1476,6 +1558,103 @@ export async function apiDeleteHouseholdMember(memberId: string): Promise<void> 
     method: "DELETE",
   });
   if (!r.ok) throw new Error(`delete-member ${r.status}`);
+}
+
+export async function apiUpdateMemberBasicInfo(memberId: string, data: {
+  fullName?: string;
+  firstName?: string;
+  age?: number;
+  gender?: string;
+  householdRole?: string;
+}): Promise<{ member: HouseholdMember }> {
+  const r = await authFetch(`/api/v1/households/members/${memberId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!r.ok) throw new Error(`update-member-basic ${r.status}`);
+  return r.json();
+}
+
+// ── Invitations ─────────────────────────────────────────────────────────────
+
+import type {
+  HouseholdInvitation,
+  HouseholdInvitationDetail,
+  HouseholdPreference,
+} from "./types";
+
+export async function apiCreateInvitation(data: {
+  role?: string;
+  invitedEmail?: string;
+}): Promise<{ invitation: HouseholdInvitation; inviteUrl: string; expiresAt: string }> {
+  const r = await authFetch("/api/v1/households/invitations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!r.ok) throw new Error(`create-invitation ${r.status}`);
+  return r.json();
+}
+
+export async function apiListInvitations(): Promise<{ invitations: HouseholdInvitation[] }> {
+  const r = await authFetch("/api/v1/households/invitations");
+  if (!r.ok) throw new Error(`list-invitations ${r.status}`);
+  return r.json();
+}
+
+export async function apiRevokeInvitation(id: string): Promise<void> {
+  const r = await authFetch(`/api/v1/households/invitations/${id}`, { method: "DELETE" });
+  if (!r.ok) throw new Error(`revoke-invitation ${r.status}`);
+}
+
+export async function apiGetInvitationByToken(token: string): Promise<HouseholdInvitationDetail> {
+  const r = await authFetch(`/api/v1/invitations/${token}`);
+  if (!r.ok) {
+    const body = await r.json().catch(() => ({ detail: `Error ${r.status}` }));
+    const err = new Error(body.detail || `invitation-details ${r.status}`);
+    (err as any).status = r.status;
+    throw err;
+  }
+  return r.json();
+}
+
+export async function apiAcceptInvitation(token: string): Promise<{ success: boolean; householdId: string }> {
+  const r = await authFetch(`/api/v1/invitations/${token}/accept`, { method: "POST" });
+  if (!r.ok) {
+    const body = await r.json().catch(() => ({ detail: `Error ${r.status}` }));
+    const err = new Error(body.detail || `accept-invitation ${r.status}`);
+    (err as any).status = r.status;
+    throw err;
+  }
+  return r.json();
+}
+
+// ── Household Preferences ───────────────────────────────────────────────────
+
+export async function apiGetHouseholdPreferences(): Promise<{ preferences: HouseholdPreference[] }> {
+  const r = await authFetch("/api/v1/households/preferences");
+  if (!r.ok) throw new Error(`get-preferences ${r.status}`);
+  return r.json();
+}
+
+export async function apiSetHouseholdPreference(data: {
+  preferenceType: string;
+  preferenceValue: string;
+  priority?: number;
+}): Promise<{ preference: HouseholdPreference }> {
+  const r = await authFetch("/api/v1/households/preferences", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!r.ok) throw new Error(`set-preference ${r.status}`);
+  return r.json();
+}
+
+export async function apiDeleteHouseholdPreference(id: string): Promise<void> {
+  const r = await authFetch(`/api/v1/households/preferences/${id}`, { method: "DELETE" });
+  if (!r.ok) throw new Error(`delete-preference ${r.status}`);
 }
 
 // ── Recipe Ratings ─────────────────────────────────────────────────────────

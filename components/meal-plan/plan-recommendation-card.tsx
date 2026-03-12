@@ -10,6 +10,7 @@ interface PlanRecommendationCardProps {
     imageUrl?: string;
     totalMeals?: number;
     totalDays?: number;
+    memberNames?: string[];
     onSelect: (planId: string) => void;
     onDelete?: (planId: string) => void;
     isLoading?: boolean;
@@ -28,6 +29,7 @@ export function PlanRecommendationCard({
     imageUrl,
     totalMeals,
     totalDays,
+    memberNames,
     onSelect,
     onDelete,
     isLoading,
@@ -52,7 +54,7 @@ export function PlanRecommendationCard({
 
     return (
         <div
-            className={`bg-white rounded-2xl overflow-hidden border shadow-sm transition-all ${isActive ? "border-[#538100]/40 ring-1 ring-[#538100]/20" : "border-slate-100"
+            className={`bg-white rounded-2xl overflow-hidden border shadow-sm transition-all ${isActive ? "border-[#99CC33]/40 ring-1 ring-[#99CC33]/20" : "border-slate-100"
                 }`}
         >
             {/* Hero Image */}
@@ -101,10 +103,27 @@ export function PlanRecommendationCard({
                     )}
                 </div>
 
-                {/* Stats */}
-                <p className="text-sm text-slate-500 mb-4">
+                <p className="text-sm text-slate-500 mb-2">
                     {days} Days · {meals} Meals{cost ? ` · ${cost}` : ""}
                 </p>
+
+                {/* Member Badges */}
+                {memberNames && memberNames.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                        {memberNames.map((name) => (
+                            <span
+                                key={name}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[rgba(153,204,51,0.1)] text-[11px] font-semibold text-[#538100]"
+                                style={{ fontFamily: "Inter, sans-serif" }}
+                            >
+                                <span className="w-4 h-4 rounded-full bg-[#99CC33] text-white text-[9px] font-bold flex items-center justify-center shrink-0">
+                                    {name[0]?.toUpperCase()}
+                                </span>
+                                {name}
+                            </span>
+                        ))}
+                    </div>
+                )}
 
                 {/* Delete Confirmation */}
                 {confirmDelete && (
@@ -139,8 +158,8 @@ export function PlanRecommendationCard({
                     <Link
                         href={`/meal-plan/weekly`}
                         className={`flex-1 py-3 flex items-center justify-center gap-2 font-bold text-[14px] rounded-full border-2 transition-colors ${isDraft
-                            ? "border-[#538100] text-[#538100] hover:bg-[#f0f7e6]"
-                            : "border-[#538100] bg-[#538100] text-white hover:bg-[#446d00]"
+                            ? "border-[#99CC33] text-[#538100] hover:bg-[#f0f7e6]"
+                            : "border-[#99CC33] bg-[#99CC33] text-[#0F172A] hover:bg-[#6B8F24]"
                             }`}
                     >
                         <Eye className="w-4 h-4" />
@@ -152,18 +171,22 @@ export function PlanRecommendationCard({
                         <button
                             onClick={() => onSelect(plan.id)}
                             disabled={isLoading}
-                            className="flex-1 py-3 bg-[#538100] text-white font-bold text-[14px] rounded-full hover:bg-[#446d00] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            className="flex-1 py-3 bg-[#99CC33] text-[#0F172A] font-bold text-[14px] rounded-full hover:bg-[#6B8F24] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             {isLoading ? "Activating..." : "Select This Plan"}
                         </button>
                     )}
 
-                    {/* Active badge — show when plan is active */}
-                    {isActive && (
-                        <div className="flex-1 py-3 flex items-center justify-center gap-2 bg-[#f0f7e6] text-[#538100] font-bold text-[14px] rounded-full border border-[#538100]/20">
-                            <CheckCircle2 className="w-4 h-4" />
-                            Active
-                        </div>
+                    {/* Delete Plan — show when plan is active/completed (not draft) */}
+                    {!isDraft && onDelete && (
+                        <button
+                            onClick={() => setConfirmDelete(true)}
+                            disabled={isDeleting}
+                            className="flex-1 py-3 flex items-center justify-center gap-2 text-red-500 font-bold text-[14px] rounded-full border-2 border-red-200 hover:bg-red-50 disabled:opacity-50 transition-colors"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            Delete Plan
+                        </button>
                     )}
                 </div>
             </div>

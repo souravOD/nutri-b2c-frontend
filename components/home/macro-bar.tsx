@@ -13,7 +13,7 @@ export function MacroBar({ label, value, target, color }: MacroBarProps) {
 
     return (
         <div className="flex flex-col gap-1 lg:gap-2 w-full">
-            <div className="flex items-center justify-between h-5">
+            <div className="flex items-center justify-between gap-4 h-5">
                 <span
                     className="text-[14px] font-medium lg:font-bold text-[#0F172A] leading-5"
                     style={{ fontFamily: "Inter, sans-serif" }}

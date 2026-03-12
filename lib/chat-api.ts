@@ -26,11 +26,16 @@ export interface ChatApiResponse {
 
 export async function sendChatMessage(
     message: string,
-    sessionId?: string | null
+    sessionId?: string | null,
+    memberId?: string | null
 ): Promise<ChatApiResponse> {
     const res = await authFetch("/api/v1/chat", {
         method: "POST",
-        body: JSON.stringify({ message, sessionId: sessionId || undefined }),
+        body: JSON.stringify({
+            message,
+            sessionId: sessionId || undefined,
+            memberId: memberId || undefined,
+        }),
     })
     return res.json()
 }

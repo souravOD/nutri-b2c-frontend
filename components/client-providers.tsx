@@ -14,6 +14,7 @@ import { FiltersProvider } from "@/hooks/use-filters"
 import { FavoritesProvider } from "@/hooks/use-favorites"
 import { HistoryProvider } from "@/hooks/use-history"
 import { SettingsProvider } from "@/hooks/use-settings"
+import { MemberProvider } from "@/contexts/member-context"
 
 export default function ClientProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -30,6 +31,7 @@ export default function ClientProviders({ children }: { children: ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
         <UserProvider>
+          <MemberProvider>
           <FavoritesProvider>
             <HistoryProvider>
               <FiltersProvider>
@@ -40,6 +42,7 @@ export default function ClientProviders({ children }: { children: ReactNode }) {
               </FiltersProvider>
             </HistoryProvider>
           </FavoritesProvider>
+          </MemberProvider>
         </UserProvider>
         {isDevelopment ? <ReactQueryDevtools initialIsOpen={false} /> : null}
       </QueryClientProvider>

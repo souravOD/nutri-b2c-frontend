@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react"
 import { X, Utensils, Plus, Users, Check } from "lucide-react"
 import type { Recipe, MealType } from "@/lib/types"
+import { useHouseholdMembers } from "@/hooks/use-household"
 
 interface LogMealModalProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     recipe: Recipe | null
-    onConfirm: (recipeId: string, mealType: MealType, servings: number) => void
+    onConfirm: (recipeId: string, mealType: MealType, servings: number, memberIds?: string[]) => void
     loading?: boolean
     /** When set, pre-selects this meal slot and hides the slot picker. */
     defaultMealType?: MealType
@@ -47,6 +48,27 @@ export function LogMealModal({
     const [portions, setPortions] = useState("1")
     const [slot, setSlot] = useState<MealType>(defaultMealType || "breakfast")
     const [customPortions, setCustomPortions] = useState("")
+    const { members, household } = useHouseholdMembers()
+    const isSingleHousehold =
+        !household?.householdType ||
+        household.householdType === "individual" ||
+        household.householdType === "single" ||
+        members.length <= 1
+
+    // Family member selection — auto-select profile owner
+    const [selectedMembers, setSelectedMembers] = useState<string[]>([])
+    useEffect(() => {
+        const owner = members.find((m) => m.isProfileOwner)
+        if (owner && selectedMembers.length === 0) {
+            setSelectedMembers([owner.id])
+        }
+    }, [members])
+
+    const toggleMember = (id: string) => {
+        setSelectedMembers((prev) =>
+            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+        )
+    }
 
     // Sync slot when defaultMealType changes (e.g. user clicks Dinner "+" then Lunch "+")
     useEffect(() => {
@@ -207,7 +229,8 @@ export function LogMealModal({
                             </div>
                         )}
 
-                        {/* ── (Optional) Log for Family ── */}
+                        {/* ── (Optional) Log for Family — hidden for single households ── */}
+                        {!isSingleHousehold && (
                         <div className="border-t border-[#F1F5F9] pt-6 mb-6">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="w-9 h-7 flex items-center justify-center">
@@ -222,38 +245,41 @@ export function LogMealModal({
                                     </p>
                                 </div>
                             </div>
-                            {/* Family member chips — static demo */}
-                            <div className="flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    className="flex items-center gap-[7px] pl-[13px] pr-[14px] py-2.5 rounded-full border-2 border-[#99CC33] bg-[rgba(153,204,51,0.05)] text-[14px] font-medium text-[#334155]"
-                                >
-                                    <span className="w-[18px] h-[18px] rounded-full bg-[#99CC33] flex items-center justify-center">
-                                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                                    </span>
-                                    Sarah
-                                </button>
-                                <button
-                                    type="button"
-                                    className="flex items-center gap-2 px-[14px] py-2.5 rounded-full border-2 border-[#E2E8F0] text-[14px] font-medium text-[#475569]"
-                                >
-                                    <span className="w-4 h-4 rounded-full border border-[#CBD5E1] bg-white" />
-                                    Leo
-                                </button>
-                                <button
-                                    type="button"
-                                    className="p-2.5 rounded-full border-2 border-dashed border-[#CBD5E1] hover:border-[#99CC33] transition-colors"
-                                >
-                                    <Plus className="w-2 h-2 text-[#94A3B8]" />
-                                </button>
+                            {/* Family member chips — dynamic from DB */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {members.map((m) => {
+                                    const isSelected = selectedMembers.includes(m.id)
+                                    return (
+                                        <button
+                                            key={m.id}
+                                            type="button"
+                                            onClick={() => toggleMember(m.id)}
+                                            className={`flex items-center gap-[7px] pl-[13px] pr-[14px] py-2.5 rounded-full border-2 text-[14px] font-medium transition-colors ${
+                                                isSelected
+                                                    ? "border-[#99CC33] bg-[rgba(153,204,51,0.05)] text-[#334155]"
+                                                    : "border-[#E2E8F0] text-[#475569] hover:border-[#CBD5E1]"
+                                            }`}
+                                        >
+                                            {isSelected ? (
+                                                <span className="w-[18px] h-[18px] rounded-full bg-[#99CC33] flex items-center justify-center">
+                                                    <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                                                </span>
+                                            ) : (
+                                                <span className="w-4 h-4 rounded-full border border-[#CBD5E1] bg-white" />
+                                            )}
+                                            {m.firstName || m.fullName}
+                                        </button>
+                                    )
+                                })}
                             </div>
                         </div>
+                        )}
 
                         {/* ── CTAs ── */}
                         <div className="flex flex-col gap-3">
                             <button
                                 type="button"
-                                onClick={() => onConfirm(recipe.id, slot, servings)}
+                                onClick={() => onConfirm(recipe.id, slot, servings, selectedMembers.length > 0 ? selectedMembers : undefined)}
                                 disabled={loading}
                                 className="w-full py-4 rounded-[48px] bg-[#99CC33] text-[#0F172A] text-[16px] font-bold text-center hover:bg-[#8ABB2A] transition-colors disabled:opacity-50 relative"
                                 style={{
