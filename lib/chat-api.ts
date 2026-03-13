@@ -1,5 +1,7 @@
 // Chat API client for PRD-16
 
+import { authFetch } from "./api"
+
 export interface ChatMessage {
     id: string
     role: "user" | "bot"
@@ -24,20 +26,21 @@ export interface ChatApiResponse {
 
 export async function sendChatMessage(
     message: string,
-    sessionId?: string | null
+    sessionId?: string | null,
+    memberId?: string | null
 ): Promise<ChatApiResponse> {
-    const res = await fetch("/api/v1/chat", {
+    const res = await authFetch("/api/v1/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ message, sessionId: sessionId || undefined }),
+        body: JSON.stringify({
+            message,
+            sessionId: sessionId || undefined,
+            memberId: memberId || undefined,
+        }),
     })
-    if (!res.ok) throw new Error("Chat request failed")
     return res.json()
 }
 
 export async function getChatHistory() {
-    const res = await fetch("/api/v1/chat/history", { credentials: "include" })
-    if (!res.ok) throw new Error("Failed to load chat history")
+    const res = await authFetch("/api/v1/chat/history")
     return res.json()
 }

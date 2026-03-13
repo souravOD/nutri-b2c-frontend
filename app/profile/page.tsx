@@ -19,6 +19,7 @@ import {
   Flame,
   Bell,
   Trash2,
+  ShoppingCart,
 } from "lucide-react";
 
 interface ProfileData {
@@ -246,6 +247,17 @@ export default function ProfilePage() {
                 <span className="nav-link-subtitle">
                   {unreadCount ? `${unreadCount} unread` : "All caught up"}
                 </span>
+              </div>
+              <ChevronRight size={18} color="#CCC" />
+            </button>
+
+            <button className="nav-link" onClick={() => router.push("/grocery-list/preferences")}>
+              <div className="nav-link-icon" style={{ background: "#E8F8F0", color: "#2ECC71" }}>
+                <ShoppingCart size={18} />
+              </div>
+              <div className="nav-link-text">
+                <span className="nav-link-title">Grocery Preferences</span>
+                <span className="nav-link-subtitle">Store, brand & shopping settings</span>
               </div>
               <ChevronRight size={18} color="#CCC" />
             </button>

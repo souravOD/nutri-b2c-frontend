@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Notification } from "@/lib/notification-api";
 
 interface NotificationItemProps {
@@ -42,11 +43,30 @@ export function NotificationItem({
     notification,
     onMarkRead,
 }: NotificationItemProps) {
+    const router = useRouter();
+
+    const handleClick = () => {
+        // Mark as read
+        if (!notification.isRead) {
+            onMarkRead(notification.id);
+        }
+
+        // Navigate to action URL if present
+        if (notification.actionUrl) {
+            // Internal paths start with /
+            if (notification.actionUrl.startsWith("/")) {
+                router.push(notification.actionUrl);
+            } else {
+                window.open(notification.actionUrl, "_blank");
+            }
+        }
+    };
+
     return (
         <div
             className={`notification-item ${notification.isRead ? "read" : "unread"}`}
-            onClick={() => !notification.isRead && onMarkRead(notification.id)}
-            style={{ cursor: notification.isRead ? "default" : "pointer" }}
+            onClick={handleClick}
+            style={{ cursor: notification.actionUrl || !notification.isRead ? "pointer" : "default" }}
         >
             <div className="notification-icon-wrapper">
                 <div

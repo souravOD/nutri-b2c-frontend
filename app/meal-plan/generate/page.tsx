@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { ArrowLeft, Sparkles, UtensilsCrossed, Target, Wallet, Users, Check, ChevronRight, Salad, Flame, Leaf, Vegan, Heart, Dumbbell, Scale } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { ArrowLeft, Sparkles, UtensilsCrossed, Target, Wallet, Check, ChevronRight, Salad, Flame, Leaf, Vegan, Heart, Dumbbell, Scale, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useHouseholdMembers } from "@/hooks/use-household";
+import { useActiveMember } from "@/contexts/member-context";
 import { useGeneratePlan } from "@/hooks/use-meal-plan";
 import { useToast } from "@/hooks/use-toast";
 import type { MealPlanGenerateParams } from "@/lib/types";
 
 /* ─── Types ────────────────────────────────────────────────────── */
-type FamilyScope = "me" | "partner" | "family";
 type DietaryPref = "vegan" | "keto" | "paleo" | "vegetarian" | "mediterranean" | "none";
 type Goal = "lose_weight" | "gain_muscle" | "stay_healthy";
 
@@ -31,19 +31,13 @@ const GOAL_OPTIONS: { value: Goal; label: string; description: string; icon: typ
     { value: "stay_healthy", label: "Stay Healthy", description: "Balanced nutritional intake", icon: Heart },
 ];
 
-const SCOPE_OPTIONS: { value: FamilyScope; label: string; description: string }[] = [
-    { value: "me", label: "Just Me", description: "Plan for yourself" },
-    { value: "partner", label: "Me & Partner", description: "Plan for two" },
-    { value: "family", label: "Entire Family", description: "Plan for everyone" },
-];
 
 const BUDGET_MARKS = [
     { value: 50, label: "$50" },
     { value: 100, label: "$100" },
-    { value: 150, label: "$150" },
     { value: 200, label: "$200" },
-    { value: 250, label: "$250" },
-    { value: 350, label: "$350" },
+    { value: 300, label: "$300" },
+    { value: 400, label: "$400" },
     { value: 500, label: "$500+" },
 ];
 
@@ -59,51 +53,113 @@ const STEP_LABELS = [
 export default function AiPlannerPage() {
     const router = useRouter();
     const { toast } = useToast();
-    const { members } = useHouseholdMembers();
+    const { members, household } = useHouseholdMembers();
+    const { activeMemberId } = useActiveMember();
     const generatePlan = useGeneratePlan();
 
+    // Determine if household is single — skip family scope step
+    // Backend default is "individual"; also skip if only 1 member
+    const isSingleHousehold =
+        !household?.householdType ||
+        household.householdType === "individual" ||
+        household.householdType === "single" ||
+        members.length <= 1;
+    const FIRST_STEP = isSingleHousehold ? 2 : 1;
+
     // Wizard state
-    const [step, setStep] = useState(1);
-    const [familyScope, setFamilyScope] = useState<FamilyScope>("me");
+    const [step, setStep] = useState(FIRST_STEP);
+
+    // Dynamic member selection — default to owner (self)
+    const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
+
+    // Determine if ALL selected members are children/dependents — hide budget step if so
+    // Budget is only relevant when at least one adult is in the plan
+    const allSelectedAreMinors = selectedMemberIds.size > 0 && [...selectedMemberIds].every((id) => {
+        const m = members.find((mem) => mem.id === id);
+        return m?.householdRole === "child" || m?.householdRole === "dependent";
+    });
+
+    // Initialise selection: prefer global active member, fall back to owner
+    useEffect(() => {
+        if (members.length > 0 && selectedMemberIds.size === 0) {
+            const initial = (activeMemberId && members.find((m) => m.id === activeMemberId))
+                ? activeMemberId
+                : (members.find((m) => m.isProfileOwner) ?? members[0])?.id;
+            if (initial) setSelectedMemberIds(new Set([initial]));
+        }
+    }, [members, activeMemberId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Auto-skip step 1 when household data loads and reveals single
+    useEffect(() => {
+        if (isSingleHousehold && step === 1) {
+            setStep(2);
+        }
+    }, [isSingleHousehold, step]);
+
+    // Auto-skip step 4 (Budget) when only minors are selected
+    useEffect(() => {
+        if (allSelectedAreMinors && step === 4) {
+            setStep(5);
+        }
+    }, [allSelectedAreMinors, step]);
     const [dietaryPref, setDietaryPref] = useState<DietaryPref>("none");
     const [goal, setGoal] = useState<Goal>("stay_healthy");
     const [budget, setBudget] = useState(120);
 
     const progress = Math.round((step / TOTAL_STEPS) * 100);
 
-    // Member IDs for scope
-    const getMemberIds = useCallback((): string[] => {
-        if (!members.length) return [];
-        const owner = members.find((m) => m.isProfileOwner);
-        const ownerId = owner?.id ?? members[0]?.id;
-        switch (familyScope) {
-            case "me":
-                return ownerId ? [ownerId] : [];
-            case "partner": {
-                const partner = members.find(
-                    (m) => !m.isProfileOwner && (m.householdRole === "partner" || m.householdRole === "spouse"),
-                );
-                return [ownerId, partner?.id].filter(Boolean) as string[];
+    // Toggle a single member
+    const toggleMember = useCallback((id: string) => {
+        setSelectedMemberIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                // Don't allow deselecting all — at least one must remain
+                if (next.size > 1) next.delete(id);
+            } else {
+                next.add(id);
             }
-            case "family":
-                return members.map((m) => m.id);
-            default:
-                return ownerId ? [ownerId] : [];
-        }
-    }, [members, familyScope]);
+            return next;
+        });
+    }, []);
 
-    // Navigation
+    // Quick-select: only me
+    const selectOnlyMe = useCallback(() => {
+        const owner = members.find((m) => m.isProfileOwner) ?? members[0];
+        if (owner) setSelectedMemberIds(new Set([owner.id]));
+    }, [members]);
+
+    // Quick-select: everyone
+    const selectEveryone = useCallback(() => {
+        setSelectedMemberIds(new Set(members.map((m) => m.id)));
+    }, [members]);
+
+    // Member IDs for API call
+    const getMemberIds = useCallback((): string[] => {
+        return Array.from(selectedMemberIds);
+    }, [selectedMemberIds]);
+
+    // Navigation — skip step 1 for single households
     const goBack = () => {
-        if (step === 1) {
+        if (step <= FIRST_STEP) {
             router.push("/meal-plan");
         } else {
-            setStep((s) => s - 1);
+            setStep((s) => {
+                let prev = s - 1;
+                // Skip budget step for child/dependent
+                if (allSelectedAreMinors && prev === 4) prev = 3;
+                return prev < FIRST_STEP ? FIRST_STEP : prev;
+            });
         }
     };
 
     const goNext = () => {
         if (step < TOTAL_STEPS) {
-            setStep((s) => s + 1);
+            setStep((s) => {
+                let next = s + 1;
+                // Skip budget step for child/dependent
+                if (allSelectedAreMinors && next === 4) next = 5;
+                return next;
+            });
         }
     };
 
@@ -193,35 +249,74 @@ export default function AiPlannerPage() {
             {/* ── Step 1: Family Scope ──────────────────────────────── */}
             {step === 1 && (
                 <div className="flex flex-col gap-3">
-                    {SCOPE_OPTIONS.map((opt) => {
-                        const isActive = familyScope === opt.value;
+                    {/* Quick-select buttons */}
+                    <div className="flex items-center gap-2 mb-2">
+                        <button
+                            onClick={selectOnlyMe}
+                            className={`px-4 py-2 rounded-full text-xs font-semibold transition-all border ${
+                                selectedMemberIds.size === 1 && members.find((m) => m.isProfileOwner && selectedMemberIds.has(m.id))
+                                    ? "bg-[#9C3] text-white border-[#9C3]"
+                                    : "bg-white text-[#64748B] border-[#e2e8f0] hover:border-[#9C3]"
+                            }`}
+                            style={{ fontFamily: "Inter, sans-serif" }}
+                        >
+                            Just Me
+                        </button>
+                        <button
+                            onClick={selectEveryone}
+                            className={`px-4 py-2 rounded-full text-xs font-semibold transition-all border ${
+                                selectedMemberIds.size === members.length
+                                    ? "bg-[#9C3] text-white border-[#9C3]"
+                                    : "bg-white text-[#64748B] border-[#e2e8f0] hover:border-[#9C3]"
+                            }`}
+                            style={{ fontFamily: "Inter, sans-serif" }}
+                        >
+                            Everyone
+                        </button>
+                    </div>
+
+                    {/* Dynamic member list from DB */}
+                    {members.map((member) => {
+                        const isSelected = selectedMemberIds.has(member.id);
+                        const initial = (member.firstName || member.fullName || "?")[0].toUpperCase();
+                        const displayName = member.firstName || member.fullName?.split(" ")[0] || "Member";
+                        const roleLabel = member.isProfileOwner
+                            ? "You"
+                            : member.householdRole
+                                ? member.householdRole.charAt(0).toUpperCase() + member.householdRole.slice(1)
+                                : "Member";
                         return (
                             <button
-                                key={opt.value}
-                                onClick={() => setFamilyScope(opt.value)}
-                                className={`flex items-center p-[18px] rounded-[48px] border-2 transition-all ${isActive
-                                    ? "bg-[rgba(153,204,51,0.1)] border-[#9C3]"
-                                    : "bg-white border-[#e2e8f0] hover:border-[#cbd5e1]"
-                                    }`}
+                                key={member.id}
+                                onClick={() => toggleMember(member.id)}
+                                className={`flex items-center p-[18px] rounded-[48px] border-2 transition-all ${
+                                    isSelected
+                                        ? "bg-[rgba(153,204,51,0.1)] border-[#9C3]"
+                                        : "bg-white border-[#e2e8f0] hover:border-[#cbd5e1]"
+                                }`}
                             >
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 shrink-0 ${isActive ? "bg-[#9C3] text-white" : "bg-[rgba(153,204,51,0.1)] text-[#538100]"
-                                    }`}>
-                                    <Users className="w-5 h-5" />
+                                <div
+                                    className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 shrink-0 text-sm font-bold ${
+                                        isSelected
+                                            ? "bg-[#9C3] text-white"
+                                            : "bg-[rgba(153,204,51,0.1)] text-[#538100]"
+                                    }`}
+                                >
+                                    {initial}
                                 </div>
                                 <div className="flex-1 text-left">
                                     <p className="text-base font-bold text-[#0F172A]" style={{ fontFamily: "Inter, sans-serif" }}>
-                                        {opt.label}
+                                        {member.fullName || displayName}
                                     </p>
                                     <p className="text-xs text-[#64748B]" style={{ fontFamily: "Inter, sans-serif" }}>
-                                        {opt.description}
+                                        {roleLabel}
                                     </p>
                                 </div>
-                                {isActive && (
+                                {isSelected ? (
                                     <div className="w-[22px] h-[22px] rounded-full bg-[#9C3] flex items-center justify-center shrink-0">
                                         <Check className="w-3.5 h-3.5 text-white" />
                                     </div>
-                                )}
-                                {!isActive && (
+                                ) : (
                                     <div className="w-5 h-5 rounded-full border border-[#CBD5E1] shrink-0" />
                                 )}
                             </button>
@@ -354,16 +449,19 @@ export default function AiPlannerPage() {
                                     [&::-moz-range-thumb]:shadow-md
                                     [&::-moz-range-thumb]:cursor-pointer"
                         />
-                        <div className="flex justify-between mt-2">
-                            {BUDGET_MARKS.map((mark) => (
-                                <span
-                                    key={mark.value}
-                                    className="text-xs text-[#64748B]"
-                                    style={{ fontFamily: "Inter, sans-serif" }}
-                                >
-                                    {mark.label}
-                                </span>
-                            ))}
+                        <div className="relative mt-2 h-5">
+                            {BUDGET_MARKS.map((mark) => {
+                                const pct = ((mark.value - 50) / (500 - 50)) * 100;
+                                return (
+                                    <span
+                                        key={mark.value}
+                                        className="absolute text-xs text-[#64748B] -translate-x-1/2"
+                                        style={{ left: `${pct}%`, fontFamily: "Inter, sans-serif" }}
+                                    >
+                                        {mark.label}
+                                    </span>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
@@ -372,7 +470,8 @@ export default function AiPlannerPage() {
             {/* ── Step 5: Review ───────────────────────────────────── */}
             {step === 5 && (
                 <div className="flex flex-col gap-4">
-                    {/* Family */}
+                    {/* Family — hide for single households */}
+                    {!isSingleHousehold && (
                     <div className="bg-white lg:bg-[#f8fafc] rounded-3xl p-5 border border-[#e2e8f0]">
                         <div className="flex items-center justify-between">
                             <div>
@@ -380,7 +479,10 @@ export default function AiPlannerPage() {
                                     Planning for
                                 </p>
                                 <p className="text-base font-bold text-[#0F172A]" style={{ fontFamily: "Inter, sans-serif" }}>
-                                    {SCOPE_OPTIONS.find((o) => o.value === familyScope)?.label}
+                                    {members
+                                        .filter((m) => selectedMemberIds.has(m.id))
+                                        .map((m) => m.firstName || m.fullName?.split(" ")[0])
+                                        .join(", ") || "No one selected"}
                                 </p>
                             </div>
                             <button onClick={() => setStep(1)} className="text-xs font-semibold text-[#538100] hover:underline">
@@ -388,6 +490,7 @@ export default function AiPlannerPage() {
                             </button>
                         </div>
                     </div>
+                    )}
 
                     {/* Diet */}
                     <div className="bg-white lg:bg-[#f8fafc] rounded-3xl p-5 border border-[#e2e8f0]">
@@ -423,14 +526,15 @@ export default function AiPlannerPage() {
                         </div>
                     </div>
 
-                    {/* Budget */}
+                    {/* Budget — hide for child/dependent */}
+                    {!allSelectedAreMinors && (
                     <div className="bg-white lg:bg-[#f8fafc] rounded-3xl p-5 border border-[#e2e8f0]">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8] mb-1" style={{ fontFamily: "Inter, sans-serif" }}>
                                     Weekly Budget
                                 </p>
-                                <p className="text-base font-bold text-[#9C3]" style={{ fontFamily: "Inter, sans-serif" }}>
+                                <p className="text-base font-bold text-[#0F172A]" style={{ fontFamily: "Inter, sans-serif" }}>
                                     ${budget}
                                 </p>
                             </div>
@@ -439,6 +543,7 @@ export default function AiPlannerPage() {
                             </button>
                         </div>
                     </div>
+                    )}
                 </div>
             )}
         </>

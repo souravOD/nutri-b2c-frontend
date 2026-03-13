@@ -254,6 +254,17 @@ function ScorePreview({ weights }: { weights: { health: number; time: number; po
   )
 }
 
+/* ─── Goal-based macro distribution ratios (% of calories) ─── */
+const GOAL_RATIOS: Record<string, { protein: number; carbs: number; fat: number }> = {
+  lose_weight:      { protein: 0.35, carbs: 0.35, fat: 0.30 },
+  gain_muscle:      { protein: 0.40, carbs: 0.30, fat: 0.30 },
+  maintain:         { protein: 0.25, carbs: 0.45, fat: 0.30 },
+  improve_energy:   { protein: 0.25, carbs: 0.50, fat: 0.25 },
+  heart_health:     { protein: 0.20, carbs: 0.50, fat: 0.30 },
+  general_wellness: { protein: 0.25, carbs: 0.45, fat: 0.30 },
+  default:          { protein: 0.25, carbs: 0.45, fat: 0.30 },
+}
+
 /* ─── Main Settings Page ─── */
 const DISABLED_TABS = new Set(["recommendation", "advanced"])  // TODO: enable after RAG integration
 
@@ -271,6 +282,7 @@ export default function SettingsPage() {
   const { settings, updateSettings, apply, resetToDefaults, downloadJson } = useSettings()
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("general")
+  const [macroSync, setMacroSync] = useState(true)
 
   const behavior = settings.behavior ?? {}
   const adv = settings.advanced ?? { weights: { health: 0, time: 0, popularity: 0, personal: 0, diversity: 0 } }
@@ -369,7 +381,22 @@ export default function SettingsPage() {
             <div style={{ marginBottom: 20 }}>
               <FieldLabel>Health Goal</FieldLabel>
               <StyledSelect value={settings.healthGoal ?? ""}
-                onChange={(v: string) => updateSettings({ healthGoal: v || null } as any)}
+                onChange={(v: string) => {
+                  updateSettings({ healthGoal: v || null } as any)
+                  // When sync is on and a goal is selected, redistribute macros
+                  if (macroSync && v && settings.calorieTarget) {
+                    const ratio = GOAL_RATIOS[v] ?? GOAL_RATIOS.default
+                    const cal = settings.calorieTarget
+                    updateSettings({
+                      healthGoal: v || null,
+                      macroWeights: {
+                        protein: Math.round((cal * ratio.protein) / 4),
+                        carbs: Math.round((cal * ratio.carbs) / 4),
+                        fat: Math.round((cal * ratio.fat) / 9),
+                      },
+                    } as any)
+                  }
+                }}
                 options={[
                   { value: "", label: "Select a goal..." },
                   { value: "lose_weight", label: "Lose Weight" },
@@ -393,19 +420,94 @@ export default function SettingsPage() {
                 <FieldLabel>Daily Calorie Target</FieldLabel>
                 <StyledInput type="number" min={1000} max={5000}
                   value={String(settings.calorieTarget ?? "")}
-                  onChange={e => updateSettings({ calorieTarget: Number.parseInt(e.target.value) || undefined })}
+                  onChange={e => {
+                    const cal = Number.parseInt(e.target.value) || undefined
+                    if (macroSync && cal) {
+                      const ratio = GOAL_RATIOS[settings.healthGoal ?? ""] ?? GOAL_RATIOS.default
+                      updateSettings({
+                        calorieTarget: cal,
+                        macroWeights: {
+                          protein: Math.round((cal * ratio.protein) / 4),
+                          carbs: Math.round((cal * ratio.carbs) / 4),
+                          fat: Math.round((cal * ratio.fat) / 9),
+                        },
+                      })
+                    } else {
+                      updateSettings({ calorieTarget: cal })
+                    }
+                  }}
                   placeholder="2000" style={{ marginTop: 6 }} />
               </div>
             </div>
 
-            <FieldLabel>Macro Targets (g)</FieldLabel>
-            <div style={{ marginTop: 8 }}>
+            {/* Sync toggle + computed calorie indicator */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <FieldLabel>Macro Targets (g)</FieldLabel>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 11, color: macroSync ? "#538100" : "#999" }}>
+                  {macroSync ? "🔗 Synced" : "🔓 Manual"}
+                </span>
+                <button onClick={() => setMacroSync(!macroSync)} style={{
+                  width: 36, height: 20, borderRadius: 10, border: "none", cursor: "pointer",
+                  background: macroSync ? "#99CC33" : "#D0D0D0", position: "relative", transition: "background 0.2s",
+                }}>
+                  <div style={{
+                    width: 16, height: 16, borderRadius: 8, background: "white",
+                    position: "absolute", top: 2,
+                    left: macroSync ? 18 : 2, transition: "left 0.2s",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                  }} />
+                </button>
+              </div>
+            </div>
+
+            {/* Show computed vs target calorie mismatch */}
+            {(() => {
+              const computed = (settings.macroWeights.protein * 4) + (settings.macroWeights.carbs * 4) + (settings.macroWeights.fat * 9)
+              const target = settings.calorieTarget ?? 0
+              const diff = Math.abs(computed - target)
+              if (!macroSync && diff > 50 && target > 0) {
+                return (
+                  <div style={{
+                    background: "#FFF7ED", border: "1px solid #FDBA74", borderRadius: 8,
+                    padding: "8px 12px", marginBottom: 12, fontSize: 12, color: "#9A3412",
+                  }}>
+                    ⚠️ Macro total: <strong>{computed} kcal</strong> vs target: <strong>{target} kcal</strong> ({diff} kcal difference).
+                    Turn on sync to auto-align.
+                  </div>
+                )
+              }
+              return null
+            })()}
+
+            <div style={{ marginTop: 4 }}>
               <CustomSlider label="Protein (g)" value={settings.macroWeights.protein} min={0} max={300} step={1}
-                onChange={protein => updateSettings({ macroWeights: { ...settings.macroWeights, protein } })} />
+                onChange={protein => {
+                  const newMacros = { ...settings.macroWeights, protein }
+                  if (macroSync) {
+                    updateSettings({ macroWeights: newMacros, calorieTarget: (protein * 4) + (newMacros.carbs * 4) + (newMacros.fat * 9) })
+                  } else {
+                    updateSettings({ macroWeights: newMacros })
+                  }
+                }} />
               <CustomSlider label="Carbs (g)" value={settings.macroWeights.carbs} min={0} max={500} step={1}
-                onChange={carbs => updateSettings({ macroWeights: { ...settings.macroWeights, carbs } })} />
+                onChange={carbs => {
+                  const newMacros = { ...settings.macroWeights, carbs }
+                  if (macroSync) {
+                    updateSettings({ macroWeights: newMacros, calorieTarget: (newMacros.protein * 4) + (carbs * 4) + (newMacros.fat * 9) })
+                  } else {
+                    updateSettings({ macroWeights: newMacros })
+                  }
+                }} />
               <CustomSlider label="Fat (g)" value={settings.macroWeights.fat} min={0} max={200} step={1}
-                onChange={fat => updateSettings({ macroWeights: { ...settings.macroWeights, fat } })} />
+                onChange={fat => {
+                  const newMacros = { ...settings.macroWeights, fat }
+                  if (macroSync) {
+                    updateSettings({ macroWeights: newMacros, calorieTarget: (newMacros.protein * 4) + (newMacros.carbs * 4) + (fat * 9) })
+                  } else {
+                    updateSettings({ macroWeights: newMacros })
+                  }
+                }} />
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginTop: 8 }}>

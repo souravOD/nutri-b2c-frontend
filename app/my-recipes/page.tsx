@@ -130,7 +130,7 @@ export default function MyRecipesPage() {
               return (
                 <Link
                   key={r.id}
-                  href={`/my-recipes/${r.id}`}
+                  href={`/recipes/${r.id}`}
                   className="mr-card"
                 >
                   {/* Image */}

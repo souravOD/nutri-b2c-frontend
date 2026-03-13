@@ -8,6 +8,7 @@ import { ActionConfirmation } from "./action-confirmation"
 import { RecipeResultCard } from "./recipe-result-card"
 import { NutritionMiniCard } from "./nutrition-mini-card"
 import { sendChatMessage, type ChatMessage } from "@/lib/chat-api"
+import { useActiveMember } from "@/contexts/member-context"
 
 export function ChatWidget() {
     const [isOpen, setIsOpen] = useState(false)
@@ -15,6 +16,7 @@ export function ChatWidget() {
     const [sessionId, setSessionId] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
+    const { activeMemberId } = useActiveMember()
 
     useEffect(() => {
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" })
@@ -41,7 +43,7 @@ export function ChatWidget() {
         setLoading(true)
 
         try {
-            const res = await sendChatMessage(text, sessionId)
+            const res = await sendChatMessage(text, sessionId, activeMemberId)
             if (res.sessionId) setSessionId(res.sessionId)
 
             const botMsg: ChatMessage = {
@@ -69,7 +71,7 @@ export function ChatWidget() {
         } finally {
             setLoading(false)
         }
-    }, [sessionId])
+    }, [sessionId, activeMemberId])
 
     const handleConfirm = useCallback((msgId: string) => {
         handleSend("yes")

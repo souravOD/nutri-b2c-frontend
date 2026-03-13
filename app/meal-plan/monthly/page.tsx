@@ -5,6 +5,7 @@ import { ArrowLeft, Calendar, Sparkles, FileText, CheckCircle2 } from "lucide-re
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMealPlans, useMealPlanDetail, useActivatePlan } from "@/hooks/use-meal-plan";
+import { useHouseholdMembers } from "@/hooks/use-household";
 import { useToast } from "@/hooks/use-toast";
 import { MonthlyCalendar } from "@/components/meal-plan/monthly-calendar";
 import { WeeklyDayCard } from "@/components/meal-plan/weekly-day-card";
@@ -22,9 +23,13 @@ export default function MonthlyMealPlanPage() {
     const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
-    // Fetch active + draft plans
-    const { plans: activePlans, isLoading: activePlansLoading } = useMealPlans("active");
-    const { plans: draftPlans, isLoading: draftPlansLoading } = useMealPlans("draft");
+    // Household members
+    const { members } = useHouseholdMembers();
+    const [selectedMemberId, setSelectedMemberId] = useState<string | undefined>(undefined);
+
+    // Fetch active + draft plans (filtered by member)
+    const { plans: activePlans, isLoading: activePlansLoading } = useMealPlans("active", selectedMemberId);
+    const { plans: draftPlans, isLoading: draftPlansLoading } = useMealPlans("draft", selectedMemberId);
 
     const activePlan = activePlans[0] ?? null;
     const draftPlan = !activePlan ? (draftPlans[0] ?? null) : null;
@@ -132,6 +137,51 @@ export default function MonthlyMealPlanPage() {
                     </div>
                 </div>
             </div>
+
+            {/* ── Member Selector (multi-member households) ── */}
+            {members.length > 1 && (
+                <div className="max-w-[576px] md:max-w-[640px] mx-auto px-4 pt-3">
+                    <p
+                        className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2"
+                        style={{ fontFamily: "Inter, sans-serif" }}
+                    >
+                        Viewing plan for
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setSelectedMemberId(undefined)}
+                            className={`px-4 py-2 rounded-full text-[13px] font-semibold transition-colors whitespace-nowrap ${
+                                selectedMemberId === undefined
+                                    ? "bg-[#99CC33] text-[#0F172A] shadow-sm"
+                                    : "bg-white border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]"
+                            }`}
+                            style={{ fontFamily: "Inter, sans-serif" }}
+                        >
+                            Everyone
+                        </button>
+                        {members.map((member) => {
+                            const isSelected = selectedMemberId === member.id;
+                            const displayName = member.fullName?.split(" ")[0] || "Member";
+                            return (
+                                <button
+                                    key={member.id}
+                                    type="button"
+                                    onClick={() => setSelectedMemberId(member.id)}
+                                    className={`px-4 py-2 rounded-full text-[13px] font-semibold transition-colors whitespace-nowrap ${
+                                        isSelected
+                                            ? "bg-[#99CC33] text-[#0F172A] shadow-sm"
+                                            : "bg-white border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]"
+                                    }`}
+                                    style={{ fontFamily: "Inter, sans-serif" }}
+                                >
+                                    {displayName}{member.isProfileOwner ? " (You)" : ""}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             {/* Draft Plan Banner */}
             {isDraft && displayPlan && (

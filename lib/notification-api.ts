@@ -67,3 +67,15 @@ export async function markAllNotificationsAsRead(): Promise<number> {
     const data = await res.json();
     return data.markedCount;
 }
+
+export async function evaluateNotifications(): Promise<{
+    evaluated: number;
+    dispatched: number;
+}> {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const res = await authFetch("/api/v1/notifications/evaluate", {
+        method: "POST",
+        headers: { "X-Timezone": tz },
+    });
+    return res.json();
+}

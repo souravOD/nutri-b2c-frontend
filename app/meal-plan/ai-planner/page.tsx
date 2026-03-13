@@ -1,31 +1,31 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { apiGetProfile, apiGetMyHealth } from "@/lib/api";
 import { useHouseholdMembers } from "@/hooks/use-household";
-import { useMealPlans, useActivatePlan, useGeneratePlan } from "@/hooks/use-meal-plan";
+import { useActiveMember } from "@/contexts/member-context";
+import { useMealPlans, useActivatePlan, useGeneratePlan, useDeletePlan } from "@/hooks/use-meal-plan";
 import { AiPromptInput } from "@/components/meal-plan/ai-prompt-input";
 import { PersonalizationCard } from "@/components/meal-plan/personalization-card";
 import { PlanRecommendationCard } from "@/components/meal-plan/plan-recommendation-card";
 import { useToast } from "@/hooks/use-toast";
 import type { MealPlanGenerateParams } from "@/lib/types";
 
-type FamilyScope = "me" | "partner" | "family";
-
 export default function AiPlannerPage() {
     const router = useRouter();
     const { toast } = useToast();
-    const [familyScope, setFamilyScope] = useState<FamilyScope>("me");
 
     // Data hooks
     const { members } = useHouseholdMembers();
+    const { activeMemberId } = useActiveMember();
     const { plans } = useMealPlans();
     const activatePlan = useActivatePlan();
     const generatePlan = useGeneratePlan();
+    const deletePlan = useDeletePlan();
 
     const { data: profile } = useQuery({
         queryKey: ["me-profile"],
@@ -39,27 +39,34 @@ export default function AiPlannerPage() {
         staleTime: 120_000,
     });
 
-    // Determine member IDs based on family scope
-    const getMemberIdsForScope = useCallback((): string[] => {
-        if (!members.length) return [];
-        const owner = members.find((m) => m.isProfileOwner);
-        const ownerId = owner?.id ?? members[0]?.id;
+    // ── Dynamic member selection ──
+    const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
 
-        switch (familyScope) {
-            case "me":
-                return ownerId ? [ownerId] : [];
-            case "partner": {
-                const partner = members.find(
-                    (m) => !m.isProfileOwner && (m.householdRole === "partner" || m.householdRole === "spouse"),
-                );
-                return [ownerId, partner?.id].filter(Boolean) as string[];
-            }
-            case "family":
-                return members.map((m) => m.id);
-            default:
-                return ownerId ? [ownerId] : [];
+    // Initialise selection: prefer global active member, fall back to owner
+    useEffect(() => {
+        if (members.length > 0 && selectedMemberIds.size === 0) {
+            const initial = (activeMemberId && members.find((m) => m.id === activeMemberId))
+                ? activeMemberId
+                : (members.find((m) => m.isProfileOwner) ?? members[0])?.id;
+            if (initial) setSelectedMemberIds(new Set([initial]));
         }
-    }, [members, familyScope]);
+    }, [members, activeMemberId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const toggleMember = useCallback((id: string) => {
+        setSelectedMemberIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                if (next.size > 1) next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
+    }, []);
+
+    const getMemberIdsForScope = useCallback((): string[] => {
+        return Array.from(selectedMemberIds);
+    }, [selectedMemberIds]);
 
     // Handle natural-language prompt submission
     const handlePromptSubmit = useCallback(
@@ -113,11 +120,19 @@ export default function AiPlannerPage() {
         [activatePlan, toast, router],
     );
 
-    const scopeOptions: { value: FamilyScope; label: string }[] = [
-        { value: "me", label: "Me Only" },
-        { value: "partner", label: "Me & Partner" },
-        { value: "family", label: "Entire Family" },
-    ];
+    const handleDeletePlan = useCallback(
+        (planId: string) => {
+            deletePlan.mutate(planId, {
+                onSuccess: () => {
+                    toast({ title: "Plan deleted", description: "The meal plan has been removed." });
+                },
+                onError: () => {
+                    toast({ title: "Failed to delete plan", variant: "destructive" });
+                },
+            });
+        },
+        [deletePlan, toast],
+    );
 
     return (
         <div className="min-h-screen bg-[#F7F8F6] pb-[100px] lg:pb-8">
@@ -143,31 +158,38 @@ export default function AiPlannerPage() {
                     </div>
                 </header>
 
-                {/* ── Family Scope Selector ─────────────────────────────── */}
+                {/* ── Member Selector (dynamic from DB) ── */}
+                {members.length > 1 && (
                 <section className="mt-4">
                     <p
                         className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2"
                         style={{ fontFamily: "Inter, sans-serif" }}
                     >
-                        Family Selector
+                        Planning for
                     </p>
-                    <div className="flex gap-2">
-                        {scopeOptions.map((opt) => (
-                            <button
-                                key={opt.value}
-                                type="button"
-                                onClick={() => setFamilyScope(opt.value)}
-                                className={`px-4 py-2.5 rounded-full text-[13px] font-semibold transition-colors whitespace-nowrap ${familyScope === opt.value
-                                    ? "bg-[#538100] text-white shadow-sm"
-                                    : "bg-white border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]"
+                    <div className="flex flex-wrap gap-2">
+                        {members.map((member) => {
+                            const isSelected = selectedMemberIds.has(member.id);
+                            const displayName = member.firstName || member.fullName?.split(" ")[0] || "Member";
+                            return (
+                                <button
+                                    key={member.id}
+                                    type="button"
+                                    onClick={() => toggleMember(member.id)}
+                                    className={`px-4 py-2.5 rounded-full text-[13px] font-semibold transition-colors whitespace-nowrap ${
+                                        isSelected
+                                            ? "bg-[#99CC33] text-[#0F172A] shadow-sm"
+                                            : "bg-white border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]"
                                     }`}
-                                style={{ fontFamily: "Inter, sans-serif" }}
-                            >
-                                {opt.label}
-                            </button>
-                        ))}
+                                    style={{ fontFamily: "Inter, sans-serif" }}
+                                >
+                                    {displayName}{member.isProfileOwner ? " (You)" : ""}
+                                </button>
+                            );
+                        })}
                     </div>
                 </section>
+                )}
 
                 {/* ── Prompt Input ──────────────────────────────────────── */}
                 <section className="mt-6">
@@ -208,7 +230,14 @@ export default function AiPlannerPage() {
                 </section>
 
                 {/* ── Recommended Plans ─────────────────────────────────── */}
-                {plans.length > 0 && (
+                {(() => {
+                    // Filter plans by selected members — show plans that include any selected member
+                    const filteredPlans = plans.filter((plan) => {
+                        if (!plan.memberIds || plan.memberIds.length === 0) return true; // household-wide
+                        return plan.memberIds.some((mid) => selectedMemberIds.has(mid));
+                    });
+
+                    return filteredPlans.length > 0 ? (
                     <section className="mt-6">
                         <h3
                             className="text-[16px] font-bold text-[#0F172A] mb-3"
@@ -217,17 +246,30 @@ export default function AiPlannerPage() {
                             Recommended for this week
                         </h3>
                         <div className="flex flex-col gap-4">
-                            {plans.slice(0, 3).map((plan) => (
+                            {filteredPlans.slice(0, 3).map((plan) => {
+                                const names = (plan.memberIds ?? [])
+                                    .map((mid) => {
+                                        const m = members.find((mem) => mem.id === mid);
+                                        return m?.firstName || m?.fullName?.split(" ")[0] || null;
+                                    })
+                                    .filter(Boolean) as string[];
+
+                                return (
                                 <PlanRecommendationCard
                                     key={plan.id}
                                     plan={plan}
+                                    memberNames={names.length > 0 ? names : undefined}
                                     onSelect={handleActivatePlan}
+                                    onDelete={handleDeletePlan}
                                     isLoading={activatePlan.isPending}
+                                    isDeleting={deletePlan.isPending}
                                 />
-                            ))}
+                                );
+                            })}
                         </div>
                     </section>
-                )}
+                    ) : null;
+                })()}
 
                 {/* ── Quick Links ───────────────────────────────────────── */}
                 <section className="mt-6 mb-4">
