@@ -497,7 +497,7 @@ export async function apiRejectRecipe(id: string): Promise<{ rejected: boolean }
 export async function apiGetPopularRecipes(limit = 10): Promise<any[]> {
   try {
     const res = await authFetch(`/api/v1/recipes/popular?limit=${limit}`);
-    if (!res.ok) return [];
+    // authFetch throws on !res.ok, so we go straight to .json()
     return res.json().catch(() => []);
   } catch {
     return [];
@@ -529,13 +529,7 @@ export async function apiAnalyzeText(text: string, memberId?: string): Promise<A
       method: "POST",
       body: JSON.stringify({ text, ...(memberId ? { memberId } : {}) }),
     });
-
-    if (!res.ok) {
-      const errorText = await res.text().catch(() => "");
-      console.error("[API] Analyzer text error:", res.status, errorText);
-      throw new Error(`Analysis failed: ${res.status} ${errorText || res.statusText}`);
-    }
-
+    // authFetch throws on !res.ok — no redundant check needed
     return res.json();
   } catch (err: unknown) {
     console.error("[API] apiAnalyzeText error:", err);
@@ -548,13 +542,7 @@ export async function apiAnalyzeUrl(url: string, memberId?: string): Promise<Ana
     method: "POST",
     body: JSON.stringify({ url, ...(memberId ? { memberId } : {}) }),
   });
-
-  if (!res.ok) {
-    const errorText = await res.text().catch(() => "");
-    console.error("[API] Analyzer URL error:", res.status, errorText);
-    throw new Error(`URL analysis failed: ${res.status} ${errorText || res.statusText}`);
-  }
-
+  // authFetch throws on !res.ok — no redundant check needed
   return res.json();
 }
 
@@ -572,13 +560,7 @@ export async function apiAnalyzeImage(
     method: "POST",
     body: form,
   });
-
-  if (!res.ok) {
-    const errorText = await res.text().catch(() => "");
-    console.error("[API] Analyzer image error:", res.status, errorText);
-    throw new Error(`Image analysis failed: ${res.status} ${errorText || res.statusText}`);
-  }
-
+  // authFetch throws on !res.ok — no redundant check needed
   return res.json();
 }
 
@@ -590,13 +572,7 @@ export async function apiAnalyzeBarcode(
     method: "POST",
     body: JSON.stringify({ barcode, ...(memberId ? { memberId } : {}) }),
   });
-
-  if (!res.ok) {
-    const errorText = await res.text().catch(() => "");
-    console.error("[API] Analyzer barcode error:", res.status, errorText);
-    throw new Error(`Barcode analysis failed: ${res.status} ${errorText || res.statusText}`);
-  }
-
+  // authFetch throws on !res.ok — no redundant check needed
   return res.json();
 }
 
@@ -842,7 +818,7 @@ export async function searchIngredients(q: string, limit = 10): Promise<Ingredie
   if (q.trim().length < 2) return [];
   const params = new URLSearchParams({ q: q.trim(), limit: String(limit) });
   const res = await authFetch(`/api/v1/ingredients/search?${params.toString()}`);
-  if (!res.ok) return [];
+  // authFetch throws on !res.ok — no redundant check needed
   const data = await res.json().catch(() => ({ items: [] }));
   return Array.isArray(data?.items) ? data.items : [];
 }
@@ -861,12 +837,7 @@ export async function uploadRecipeImage(
     method: "POST",
     body: form,
   });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Image upload failed: ${res.status} ${text}`);
-  }
-
+  // authFetch throws on !res.ok — no redundant check needed
   return res.json();
 }
 
