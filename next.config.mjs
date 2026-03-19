@@ -35,10 +35,14 @@ const nextConfig = {
   // Recipe images come from 50+ domains (pinimg, sndimg, nyt, allrecipes,
   // squarespace-cdn, apartmenttherapy, amazonaws, etc.), so a broad HTTPS
   // pattern is necessary. HTTP is blocked to prevent mixed-content issues.
+  // SEC-02: Wildcard HTTPS is required — recipe images come from 50+ CDN domains.
+  // Block SVG to prevent SSRF via /_next/image proxy.
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**" },
     ],
+    dangerouslyAllowSVG: false,
+    contentDispositionType: "attachment",
   },
 
   // Proxy API calls to the backend; destinations are baked at build time

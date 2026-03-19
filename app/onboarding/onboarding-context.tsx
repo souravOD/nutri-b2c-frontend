@@ -24,6 +24,10 @@ export interface OnboardingData {
     allergens: string[]
     healthConditions: string[]
     dietaryPreferences: string[]
+    // PRD-33: Location fields
+    country: string
+    state: string
+    zipCode: string
 }
 
 const defaultData: OnboardingData = {
@@ -38,18 +42,22 @@ const defaultData: OnboardingData = {
     allergens: [],
     healthConditions: [],
     dietaryPreferences: [],
+    country: "",
+    state: "",
+    zipCode: "",
 }
 
 /* ── Steps config ── */
 export const STEPS = [
     { path: "/onboarding/personal-info", label: "Personal Details", step: 2 },
-    { path: "/onboarding/lifestyle", label: "Activity Level", step: 3 },
-    { path: "/onboarding/goals", label: "Goals", step: 4 },
-    { path: "/onboarding/health", label: "Profile Setup", step: 5 },
-    { path: "/onboarding/review", label: "Review", step: 6 },
+    { path: "/onboarding/location", label: "Location", step: 3 },
+    { path: "/onboarding/lifestyle", label: "Activity Level", step: 4 },
+    { path: "/onboarding/goals", label: "Goals", step: 5 },
+    { path: "/onboarding/health", label: "Profile Setup", step: 6 },
+    { path: "/onboarding/review", label: "Review", step: 7 },
 ] as const
 
-export const TOTAL_STEPS = 5
+export const TOTAL_STEPS = 6
 
 /* ── Context ── */
 interface OnboardingContextValue {

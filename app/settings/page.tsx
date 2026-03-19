@@ -373,6 +373,81 @@ export default function SettingsPage() {
             <RangeSlider label="Default Time Range" hint="Preferred cooking time range in minutes"
               value={settings.timeRangeMinMax} min={0} max={120} step={5}
               onChange={timeRangeMinMax => updateSettings({ timeRangeMinMax })} />
+
+            {/* PRD-33: Location Section */}
+            <div style={{ marginTop: 8, paddingTop: 16, borderTop: "1px solid #F0F0F0" }}>
+              <FieldLabel>Location</FieldLabel>
+              <FieldHint>Used for regional food recommendations, seasonal recipes, and local product pricing.</FieldHint>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+                <div>
+                  <FieldLabel>Country</FieldLabel>
+                  <div style={{ position: "relative", marginTop: 6 }}>
+                    <select
+                      value={(settings as any).locationCountry ?? ""}
+                      onChange={e => updateSettings({ locationCountry: e.target.value || null, locationState: null } as any)}
+                      style={S.select}
+                    >
+                      <option value="">Select country</option>
+                      {[
+                        { value: "US", label: "United States" },
+                        { value: "CA", label: "Canada" },
+                        { value: "IN", label: "India" },
+                        { value: "GB", label: "United Kingdom" },
+                        { value: "AU", label: "Australia" },
+                        { value: "DE", label: "Germany" },
+                        { value: "FR", label: "France" },
+                        { value: "JP", label: "Japan" },
+                        { value: "BR", label: "Brazil" },
+                        { value: "MX", label: "Mexico" },
+                        { value: "OTHER", label: "Other" },
+                      ].map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                    </select>
+                    <ChevronDown size={14} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#999" }} />
+                  </div>
+                </div>
+                <div>
+                  <FieldLabel>
+                    {({ US: "State", CA: "Province", IN: "State", GB: "Region" } as Record<string, string>)[(settings as any).locationCountry ?? ""] ?? "State / Region"}
+                  </FieldLabel>
+                  {(() => {
+                    const country = (settings as any).locationCountry ?? ""
+                    const stateOptions: Record<string, string[]> = {
+                      US: ["Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut","Delaware","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire","New Jersey","New Mexico","New York","North Carolina","North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina","South Dakota","Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming"],
+                      CA: ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Nova Scotia","Ontario","Prince Edward Island","Quebec","Saskatchewan"],
+                      IN: ["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Delhi"],
+                      GB: ["England","Scotland","Wales","Northern Ireland"],
+                    }
+                    const opts = stateOptions[country] ?? []
+                    if (!opts.length) return <StyledInput value="" disabled placeholder="Select country first" style={{ marginTop: 6 }} />
+                    return (
+                      <div style={{ position: "relative", marginTop: 6 }}>
+                        <select
+                          value={(settings as any).locationState ?? ""}
+                          onChange={e => updateSettings({ locationState: e.target.value || null } as any)}
+                          style={S.select}
+                        >
+                          <option value="">Select...</option>
+                          {opts.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                        <ChevronDown size={14} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#999" }} />
+                      </div>
+                    )
+                  })()}
+                </div>
+              </div>
+              {["US","CA","IN","GB","AU","DE","FR"].includes((settings as any).locationCountry ?? "") && (
+                <div style={{ marginTop: 12, maxWidth: 200 }}>
+                  <FieldLabel>ZIP / Postal Code <span style={{ fontWeight: 400, fontSize: 11, color: "#999" }}>(optional)</span></FieldLabel>
+                  <StyledInput
+                    value={(settings as any).locationZipCode ?? ""}
+                    onChange={e => updateSettings({ locationZipCode: e.target.value || null } as any)}
+                    placeholder={(settings as any).locationCountry === "US" ? "e.g. 94105" : "e.g. 400001"}
+                    maxLength={10}
+                    style={{ marginTop: 6 }}
+                  />
+                </div>
+              )}
+            </div>
           </Card>
         )}
 

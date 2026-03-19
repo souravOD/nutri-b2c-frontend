@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Bell, ScanBarcode, Sparkles, Clock } from "lucide-react"
 import { useUnreadCount } from "@/hooks/use-notifications"
 import Link from "next/link"
-import { apiGetFeed, apiAddMealLogItem, apiGetNutritionDaily, apiRejectRecipe, apiGetGroceryLists, apiGetGroceryListDetail } from "@/lib/api"
+import { apiGetFeed, apiAddMealItem, apiGetNutritionDaily, apiRejectRecipe, apiGetGroceryLists, apiGetGroceryListDetail } from "@/lib/api"
 import { useUser } from "@/hooks/use-user"
 import { useFavorites } from "@/hooks/use-favorites"
 import { useActiveMember } from "@/contexts/member-context"
@@ -94,7 +94,7 @@ export default function HomePage() {
         const today = new Date().toISOString().split("T")[0]
         if (memberIds?.length) {
           await Promise.all(memberIds.map(mid =>
-            apiAddMealLogItem({
+            apiAddMealItem({
               date: today,
               mealType,
               recipeId,
@@ -104,7 +104,7 @@ export default function HomePage() {
             })
           ))
         } else {
-          await apiAddMealLogItem({
+          await apiAddMealItem({
             date: today,
             mealType,
             recipeId,

@@ -6,6 +6,7 @@ import { ChevronLeft, CheckCircle, Pencil } from "lucide-react"
 import { useOnboarding } from "../onboarding-context"
 import { useUser } from "@/hooks/use-user"
 import { useToast } from "@/hooks/use-toast"
+import { apiPatchSettings } from "@/lib/api"
 import type { TaxonomyOption } from "@/lib/api"
 
 function resolveCodes(selected: string[], options: TaxonomyOption[]): string[] {
@@ -38,6 +39,19 @@ export default function ReviewPage() {
                 allergen_codes: allergenCodes,
                 condition_codes: conditionCodes,
             })
+
+            // PRD-33: Save location to backend via settings endpoint
+            if (data.country) {
+                try {
+                    await apiPatchSettings({
+                        locationCountry: data.country,
+                        locationState: data.state || null,
+                        locationZipCode: data.zipCode || null,
+                    })
+                } catch (e) {
+                    console.error("[onboarding] Location save failed:", e)
+                }
+            }
 
             await refresh()
             router.replace("/onboarding/success")
@@ -159,6 +173,36 @@ export default function ReviewPage() {
                                     {tag}
                                 </span>
                             ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Location (PRD-33) */}
+                {data.country && (
+                    <div className="p-6 rounded-3xl border" style={{ background: "white", borderColor: "var(--nutri-border)" }}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-[16px] font-bold" style={{ color: "var(--nutri-heading)", fontFamily: "Inter, sans-serif" }}>Location</h3>
+                            <button onClick={() => router.push("/onboarding/location")} className="flex items-center gap-1 text-[14px] font-medium" style={{ color: "var(--nutri-green-dark)", fontFamily: "Inter, sans-serif" }}>
+                                <Pencil className="w-3.5 h-3.5" /> Edit
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "var(--nutri-body-light)" }}>Country</p>
+                                <p className="text-[16px] font-medium" style={{ color: "var(--nutri-heading)" }}>{data.country}</p>
+                            </div>
+                            {data.state && (
+                                <div>
+                                    <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "var(--nutri-body-light)" }}>State / Region</p>
+                                    <p className="text-[16px] font-medium" style={{ color: "var(--nutri-heading)" }}>{data.state}</p>
+                                </div>
+                            )}
+                            {data.zipCode && (
+                                <div>
+                                    <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "var(--nutri-body-light)" }}>ZIP / Postal</p>
+                                    <p className="text-[16px] font-medium" style={{ color: "var(--nutri-heading)" }}>{data.zipCode}</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
