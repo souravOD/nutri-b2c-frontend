@@ -15,14 +15,19 @@ const MemberContext = createContext<MemberContextValue>({
 });
 
 export function MemberProvider({ children }: { children: ReactNode }) {
-  const [activeMemberId, setActiveMemberId] = useState<string | null>(null);
+  const [activeMemberId, setActiveMemberId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try { return localStorage.getItem("activeMemberId"); } catch { return null; }
+  });
 
   const setActiveMember = useCallback((id: string) => {
     setActiveMemberId(id);
+    try { localStorage.setItem("activeMemberId", id); } catch {}
   }, []);
 
   const clearActiveMember = useCallback(() => {
     setActiveMemberId(null);
+    try { localStorage.removeItem("activeMemberId"); } catch {}
   }, []);
 
   return (

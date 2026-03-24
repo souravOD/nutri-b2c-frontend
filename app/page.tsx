@@ -132,7 +132,12 @@ export default function HomePage() {
 
   const totals = nutrition?.totals ?? { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 }
   const targets = nutrition?.targets ?? { calories: 2000, proteinG: 150, carbsG: 250, fatG: 70 }
-  const firstName = user?.name?.split(" ")[0] ?? "there"
+  // Resolve active member's name for greeting (falls back to logged-in user name)
+  const activeMember = householdMembers.find((m: any) => m.id === activeMemberId);
+  const firstName = (activeMember?.firstName
+    || activeMember?.fullName?.split(" ")[0]
+    || user?.name?.split(" ")[0])
+    ?? "there"
 
   const praiseText = useMemo(() => {
     if (totals.proteinG > 30) return "Great protein choice!"
