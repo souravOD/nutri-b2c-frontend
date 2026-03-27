@@ -91,3 +91,17 @@ export async function apiGetGrocerySubstitutions(
   const r = await authFetch(`/api/v1/grocery-lists/${listId}/items/${itemId}/substitutions`);
   return r.json();
 }
+
+// B2C-012: Export grocery list as CSV download
+export async function apiExportGroceryList(listId: string): Promise<void> {
+  const r = await authFetch(`/api/v1/grocery-lists/${listId}/export`);
+  const blob = await r.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "grocery-list.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

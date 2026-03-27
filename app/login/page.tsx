@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useUser } from "@/hooks/use-user"
 import { useToast } from "@/hooks/use-toast"
 import { account } from "@/lib/appwrite"
+import { setAuthCookie } from "@/lib/auth-cookie"
 import { Eye, EyeOff, ChevronLeft, Shield } from "lucide-react"
 
 export default function LoginPage() {
@@ -20,7 +21,7 @@ export default function LoginPage() {
 function LoginInner() {
   const router = useRouter()
   const search = useSearchParams()
-  const next = search?.get("next") || null
+  const next = search?.get("next") || search?.get("redirect") || null
 
   const { refresh, isAdmin } = useUser()
   const { toast } = useToast()
@@ -35,6 +36,7 @@ function LoginInner() {
     setIsLoading(true)
     try {
       await account.createEmailPasswordSession(email.trim(), password)
+      setAuthCookie() // B2C-032: Signal auth state to Next.js middleware
       await refresh()
       const dest = next ?? (isAdmin() ? "/admin" : "/")
       router.replace(dest)

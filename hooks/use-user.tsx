@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react"
 import { account, databases, teams } from "@/lib/appwrite"
+import { clearAuthCookie } from "@/lib/auth-cookie"
 import { Permission, Query, Role, type Models } from "appwrite"
 import { syncHealth } from "@/lib/api";
 import type { HealthProfile, UserProfile } from "@/lib/api";
@@ -210,6 +211,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     try {
       await account.deleteSession("current")
     } finally {
+      clearAuthCookie() // B2C-032: Clear auth signal cookie
       if (typeof window !== "undefined") window.location.href = "/login"
     }
   }, [])
