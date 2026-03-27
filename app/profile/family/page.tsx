@@ -3,13 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useHouseholdMembers, useDeleteMember } from "@/hooks/use-household";
-import { ArrowLeft, Plus, Trash2, Users } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Users, UserPlus, Settings } from "lucide-react";
 
 export default function FamilyHubPage() {
   const router = useRouter();
   const { household, members, isLoading } = useHouseholdMembers();
   const deleteMember = useDeleteMember();
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // RBAC: current user's role determines what actions are visible
+  const currentUser = members.find((m) => m.isProfileOwner);
+  const isPrimary = currentUser?.householdRole === "primary_adult";
+  const isAdult = isPrimary || currentUser?.householdRole === "secondary_adult";
 
   const handleDelete = (memberId: string) => {
     deleteMember.mutate(memberId, {
@@ -26,15 +31,33 @@ export default function FamilyHubPage() {
         </button>
         <div className="header-text">
           <h1>Family Members</h1>
-          <p className="subtitle">{household?.householdName || "Your Household"}</p>
+          <p className="subtitle">
+            {household?.householdName || "Your Household"}
+            {household?.householdType && (
+              <span className="type-badge">
+                {household.householdType.charAt(0).toUpperCase() + household.householdType.slice(1)}
+              </span>
+            )}
+          </p>
         </div>
-        <button
-          className="add-btn"
-          onClick={() => router.push("/profile/family/add")}
-        >
-          <Plus size={18} />
-          <span>Add</span>
-        </button>
+        {isPrimary && (
+          <button
+            className="invite-btn"
+            onClick={() => router.push("/profile/family/invite")}
+          >
+            <UserPlus size={18} />
+            <span>Invite</span>
+          </button>
+        )}
+        {isPrimary && (
+          <button
+            className="add-btn"
+            onClick={() => router.push("/profile/family/add")}
+          >
+            <Plus size={18} />
+            <span>Add</span>
+          </button>
+        )}
       </div>
 
       {/* Member List */}
@@ -59,7 +82,7 @@ export default function FamilyHubPage() {
           </div>
         ) : (
           members.map((member) => (
-            <div key={member.id} className="member-card">
+            <div key={member.id} className="member-card" onClick={() => router.push(`/profile/family/${member.id}`)} style={{ cursor: "pointer" }}>
               <div className="member-avatar">
                 {(member.firstName || member.fullName || "?")[0].toUpperCase()}
               </div>
@@ -88,7 +111,7 @@ export default function FamilyHubPage() {
                 )}
               </div>
 
-              {!member.isProfileOwner && (
+              {!member.isProfileOwner && isPrimary && (
                 <div className="member-actions">
                   {confirmDeleteId === member.id ? (
                     <div className="confirm-delete">
@@ -124,6 +147,15 @@ export default function FamilyHubPage() {
           ))
         )}
       </div>
+
+      {/* Quick Actions */}
+      {isAdult && (
+        <div className="quick-actions">
+          <button className="action-btn" onClick={() => router.push("/profile/family/preferences")}>
+            <Settings size={16} /> Household Preferences
+          </button>
+        </div>
+      )}
 
       <style jsx>{`
         .family-hub-page {
@@ -163,6 +195,22 @@ export default function FamilyHubPage() {
           font-size: 13px;
           color: #999;
         }
+        .invite-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 14px;
+          border-radius: 10px;
+          border: 1px solid #99CC33;
+          background: transparent;
+          color: #99CC33;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          font-family: inherit;
+          transition: all 0.2s;
+        }
+        .invite-btn:hover { background: #F0F9E8; }
         .add-btn {
           display: flex;
           align-items: center;
@@ -341,6 +389,42 @@ export default function FamilyHubPage() {
         }
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+        .type-badge {
+          display: inline-block;
+          margin-left: 8px;
+          padding: 2px 8px;
+          border-radius: 10px;
+          background: #E8F5E9;
+          color: #4CAF50;
+          font-size: 11px;
+          font-weight: 600;
+          vertical-align: middle;
+        }
+        .quick-actions {
+          margin-top: 16px;
+          display: flex;
+          gap: 8px;
+        }
+        .action-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 16px;
+          border-radius: 12px;
+          border: 1px solid #E0E0E0;
+          background: white;
+          color: #333;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          font-family: inherit;
+          width: 100%;
+          justify-content: center;
+        }
+        .action-btn:hover {
+          border-color: #99CC33;
+          color: #99CC33;
         }
       `}</style>
     </div>

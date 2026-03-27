@@ -763,6 +763,41 @@ export interface NutritionDashboardWeeklyResponse {
   nutrientGaps: NutrientGap[];
 }
 
+export interface NutritionDashboardRangeResponse {
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  days: Array<{
+    date: string;
+    calories: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+    fiberG: number;
+    sugarG: number;
+    sodiumMg: number;
+  }>;
+  averages: {
+    calories: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+    fiberG: number;
+    sugarG: number;
+    sodiumMg: number;
+    vitaminDMcg: number;
+    calciumMg: number;
+    ironMg: number;
+    potassiumMg: number;
+  };
+  compliance: {
+    loggedDays: number;
+    calorieGoalDays: number;
+    calorieGoalPct: number;
+  };
+  nutrientGaps: NutrientGap[];
+}
+
 export interface NutritionMemberSummaryResponse {
   date: string;
   members: Array<{
@@ -810,6 +845,11 @@ export interface Household {
 }
 
 export interface HouseholdMemberHealthProfile {
+  heightCm: string | null;
+  weightKg: string | null;
+  activityLevel: string | null;
+  healthGoal: string | null;
+  targetWeightKg: string | null;
   targetCalories: number | null;
   targetProteinG: number | string | null;
   targetCarbsG: number | string | null;
@@ -817,6 +857,8 @@ export interface HouseholdMemberHealthProfile {
   targetFiberG: number | string | null;
   targetSodiumMg: number | null;
   targetSugarG: number | string | null;
+  intolerances: string[];
+  dislikedIngredients: string[];
   allergens: { id: string; code: string; name: string; severity: string | null }[];
   diets: { id: string; code: string; name: string; strictness: string | null }[];
   conditions: { id: string; code: string; name: string; severity: string | null }[];
@@ -826,6 +868,7 @@ export interface HouseholdMember {
   id: string;
   fullName: string;
   firstName: string | null;
+  dateOfBirth: string | null;
   age: number | null;
   gender: string | null;
   householdRole: string | null;
@@ -836,6 +879,36 @@ export interface HouseholdMember {
 export interface HouseholdMembersResponse {
   household: Household;
   members: HouseholdMember[];
+}
+
+export interface HouseholdInvitation {
+  id: string;
+  householdId: string;
+  invitedBy: string;
+  inviteToken: string;
+  invitedEmail: string | null;
+  role: string;
+  status: "pending" | "accepted" | "expired" | "revoked";
+  createdAt: string;
+  expiresAt: string;
+  acceptedAt: string | null;
+  acceptedBy: string | null;
+}
+
+export interface HouseholdInvitationDetail extends HouseholdInvitation {
+  householdName: string;
+  householdType: string;
+  totalMembers: number;
+  invitedByName: string;
+}
+
+export interface HouseholdPreference {
+  id: string;
+  householdId: string;
+  preferenceType: string | null;
+  preferenceValue: string | null;
+  priority: number | null;
+  createdAt: string;
 }
 
 // ── Recipe Ratings ──────────────────────────────────────────────────────────

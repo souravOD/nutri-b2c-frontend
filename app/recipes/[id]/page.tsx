@@ -116,10 +116,16 @@ export default function RecipeDetailPage() {
   })
 
   const handleLogConfirm = useCallback(
-    async (recipeId: string, mealType: MealType, servings: number) => {
+    async (recipeId: string, mealType: MealType, servings: number, memberIds?: string[]) => {
       try {
         const today = new Date().toISOString().slice(0, 10)
-        await apiAddMealItem({ date: today, mealType, recipeId, servings })
+        if (memberIds?.length) {
+          await Promise.all(memberIds.map(mid =>
+            apiAddMealItem({ date: today, mealType, recipeId, servings, memberId: mid })
+          ))
+        } else {
+          await apiAddMealItem({ date: today, mealType, recipeId, servings })
+        }
         toast({ title: "Meal logged!", description: "Added to your meal log for today." })
         setLogOpen(false)
       } catch {

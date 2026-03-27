@@ -11,6 +11,8 @@ import { apiSearchRecipes, apiRejectRecipe, apiGetPopularRecipes, apiGetRecently
 import { useFilters } from "@/hooks/use-filters"
 import { useSettings } from "@/hooks/use-settings"
 import { useToast } from "@/hooks/use-toast"
+import { useActiveMember } from "@/contexts/member-context"
+import { useHouseholdMembers } from "@/hooks/use-household"
 import { rank } from "@/lib/recommendation"
 import type { ScoredRecipe } from "@/lib/recommendation"
 import type { Recipe } from "@/lib/types"
@@ -128,6 +130,8 @@ export default function SearchPage() {
   const { settings } = useSettings()
   const { toast } = useToast()
   const inputRef = useRef<HTMLInputElement>(null)
+  const { activeMemberId } = useActiveMember()
+  const { members: householdMembers = [] } = useHouseholdMembers()
 
   // State
   const [query, setQuery] = useState(searchParams.get("q") || "")
@@ -173,10 +177,10 @@ export default function SearchPage() {
     data: searchResults = [],
     isLoading,
   } = useQuery({
-    queryKey: ["search", committed ? query : "", apiFilters, sortBy, settings.behavior],
+    queryKey: ["search", committed ? query : "", apiFilters, sortBy, settings.behavior, activeMemberId],
     queryFn: async (): Promise<ScoredRecipe[]> => {
       if (!query && !hasFilters) return []
-      const rawResults = await apiSearchRecipes({ q: query, filters: apiFilters as any, sort: sortBy })
+      const rawResults = await apiSearchRecipes({ q: query, filters: apiFilters as any, sort: sortBy, memberId: activeMemberId ?? undefined })
       if (rawResults.length > 0) {
         return rank(rawResults, settings)
       }
@@ -189,10 +193,10 @@ export default function SearchPage() {
   const {
     data: suggestions = [],
   } = useQuery({
-    queryKey: ["suggestions", debouncedQuery, apiFilters],
+    queryKey: ["suggestions", debouncedQuery, apiFilters, activeMemberId],
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return []
-      const results = await apiSearchRecipes({ q: debouncedQuery, filters: apiFilters as any, sort: "relevance" })
+      const results = await apiSearchRecipes({ q: debouncedQuery, filters: apiFilters as any, sort: "relevance", memberId: activeMemberId ?? undefined })
       return results.slice(0, 4).map((r) => ({ text: r.title || "Untitled", type: "recipe" as const }))
     },
     enabled: focused && !!debouncedQuery && debouncedQuery.length >= 2 && !committed,
@@ -235,10 +239,16 @@ export default function SearchPage() {
     setLogOpen(true)
   }
 
-  const handleLogConfirm = async (recipeId: string, mealType: MealType, servings: number) => {
+  const handleLogConfirm = async (recipeId: string, mealType: MealType, servings: number, memberIds?: string[]) => {
     try {
       const today = new Date().toISOString().slice(0, 10)
-      await apiAddMealItem({ date: today, mealType, recipeId, servings })
+      if (memberIds?.length) {
+        await Promise.all(memberIds.map(mid =>
+          apiAddMealItem({ date: today, mealType, recipeId, servings, memberId: mid })
+        ))
+      } else {
+        await apiAddMealItem({ date: today, mealType, recipeId, servings })
+      }
       toast({ title: "Meal logged!", description: "Added to your meal log." })
       setLogOpen(false)
     } catch {

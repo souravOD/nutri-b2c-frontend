@@ -5,10 +5,13 @@ import {
   apiGetNutritionDaily,
   apiGetNutritionHealthMetrics,
   apiGetNutritionMemberSummary,
+  apiGetNutritionMonthly,
+  apiGetNutritionRange,
   apiGetNutritionWeekly,
 } from "@/lib/api";
 import type {
   NutritionDashboardDailyResponse,
+  NutritionDashboardRangeResponse,
   NutritionDashboardWeeklyResponse,
   NutritionHealthMetricsResponse,
   NutritionMemberSummaryResponse,
@@ -42,6 +45,38 @@ export function useNutritionWeekly(params: { weekStart?: string } & MemberScoped
 
   return {
     weekly: data ?? null,
+    isLoading,
+    error,
+    refetch,
+  };
+}
+
+export function useNutritionMonthly(params: { month?: string } & MemberScopedParams = {}) {
+  const { data, isLoading, error, refetch } = useQuery<NutritionDashboardRangeResponse>({
+    queryKey: ["nutrition-monthly", params.month ?? "", params.memberId ?? ""],
+    queryFn: () => apiGetNutritionMonthly(params),
+    staleTime: 30_000,
+    enabled: !!params.month,
+  });
+
+  return {
+    monthly: data ?? null,
+    isLoading,
+    error,
+    refetch,
+  };
+}
+
+export function useNutritionRange(params: { startDate?: string; endDate?: string } & MemberScopedParams = {}) {
+  const { data, isLoading, error, refetch } = useQuery<NutritionDashboardRangeResponse>({
+    queryKey: ["nutrition-range", params.startDate ?? "", params.endDate ?? "", params.memberId ?? ""],
+    queryFn: () => apiGetNutritionRange(params),
+    staleTime: 30_000,
+    enabled: !!(params.startDate && params.endDate),
+  });
+
+  return {
+    rangeData: data ?? null,
     isLoading,
     error,
     refetch,

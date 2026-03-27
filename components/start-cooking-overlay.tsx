@@ -136,7 +136,7 @@ export function StartCookingOverlay({
             {/* Back */}
             <button
               type="button"
-              onClick={currentStep > 0 ? handlePrev : handleClose}
+              onClick={showLogPrompt ? () => setShowLogPrompt(false) : currentStep > 0 ? handlePrev : handleClose}
               className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#F8FAFC] transition-colors"
               aria-label="Back"
             >

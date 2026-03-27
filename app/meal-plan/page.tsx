@@ -1,24 +1,29 @@
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useState, useMemo } from "react"
 import { ArrowLeft, Sparkles, CalendarDays, UtensilsCrossed } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { apiGetProfile, apiGetMyHealth } from "@/lib/api"
-import { useMealPlans, useActivatePlan } from "@/hooks/use-meal-plan"
+import { useMealPlans, useActivatePlan, useDeletePlan } from "@/hooks/use-meal-plan"
 import { PlanRecommendationCard } from "@/components/meal-plan/plan-recommendation-card"
 import { PersonalizationCard } from "@/components/meal-plan/personalization-card"
 import { useToast } from "@/hooks/use-toast"
+import { useHouseholdMembers } from "@/hooks/use-household"
 
 export default function MealPlanPage() {
   const router = useRouter()
   const { toast } = useToast()
 
+  // Household members
+  const { members } = useHouseholdMembers()
+  const [selectedMemberId, setSelectedMemberId] = useState<string | undefined>(undefined)
 
-  // Fetch existing plans via hook
-  const { plans } = useMealPlans()
+  // Fetch existing plans via hook (filtered by member when selected)
+  const { plans } = useMealPlans(undefined, selectedMemberId)
   const activatePlan = useActivatePlan()
+  const deletePlan = useDeletePlan()
 
   // Fetch user profile for personalization
   const { data: profile } = useQuery({
@@ -36,6 +41,26 @@ export default function MealPlanPage() {
 
   const hasActivePlan = plans.some((p) => p.status === "active")
 
+  // Build a lookup: memberId -> displayName
+  const memberNameMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const m of members) {
+      map.set(m.id, m.fullName?.split(" ")[0] || "Member")
+    }
+    return map
+  }, [members])
+
+  const getMemberLabel = useCallback(
+    (plan: { memberIds: string[] | null }) => {
+      if (!plan.memberIds || plan.memberIds.length === 0) return null
+      const names = plan.memberIds
+        .map((id) => memberNameMap.get(id) || "Unknown")
+        .join(", ")
+      return names
+    },
+    [memberNameMap]
+  )
+
 
 
   const handleActivatePlan = useCallback(
@@ -51,6 +76,20 @@ export default function MealPlanPage() {
       })
     },
     [activatePlan, toast, router],
+  )
+
+  const handleDeletePlan = useCallback(
+    (planId: string) => {
+      deletePlan.mutate(planId, {
+        onSuccess: () => {
+          toast({ title: "Plan deleted", description: "The meal plan has been removed." })
+        },
+        onError: () => {
+          toast({ title: "Failed to delete plan", variant: "destructive" })
+        },
+      })
+    },
+    [deletePlan, toast],
   )
 
   return (
@@ -133,7 +172,7 @@ export default function MealPlanPage() {
           </p>
           <Link
             href="/meal-plan/ai-planner"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#538100] text-white text-[14px] font-semibold hover:bg-[#446d00] transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#99CC33] text-black text-[14px] font-semibold hover:bg-[#6B8F24] transition-colors"
             style={{
               fontFamily: "Inter, sans-serif",
               boxShadow: "0px 4px 12px rgba(83,129,0,0.25)",
@@ -143,6 +182,51 @@ export default function MealPlanPage() {
             Generate Plan
           </Link>
         </section>
+
+        {/* ── Member Filter (multi-member households) ──────────── */}
+        {members.length > 1 && (
+          <section className="mt-4">
+            <p
+              className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2"
+              style={{ fontFamily: "Inter, sans-serif" }}
+            >
+              Filter by member
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedMemberId(undefined)}
+                className={`px-4 py-2 rounded-full text-[13px] font-semibold transition-colors whitespace-nowrap ${
+                  selectedMemberId === undefined
+                    ? "bg-[#99CC33] text-[#0F172A] shadow-sm"
+                    : "bg-white border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]"
+                }`}
+                style={{ fontFamily: "Inter, sans-serif" }}
+              >
+                Everyone
+              </button>
+              {members.map((member) => {
+                const isSelected = selectedMemberId === member.id
+                const displayName = member.fullName?.split(" ")[0] || "Member"
+                return (
+                  <button
+                    key={member.id}
+                    type="button"
+                    onClick={() => setSelectedMemberId(member.id)}
+                    className={`px-4 py-2 rounded-full text-[13px] font-semibold transition-colors whitespace-nowrap ${
+                      isSelected
+                        ? "bg-[#99CC33] text-[#0F172A] shadow-sm"
+                        : "bg-white border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]"
+                    }`}
+                    style={{ fontFamily: "Inter, sans-serif" }}
+                  >
+                    {displayName}{member.isProfileOwner ? " (You)" : ""}
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+        )}
 
         {/* ── Existing Plans ──────────────────────────────────────── */}
         {plans.length > 0 && (
@@ -165,14 +249,28 @@ export default function MealPlanPage() {
               )}
             </div>
             <div className="flex flex-col gap-4">
-              {plans.slice(0, 3).map((plan) => (
-                <PlanRecommendationCard
-                  key={plan.id}
-                  plan={plan}
-                  onSelect={handleActivatePlan}
-                  isLoading={activatePlan.isPending}
-                />
-              ))}
+              {plans.slice(0, 5).map((plan) => {
+                const memberLabel = getMemberLabel(plan)
+                return (
+                  <div key={plan.id}>
+                    {memberLabel && members.length > 1 && (
+                      <p
+                        className="text-[11px] font-semibold text-[#538100] mb-1 ml-1"
+                        style={{ fontFamily: "Inter, sans-serif" }}
+                      >
+                        👤 {memberLabel}
+                      </p>
+                    )}
+                    <PlanRecommendationCard
+                      plan={plan}
+                      onSelect={handleActivatePlan}
+                      onDelete={handleDeletePlan}
+                      isLoading={activatePlan.isPending}
+                      isDeleting={deletePlan.isPending}
+                    />
+                  </div>
+                )
+              })}
             </div>
           </section>
         )}

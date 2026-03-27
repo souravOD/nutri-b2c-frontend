@@ -8,6 +8,8 @@ import { ActionConfirmation } from "./action-confirmation"
 import { RecipeResultCard } from "./recipe-result-card"
 import { NutritionMiniCard } from "./nutrition-mini-card"
 import { sendChatMessage, type ChatMessage } from "@/lib/chat-api"
+import { useActiveMember } from "@/contexts/member-context"
+import { useHouseholdMembers } from "@/hooks/use-household"
 
 export function ChatWidget() {
     const [isOpen, setIsOpen] = useState(false)
@@ -15,6 +17,14 @@ export function ChatWidget() {
     const [sessionId, setSessionId] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
+    const { activeMemberId } = useActiveMember()
+    const { members: householdMembers = [] } = useHouseholdMembers()
+
+    // Resolve active member name for header
+    const activeMember = householdMembers.find((m: any) => m.id === activeMemberId)
+    const chatTitle = activeMember
+        ? `Nutri for ${activeMember.firstName || activeMember.fullName?.split(" ")[0]}`
+        : "Nutri Assistant"
 
     useEffect(() => {
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" })
@@ -41,7 +51,7 @@ export function ChatWidget() {
         setLoading(true)
 
         try {
-            const res = await sendChatMessage(text, sessionId)
+            const res = await sendChatMessage(text, sessionId, activeMemberId)
             if (res.sessionId) setSessionId(res.sessionId)
 
             const botMsg: ChatMessage = {
@@ -69,7 +79,7 @@ export function ChatWidget() {
         } finally {
             setLoading(false)
         }
-    }, [sessionId])
+    }, [sessionId, activeMemberId])
 
     const handleConfirm = useCallback((msgId: string) => {
         handleSend("yes")
@@ -129,7 +139,7 @@ export function ChatWidget() {
                             <h3
                                 className="text-[15px] font-bold text-[#0F172A] leading-tight"
                             >
-                                Nutri Assistant
+                                {chatTitle}
                             </h3>
                             <p className="text-[11px] text-[#94A3B8] leading-tight mt-0.5">
                                 Ask about recipes, nutrition, meals…

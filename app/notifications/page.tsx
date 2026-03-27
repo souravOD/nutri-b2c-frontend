@@ -17,7 +17,15 @@ export default function NotificationsPage() {
   const markRead = useMarkAsRead();
   const markAllRead = useMarkAllAsRead();
 
-  const notifications = data?.notifications ?? [];
+  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+  const notifications = (data?.notifications ?? []).filter((n) => {
+    // Always show unread
+    if (!n.isRead) return true;
+    // Keep read notifications for 2 hours after they were read
+    if (n.readAt) return Date.now() - new Date(n.readAt).getTime() < TWO_HOURS_MS;
+    // Fallback: keep if created within the last 2 hours
+    return Date.now() - new Date(n.createdAt).getTime() < TWO_HOURS_MS;
+  });
   const hasUnread = notifications.some((n) => !n.isRead);
 
   return (
@@ -142,6 +150,9 @@ export default function NotificationsPage() {
           gap: 8px;
         }
         .empty-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
           text-align: center;
           padding: 60px 20px;
           color: #999;

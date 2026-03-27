@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, Calendar, Sparkles } from "lucide-react"
 import Link from "next/link"
@@ -17,6 +17,8 @@ import {
   apiToggleSave,
 } from "@/lib/api"
 import { useUser } from "@/hooks/use-user"
+import { useHouseholdMembers } from "@/hooks/use-household"
+import { useSelectedMember } from "@/hooks/use-selected-member"
 import { useToast } from "@/hooks/use-toast"
 import { CalorieRing } from "@/components/home/calorie-ring"
 import { MacroBar } from "@/components/home/macro-bar"
@@ -47,9 +49,20 @@ export default function DailyLogPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
 
+  // ── Household member switching (same pattern as nutrition page) ──
+  const { members } = useHouseholdMembers()
+  const defaultMember = useMemo(
+    () => members.find((m) => m.isProfileOwner) ?? members[0] ?? null,
+    [members]
+  )
+  const { memberId, setMemberId } = useSelectedMember(defaultMember?.id)
+
+  useEffect(() => {
+    if (!memberId && defaultMember?.id) setMemberId(defaultMember.id)
+  }, [memberId, defaultMember?.id, setMemberId])
+
   // ── State ──
   const [date, setDate] = useState(new Date())
-  const [memberId, setMemberId] = useState<string | undefined>()
   const dateStr = toDateStr(date)
 
   // Quick-add sheet
@@ -81,8 +94,8 @@ export default function DailyLogPage() {
   })
 
   const { data: nutrition } = useQuery({
-    queryKey: ["nutrition-daily", dateStr],
-    queryFn: () => apiGetNutritionDaily({ date: dateStr }),
+    queryKey: ["nutrition-daily", dateStr, memberId],
+    queryFn: () => apiGetNutritionDaily({ date: dateStr, memberId }),
     staleTime: 30_000,
   })
 
@@ -156,22 +169,35 @@ export default function DailyLogPage() {
   }, [])
 
   const handleConfirmLog = useCallback(
-    async (recipeId: string, mealType: MealType, servings: number) => {
+    async (recipeId: string, mealType: MealType, servings: number, memberIds?: string[]) => {
       try {
-        await addMutation.mutateAsync({
-          date: dateStr,
-          mealType,
-          recipeId,
-          servings,
-          source: "recipe",
-          ...(memberId ? { memberId } : {}),
-        })
+        if (memberIds?.length) {
+          await Promise.all(memberIds.map(mid =>
+            addMutation.mutateAsync({
+              date: dateStr,
+              mealType,
+              recipeId,
+              servings,
+              source: "recipe",
+              memberId: mid,
+            })
+          ))
+        } else {
+          await addMutation.mutateAsync({
+            date: dateStr,
+            mealType,
+            recipeId,
+            servings,
+            source: "recipe",
+            ...(memberId ? { memberId } : {}),
+          })
+        }
         setLogModalOpen(false)
         setConfirmData({
-          calories: (logRecipe?.calories || 0) * servings,
-          protein: (logRecipe?.protein_g || 0) * servings,
-          carbs: (logRecipe?.carbs_g || 0) * servings,
-          fats: (logRecipe?.fat_g || 0) * servings,
+          calories: (logRecipe?.nutrition?.calories ?? logRecipe?.calories ?? 0) * servings,
+          protein: (logRecipe?.nutrition?.protein_g ?? logRecipe?.protein_g ?? 0) * servings,
+          carbs: (logRecipe?.nutrition?.carbs_g ?? logRecipe?.carbs_g ?? 0) * servings,
+          fats: (logRecipe?.nutrition?.fat_g ?? logRecipe?.fat_g ?? 0) * servings,
         })
         setConfirmOpen(true)
       } catch {
@@ -252,6 +278,24 @@ export default function DailyLogPage() {
           </button>
         </header>
 
+        {/* ── Member Switcher (dropdown matching nutrition page) ── */}
+        {members.length > 1 && (
+          <div className="flex items-center justify-end py-2">
+            <select
+              value={memberId}
+              onChange={(e) => setMemberId(e.target.value)}
+              className="h-9 px-3 rounded-xl border border-[#E2E8F0] bg-white text-[13px] text-[#0F172A] focus:outline-none focus:border-[#99CC33] focus:ring-1 focus:ring-[#99CC33]/20 max-w-[180px] truncate"
+              style={{ fontFamily: "Inter, sans-serif" }}
+            >
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.firstName || m.fullName}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* ── Date Navigator ─────────────────────────────────────── */}
         <DateNavigator date={date} onChange={setDate} />
 
@@ -260,12 +304,12 @@ export default function DailyLogPage() {
           className="bg-white border border-[#F1F5F9] rounded-[24px] p-5 mt-2"
           style={{ boxShadow: "0px 1px 3px 0px rgba(0,0,0,0.06)" }}
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <CalorieRing consumed={n(totals.calories)} target={n(targets.calories)} />
-            <div className="flex flex-col items-end gap-1">
+            <div className="flex-1 flex flex-col gap-2 min-w-0">
               {streakDays > 0 && (
                 <span
-                  className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#538100] bg-[#F0F7E6] px-2.5 py-1 rounded-full"
+                  className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#538100] bg-[#F0F7E6] px-2.5 py-1 rounded-full self-end"
                   style={{ fontFamily: "Inter, sans-serif" }}
                 >
                   🔥 {streakDays} Day Streak!
@@ -319,7 +363,7 @@ export default function DailyLogPage() {
           </p>
           <Link
             href="/meal-plan/ai-planner"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-[#538100] text-[14px] font-semibold border border-[#E2E8D0] hover:bg-[#F0F7E6] transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#99CC33] text-[#0F172A] text-[14px] font-semibold border border-[#6B8F24] hover:bg-[#6B8F24] transition-colors"
             style={{ fontFamily: "Inter, sans-serif" }}
           >
             <Sparkles className="w-4 h-4" />
@@ -372,10 +416,10 @@ export default function DailyLogPage() {
           }).then(() => {
             setMyRecipesPickerOpen(false)
             setConfirmData({
-              calories: recipe.calories || 0,
-              protein: recipe.protein_g || 0,
-              carbs: recipe.carbs_g || 0,
-              fats: recipe.fat_g || 0,
+              calories: recipe.nutrition?.calories ?? recipe.calories ?? 0,
+              protein: recipe.nutrition?.protein_g ?? recipe.protein_g ?? 0,
+              carbs: recipe.nutrition?.carbs_g ?? recipe.carbs_g ?? 0,
+              fats: recipe.nutrition?.fat_g ?? recipe.fat_g ?? 0,
             })
             setConfirmOpen(true)
           }).catch(() => {
@@ -391,6 +435,7 @@ export default function DailyLogPage() {
         recipe={logRecipe}
         onConfirm={handleConfirmLog}
         loading={addMutation.isPending}
+        defaultMealType={quickAddSlot}
       />
 
       <LogConfirmation

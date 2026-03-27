@@ -254,6 +254,17 @@ function ScorePreview({ weights }: { weights: { health: number; time: number; po
   )
 }
 
+/* ─── Goal-based macro distribution ratios (% of calories) ─── */
+const GOAL_RATIOS: Record<string, { protein: number; carbs: number; fat: number }> = {
+  lose_weight:      { protein: 0.35, carbs: 0.35, fat: 0.30 },
+  gain_muscle:      { protein: 0.40, carbs: 0.30, fat: 0.30 },
+  maintain:         { protein: 0.25, carbs: 0.45, fat: 0.30 },
+  improve_energy:   { protein: 0.25, carbs: 0.50, fat: 0.25 },
+  heart_health:     { protein: 0.20, carbs: 0.50, fat: 0.30 },
+  general_wellness: { protein: 0.25, carbs: 0.45, fat: 0.30 },
+  default:          { protein: 0.25, carbs: 0.45, fat: 0.30 },
+}
+
 /* ─── Main Settings Page ─── */
 const DISABLED_TABS = new Set(["recommendation", "advanced"])  // TODO: enable after RAG integration
 
@@ -271,6 +282,7 @@ export default function SettingsPage() {
   const { settings, updateSettings, apply, resetToDefaults, downloadJson } = useSettings()
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("general")
+  const [macroSync, setMacroSync] = useState(true)
 
   const behavior = settings.behavior ?? {}
   const adv = settings.advanced ?? { weights: { health: 0, time: 0, popularity: 0, personal: 0, diversity: 0 } }
@@ -361,6 +373,81 @@ export default function SettingsPage() {
             <RangeSlider label="Default Time Range" hint="Preferred cooking time range in minutes"
               value={settings.timeRangeMinMax} min={0} max={120} step={5}
               onChange={timeRangeMinMax => updateSettings({ timeRangeMinMax })} />
+
+            {/* PRD-33: Location Section */}
+            <div style={{ marginTop: 8, paddingTop: 16, borderTop: "1px solid #F0F0F0" }}>
+              <FieldLabel>Location</FieldLabel>
+              <FieldHint>Used for regional food recommendations, seasonal recipes, and local product pricing.</FieldHint>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+                <div>
+                  <FieldLabel>Country</FieldLabel>
+                  <div style={{ position: "relative", marginTop: 6 }}>
+                    <select
+                      value={(settings as any).locationCountry ?? ""}
+                      onChange={e => updateSettings({ locationCountry: e.target.value || null, locationState: null } as any)}
+                      style={S.select}
+                    >
+                      <option value="">Select country</option>
+                      {[
+                        { value: "US", label: "United States" },
+                        { value: "CA", label: "Canada" },
+                        { value: "IN", label: "India" },
+                        { value: "GB", label: "United Kingdom" },
+                        { value: "AU", label: "Australia" },
+                        { value: "DE", label: "Germany" },
+                        { value: "FR", label: "France" },
+                        { value: "JP", label: "Japan" },
+                        { value: "BR", label: "Brazil" },
+                        { value: "MX", label: "Mexico" },
+                        { value: "OTHER", label: "Other" },
+                      ].map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                    </select>
+                    <ChevronDown size={14} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#999" }} />
+                  </div>
+                </div>
+                <div>
+                  <FieldLabel>
+                    {({ US: "State", CA: "Province", IN: "State", GB: "Region" } as Record<string, string>)[(settings as any).locationCountry ?? ""] ?? "State / Region"}
+                  </FieldLabel>
+                  {(() => {
+                    const country = (settings as any).locationCountry ?? ""
+                    const stateOptions: Record<string, string[]> = {
+                      US: ["Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut","Delaware","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire","New Jersey","New Mexico","New York","North Carolina","North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina","South Dakota","Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming"],
+                      CA: ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Nova Scotia","Ontario","Prince Edward Island","Quebec","Saskatchewan"],
+                      IN: ["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Delhi"],
+                      GB: ["England","Scotland","Wales","Northern Ireland"],
+                    }
+                    const opts = stateOptions[country] ?? []
+                    if (!opts.length) return <StyledInput value="" disabled placeholder="Select country first" style={{ marginTop: 6 }} />
+                    return (
+                      <div style={{ position: "relative", marginTop: 6 }}>
+                        <select
+                          value={(settings as any).locationState ?? ""}
+                          onChange={e => updateSettings({ locationState: e.target.value || null } as any)}
+                          style={S.select}
+                        >
+                          <option value="">Select...</option>
+                          {opts.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                        <ChevronDown size={14} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#999" }} />
+                      </div>
+                    )
+                  })()}
+                </div>
+              </div>
+              {["US","CA","IN","GB","AU","DE","FR"].includes((settings as any).locationCountry ?? "") && (
+                <div style={{ marginTop: 12, maxWidth: 200 }}>
+                  <FieldLabel>ZIP / Postal Code <span style={{ fontWeight: 400, fontSize: 11, color: "#999" }}>(optional)</span></FieldLabel>
+                  <StyledInput
+                    value={(settings as any).locationZipCode ?? ""}
+                    onChange={e => updateSettings({ locationZipCode: e.target.value || null } as any)}
+                    placeholder={(settings as any).locationCountry === "US" ? "e.g. 94105" : "e.g. 400001"}
+                    maxLength={10}
+                    style={{ marginTop: 6 }}
+                  />
+                </div>
+              )}
+            </div>
           </Card>
         )}
 
@@ -369,7 +456,22 @@ export default function SettingsPage() {
             <div style={{ marginBottom: 20 }}>
               <FieldLabel>Health Goal</FieldLabel>
               <StyledSelect value={settings.healthGoal ?? ""}
-                onChange={(v: string) => updateSettings({ healthGoal: v || null } as any)}
+                onChange={(v: string) => {
+                  updateSettings({ healthGoal: v || null } as any)
+                  // When sync is on and a goal is selected, redistribute macros
+                  if (macroSync && v && settings.calorieTarget) {
+                    const ratio = GOAL_RATIOS[v] ?? GOAL_RATIOS.default
+                    const cal = settings.calorieTarget
+                    updateSettings({
+                      healthGoal: v || null,
+                      macroWeights: {
+                        protein: Math.round((cal * ratio.protein) / 4),
+                        carbs: Math.round((cal * ratio.carbs) / 4),
+                        fat: Math.round((cal * ratio.fat) / 9),
+                      },
+                    } as any)
+                  }
+                }}
                 options={[
                   { value: "", label: "Select a goal..." },
                   { value: "lose_weight", label: "Lose Weight" },
@@ -393,19 +495,94 @@ export default function SettingsPage() {
                 <FieldLabel>Daily Calorie Target</FieldLabel>
                 <StyledInput type="number" min={1000} max={5000}
                   value={String(settings.calorieTarget ?? "")}
-                  onChange={e => updateSettings({ calorieTarget: Number.parseInt(e.target.value) || undefined })}
+                  onChange={e => {
+                    const cal = Number.parseInt(e.target.value) || undefined
+                    if (macroSync && cal) {
+                      const ratio = GOAL_RATIOS[settings.healthGoal ?? ""] ?? GOAL_RATIOS.default
+                      updateSettings({
+                        calorieTarget: cal,
+                        macroWeights: {
+                          protein: Math.round((cal * ratio.protein) / 4),
+                          carbs: Math.round((cal * ratio.carbs) / 4),
+                          fat: Math.round((cal * ratio.fat) / 9),
+                        },
+                      })
+                    } else {
+                      updateSettings({ calorieTarget: cal })
+                    }
+                  }}
                   placeholder="2000" style={{ marginTop: 6 }} />
               </div>
             </div>
 
-            <FieldLabel>Macro Targets (g)</FieldLabel>
-            <div style={{ marginTop: 8 }}>
+            {/* Sync toggle + computed calorie indicator */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <FieldLabel>Macro Targets (g)</FieldLabel>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 11, color: macroSync ? "#538100" : "#999" }}>
+                  {macroSync ? "🔗 Synced" : "🔓 Manual"}
+                </span>
+                <button onClick={() => setMacroSync(!macroSync)} style={{
+                  width: 36, height: 20, borderRadius: 10, border: "none", cursor: "pointer",
+                  background: macroSync ? "#99CC33" : "#D0D0D0", position: "relative", transition: "background 0.2s",
+                }}>
+                  <div style={{
+                    width: 16, height: 16, borderRadius: 8, background: "white",
+                    position: "absolute", top: 2,
+                    left: macroSync ? 18 : 2, transition: "left 0.2s",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                  }} />
+                </button>
+              </div>
+            </div>
+
+            {/* Show computed vs target calorie mismatch */}
+            {(() => {
+              const computed = (settings.macroWeights.protein * 4) + (settings.macroWeights.carbs * 4) + (settings.macroWeights.fat * 9)
+              const target = settings.calorieTarget ?? 0
+              const diff = Math.abs(computed - target)
+              if (!macroSync && diff > 50 && target > 0) {
+                return (
+                  <div style={{
+                    background: "#FFF7ED", border: "1px solid #FDBA74", borderRadius: 8,
+                    padding: "8px 12px", marginBottom: 12, fontSize: 12, color: "#9A3412",
+                  }}>
+                    ⚠️ Macro total: <strong>{computed} kcal</strong> vs target: <strong>{target} kcal</strong> ({diff} kcal difference).
+                    Turn on sync to auto-align.
+                  </div>
+                )
+              }
+              return null
+            })()}
+
+            <div style={{ marginTop: 4 }}>
               <CustomSlider label="Protein (g)" value={settings.macroWeights.protein} min={0} max={300} step={1}
-                onChange={protein => updateSettings({ macroWeights: { ...settings.macroWeights, protein } })} />
+                onChange={protein => {
+                  const newMacros = { ...settings.macroWeights, protein }
+                  if (macroSync) {
+                    updateSettings({ macroWeights: newMacros, calorieTarget: (protein * 4) + (newMacros.carbs * 4) + (newMacros.fat * 9) })
+                  } else {
+                    updateSettings({ macroWeights: newMacros })
+                  }
+                }} />
               <CustomSlider label="Carbs (g)" value={settings.macroWeights.carbs} min={0} max={500} step={1}
-                onChange={carbs => updateSettings({ macroWeights: { ...settings.macroWeights, carbs } })} />
+                onChange={carbs => {
+                  const newMacros = { ...settings.macroWeights, carbs }
+                  if (macroSync) {
+                    updateSettings({ macroWeights: newMacros, calorieTarget: (newMacros.protein * 4) + (carbs * 4) + (newMacros.fat * 9) })
+                  } else {
+                    updateSettings({ macroWeights: newMacros })
+                  }
+                }} />
               <CustomSlider label="Fat (g)" value={settings.macroWeights.fat} min={0} max={200} step={1}
-                onChange={fat => updateSettings({ macroWeights: { ...settings.macroWeights, fat } })} />
+                onChange={fat => {
+                  const newMacros = { ...settings.macroWeights, fat }
+                  if (macroSync) {
+                    updateSettings({ macroWeights: newMacros, calorieTarget: (newMacros.protein * 4) + (newMacros.carbs * 4) + (fat * 9) })
+                  } else {
+                    updateSettings({ macroWeights: newMacros })
+                  }
+                }} />
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginTop: 8 }}>

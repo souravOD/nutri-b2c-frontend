@@ -1,12 +1,16 @@
 "use client"
 
-import { useMemo, useState, useCallback } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Bell, ScanBarcode, Sparkles, Clock } from "lucide-react"
+import { useUnreadCount } from "@/hooks/use-notifications"
 import Link from "next/link"
-import { apiGetFeed, apiAddMealLogItem, apiGetNutritionDaily, apiRejectRecipe, apiGetGroceryLists, apiGetGroceryListDetail } from "@/lib/api"
+import { apiGetFeed, apiAddMealItem, apiGetNutritionDaily, apiRejectRecipe, apiGetGroceryLists, apiGetGroceryListDetail } from "@/lib/api"
 import { useUser } from "@/hooks/use-user"
 import { useFavorites } from "@/hooks/use-favorites"
+import { useActiveMember } from "@/contexts/member-context"
+import { MemberSwitcher } from "@/components/member-switcher"
+import { useHouseholdMembers } from "@/hooks/use-household"
 import { CalorieRing } from "@/components/home/calorie-ring"
 import { MacroBar } from "@/components/home/macro-bar"
 import { RecipeCardHome } from "@/components/home/recipe-card-home"
@@ -27,12 +31,27 @@ export default function HomePage() {
   const { user } = useUser()
   const { isFavorite, toggleFavorite } = useFavorites()
   const { toast } = useToast()
+  const { data: unreadCount = 0 } = useUnreadCount()
+  const { activeMemberId, setActiveMember, setUserId, clearActiveMember } = useActiveMember()
+  const { members: householdMembers = [] } = useHouseholdMembers()
+
+  // Scope member storage per authenticated user
+  useEffect(() => {
+    if (user?.$id) setUserId(user.$id);
+  }, [user?.$id, setUserId]);
+
+  // Auto-clear stale member ID if it doesn't match any loaded household members
+  useEffect(() => {
+    if (activeMemberId && householdMembers.length > 0) {
+      const found = householdMembers.some((m: any) => m.id === activeMemberId);
+      if (!found) clearActiveMember();
+    }
+  }, [activeMemberId, householdMembers, clearActiveMember]);
 
   const [logRecipe, setLogRecipe] = useState<Recipe | null>(null)
   const [logOpen, setLogOpen] = useState(false)
   const [logLoading, setLogLoading] = useState(false)
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
-  const [viewMode, setViewMode] = useState<"individual" | "family">("individual")
 
   const { data: nutrition } = useQuery({
     queryKey: ["nutrition-daily"],
@@ -41,8 +60,8 @@ export default function HomePage() {
   })
 
   const { data: recipes = [], isLoading } = useQuery({
-    queryKey: ["home-feed"],
-    queryFn: () => apiGetFeed(),
+    queryKey: ["home-feed", activeMemberId],
+    queryFn: () => apiGetFeed(activeMemberId ?? undefined),
     staleTime: 120_000,
   })
 
@@ -82,17 +101,30 @@ export default function HomePage() {
   }, [])
 
   const handleConfirmLog = useCallback(
-    async (recipeId: string, mealType: MealType, servings: number) => {
+    async (recipeId: string, mealType: MealType, servings: number, memberIds?: string[]) => {
       setLogLoading(true)
       try {
         const today = new Date().toISOString().split("T")[0]
-        await apiAddMealLogItem({
-          date: today,
-          mealType,
-          recipeId,
-          servings,
-          source: "recipe",
-        })
+        if (memberIds?.length) {
+          await Promise.all(memberIds.map(mid =>
+            apiAddMealItem({
+              date: today,
+              mealType,
+              recipeId,
+              servings,
+              source: "recipe",
+              memberId: mid,
+            })
+          ))
+        } else {
+          await apiAddMealItem({
+            date: today,
+            mealType,
+            recipeId,
+            servings,
+            source: "recipe",
+          })
+        }
         toast({
           title: "Added to meal log",
           description: `${logRecipe?.title ?? "Recipe"} logged as ${mealType}`,
@@ -113,7 +145,12 @@ export default function HomePage() {
 
   const totals = nutrition?.totals ?? { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 }
   const targets = nutrition?.targets ?? { calories: 2000, proteinG: 150, carbsG: 250, fatG: 70 }
-  const firstName = user?.name?.split(" ")[0] ?? "there"
+  // Resolve active member's name for greeting (falls back to logged-in user name)
+  const activeMember = householdMembers.find((m: any) => m.id === activeMemberId);
+  const firstName = (activeMember?.firstName
+    || activeMember?.fullName?.split(" ")[0]
+    || user?.name?.split(" ")[0])
+    ?? "there"
 
   const praiseText = useMemo(() => {
     if (totals.proteinG > 30) return "Great protein choice!"
@@ -150,37 +187,24 @@ export default function HomePage() {
           </h1>
           <Link href="/notifications" className="relative p-2 rounded-full" aria-label="Notifications">
             <Bell className="w-5 h-5 text-[#0F172A]" />
-            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#EF4444]" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-[#EF4444] border-2 border-[#F7F8F6]" />
+            )}
           </Link>
         </header>
 
         {/* Desktop: bell is now in FigmaTopBar, no duplicate needed */}
 
-        {/* ── Individual / Family toggle (mobile/tablet only — desktop uses top bar Family selector) ── */}
-        <div className="flex justify-center py-3 lg:hidden">
-          <div className="flex items-center w-[280px] max-w-full p-1 rounded-full bg-[#E2E8F0]">
-            <button
-              type="button"
-              onClick={() => setViewMode("individual")}
-              className={`flex-1 py-2 rounded-full text-center text-[14px] font-semibold transition-all ${viewMode === "individual"
-                ? "bg-white text-[#0F172A] shadow-sm"
-                : "text-[#64748B]"
-                }`}
-              style={{ fontFamily: "Inter, sans-serif" }}
-            >
-              Individual
-            </button>
-            <button
-              type="button"
-              disabled
-              className="flex-1 py-2 rounded-full text-center text-[14px] font-semibold text-[#94A3B8] cursor-not-allowed opacity-60"
-              style={{ fontFamily: "Inter, sans-serif" }}
-              title="Coming soon — Family view requires PRD-22"
-            >
-              Family
-            </button>
+        {/* ── Member Switcher (replaces Individual/Family toggle) ── */}
+        {householdMembers.length > 1 && (
+          <div className="py-3">
+            <MemberSwitcher
+              members={householdMembers}
+              activeId={activeMemberId || (user as any)?.b2cCustomerId || ""}
+              onChange={setActiveMember}
+            />
           </div>
-        </div>
+        )}
 
         {/* ── Greeting ───────────────────────────────────────────── */}
         <section className="pt-2 pb-4">

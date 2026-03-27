@@ -16,7 +16,10 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+      /* ─── Mobile: top-center full-width (unchanged) ─── */
+      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4",
+      /* ─── Desktop (sm+): bottom-right, wider card, subtle gap from edge ─── */
+      "sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col sm:p-6 md:max-w-[480px]",
       className
     )}
     {...props}
@@ -25,13 +28,32 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-2xl border-l-4 p-5 pr-10 shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  [
+    "group pointer-events-auto relative flex w-full overflow-hidden transition-all",
+    /* ── Shape & shadow ── */
+    "rounded-2xl border border-[#E2E8F0]",
+    "shadow-[0_12px_40px_rgba(0,0,0,0.12)]",
+    /* ── Animation ── */
+    "data-[swipe=cancel]:translate-x-0",
+    "data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)]",
+    "data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)]",
+    "data-[swipe=move]:transition-none",
+    "data-[state=open]:animate-in data-[state=closed]:animate-out",
+    "data-[state=closed]:fade-out-80 data-[swipe=end]:animate-out",
+    "data-[state=closed]:slide-out-to-right-full",
+    "data-[state=open]:slide-in-from-top-full",
+    "data-[state=open]:sm:slide-in-from-bottom-full",
+    /* ── Mobile: compact single-row ── */
+    "items-center justify-between space-x-4 p-5 pr-10 border-l-4",
+    /* ── Desktop: card layout with stacked content ── */
+    "sm:flex-col sm:items-stretch sm:space-x-0 sm:p-0 sm:pr-0 sm:border-l-0",
+  ].join(" "),
   {
     variants: {
       variant: {
-        default: "border-l-[#99CC33] bg-white text-[#0F172A]",
+        default: "border-l-[#99CC33] bg-white text-[#0F172A] sm:border-l-0",
         destructive:
-          "destructive group border-l-[#EF4444] bg-white text-[#0F172A]",
+          "destructive group border-l-[#EF4444] bg-white text-[#0F172A] sm:border-l-[#EF4444]",
       },
     },
     defaultVariants: {
@@ -77,7 +99,11 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      "absolute right-3 top-3 rounded-full p-1 text-[#94A3B8] opacity-0 transition-all hover:text-[#0F172A] hover:bg-[#F1F5F9] focus:opacity-100 focus:outline-none group-hover:opacity-100",
+      /* ── Mobile: top-right corner ── */
+      "absolute right-3 top-3 rounded-full p-1 text-[#94A3B8] opacity-0 transition-all",
+      "hover:text-[#0F172A] hover:bg-[#F1F5F9] focus:opacity-100 focus:outline-none group-hover:opacity-100",
+      /* ── Desktop: always visible, better position ── */
+      "sm:opacity-60 sm:right-4 sm:top-4 sm:hover:opacity-100",
       className
     )}
     toast-close=""
@@ -94,7 +120,11 @@ const ToastTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Title
     ref={ref}
-    className={cn("text-[14px] font-bold group-[.destructive]:text-[#EF4444]", className)}
+    className={cn(
+      "text-[14px] font-bold group-[.destructive]:text-[#EF4444]",
+      "sm:text-[15px] sm:font-semibold sm:leading-tight",
+      className
+    )}
     style={{ fontFamily: "Inter, sans-serif" }}
     {...props}
   />
@@ -107,7 +137,11 @@ const ToastDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Description
     ref={ref}
-    className={cn("text-[13px] text-[#64748B] leading-[18px]", className)}
+    className={cn(
+      "text-[13px] text-[#64748B] leading-[18px]",
+      "sm:text-[13px] sm:leading-[20px]",
+      className
+    )}
     style={{ fontFamily: "Inter, sans-serif" }}
     {...props}
   />

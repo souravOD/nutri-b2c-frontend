@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -219,6 +219,13 @@ export default function GroceryListPage() {
               >
                 Grocery & Budget
               </h1>
+              <button
+                onClick={() => router.push("/grocery-list/preferences")}
+                className="ml-2 px-3 py-1.5 rounded-lg border border-[#E2E8F0] bg-white text-[13px] text-[#64748B] hover:border-[#99CC33] hover:text-[#99CC33] transition-colors flex items-center gap-1"
+                title="Grocery Preferences"
+              >
+                ⚙️ Preferences
+              </button>
             </div>
 
             {/* Desktop: list selector */}

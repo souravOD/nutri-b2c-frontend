@@ -35,10 +35,14 @@ const nextConfig = {
   // Recipe images come from 50+ domains (pinimg, sndimg, nyt, allrecipes,
   // squarespace-cdn, apartmenttherapy, amazonaws, etc.), so a broad HTTPS
   // pattern is necessary. HTTP is blocked to prevent mixed-content issues.
+  // SEC-02: Wildcard HTTPS is required — recipe images come from 50+ CDN domains.
+  // Block SVG to prevent SSRF via /_next/image proxy.
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**" },
     ],
+    dangerouslyAllowSVG: false,
+    contentDispositionType: "attachment",
   },
 
   // Proxy API calls to the backend; destinations are baked at build time
@@ -49,6 +53,17 @@ const nextConfig = {
     return [
       { source: "/api/v1/:path*", destination: `${API_BASE}/api/v1/:path*` },
     ];
+  },
+
+  // Increase proxy timeout for long-running endpoints (e.g. meal plan generation
+  // which calls the LLM and can take 30–60 seconds). Default ~30s causes ECONNRESET.
+  experimental: {
+    proxyTimeout: 120_000,   // 120 seconds — covers RAG + LLM + DB round-trip
+  },
+
+  // Keep the HTTP agent alive so long-running proxied requests don't get dropped
+  httpAgentOptions: {
+    keepAliveMsecs: 10_000,
   },
 
   // Keep TS checks enabled, but don't block Vercel deploys on existing lint debt.

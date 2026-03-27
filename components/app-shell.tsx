@@ -39,6 +39,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useUser } from "@/hooks/use-user"
+import { useUnreadCount, useAutoEvaluate } from "@/hooks/use-notifications"
+import { useRealtimeNotifications } from "@/hooks/use-realtime-notifications"
 
 interface AppShellProps {
   children: React.ReactNode
@@ -154,6 +156,9 @@ function FigmaTopBar() {
   const pathname = usePathname()
   const [searchQuery, setSearchQuery] = useState("")
   const firstName = user?.name?.split(" ")[0] ?? "User"
+  const { data: unreadCount = 0 } = useUnreadCount()
+  useAutoEvaluate()
+  useRealtimeNotifications()
   const isSearchPage = pathname === "/search" || pathname?.startsWith("/search?")
 
   const onSearchSubmit = (e: React.FormEvent) => {
@@ -230,6 +235,14 @@ function FigmaTopBar() {
           onMouseLeave={(e) => { e.currentTarget.style.background = "transparent" }}
         >
           <Bell className="w-5 h-5" style={{ color: "var(--nutri-heading, #1A1A2E)" }} />
+          {unreadCount > 0 && (
+            <span
+              className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white"
+              style={{ background: "#EF4444", lineHeight: 1, fontFamily: "Inter, sans-serif" }}
+            >
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
         </Link>
 
         {/* Divider */}
