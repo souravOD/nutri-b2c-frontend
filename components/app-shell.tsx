@@ -41,6 +41,8 @@ import {
 import { useUser } from "@/hooks/use-user"
 import { useUnreadCount, useAutoEvaluate } from "@/hooks/use-notifications"
 import { useRealtimeNotifications } from "@/hooks/use-realtime-notifications"
+import { useNps } from "@/hooks/use-nps"
+import { NpsSurveyModal } from "@/components/nps/nps-survey-modal"
 
 interface AppShellProps {
   children: React.ReactNode
@@ -294,6 +296,7 @@ export function AppShell({ children }: AppShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const pathname = usePathname()
+  const { showNps, setShowNps } = useNps()
 
   const isAuthPage = AUTH_PREFIXES.some((p) => pathname === p || pathname?.startsWith(p + "/"))
   const isAdminRoute = pathname?.startsWith("/admin")
@@ -339,6 +342,9 @@ export function AppShell({ children }: AppShellProps) {
 
         {/* Mobile/tablet bottom nav (hidden on lg+) */}
         <BottomNav />
+
+        {/* B2C-026: NPS survey modal */}
+        <NpsSurveyModal open={showNps} onOpenChange={setShowNps} />
       </div>
     )
   }

@@ -21,6 +21,7 @@ import {
   Trash2,
   ShoppingCart,
 } from "lucide-react";
+import { clearAuthCookie } from "@/lib/auth-cookie";
 
 interface ProfileData {
   fullName: string | null;
@@ -82,7 +83,7 @@ export default function ProfilePage() {
     } catch {
       // Session may already be expired — continue to redirect
     } finally {
-      // Hard redirect to clear all React state/context
+      clearAuthCookie(); // B2C-032: Clear auth signal cookie
       window.location.href = "/login";
     }
   };
@@ -91,14 +92,13 @@ export default function ProfilePage() {
     if (!confirm("Are you sure you want to delete your account? This action cannot be undone.")) return;
     try {
       await authFetch("/api/v1/me/account", { method: "DELETE" });
-      // Backend deletes Supabase data + Appwrite docs + Appwrite user
-      // Just clear the local session and hard redirect
       try {
         const { account: appwriteAccount } = await import("@/lib/appwrite");
         await appwriteAccount.deleteSession("current");
       } catch {
         // Session cleanup is best-effort since user is already deleted server-side
       }
+      clearAuthCookie(); // B2C-032: Clear auth signal cookie
       window.location.href = "/login";
     } catch (err) {
       console.error("Delete account failed", err);

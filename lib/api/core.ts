@@ -32,6 +32,61 @@ async function getJwt(): Promise<string | null> {
   }
 }
 
+// ── XR-005: Retry on 5xx / network errors ────────────────────────────────
+
+const MAX_RETRIES = 2;
+const RETRY_BASE_MS = 500;
+
+/**
+ * Returns true if the request should be retried after a 5xx.
+ * GET is always retryable; mutations only when idempotent.
+ */
+function isRetryable(status: number, method: string, hasIdemKey: boolean): boolean {
+  if (status < 500) return false;         // Never retry 4xx
+  if (method === "GET") return true;      // GET is always safe
+  return hasIdemKey;                      // Mutations only if idempotent
+}
+
+/**
+ * Fetch with automatic retry on 5xx responses and network errors.
+ * Uses exponential backoff: 500ms → 1000ms.
+ */
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  maxRetries: number,
+): Promise<Response> {
+  const method = (init.method ?? "GET").toUpperCase();
+  const hasIdemKey = init.headers instanceof Headers && init.headers.has("idempotency-key");
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, init);
+
+      // If response is OK or not retryable, return immediately
+      if (res.ok || !isRetryable(res.status, method, hasIdemKey)) {
+        return res;
+      }
+
+      // 5xx and retryable — wait and retry (unless last attempt)
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, RETRY_BASE_MS * (2 ** attempt)));
+        continue;
+      }
+      return res; // Last attempt — return the failing response
+    } catch (err) {
+      // Network errors (TypeError for DNS/CORS/connectivity failures)
+      if (attempt < maxRetries && err instanceof TypeError) {
+        await new Promise(r => setTimeout(r, RETRY_BASE_MS * (2 ** attempt)));
+        continue;
+      }
+      throw err; // Non-retryable or exhausted retries
+    }
+  }
+  // TypeScript exhaustiveness — should never reach here
+  throw new Error("fetchWithRetry: unreachable");
+}
+
 export async function authFetch(path: string, opts: FetchOpts = {}) {
   const DIRECT_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/+$/, "");
   const url = DIRECT_BASE ? `${DIRECT_BASE}${path}` : path;
@@ -49,13 +104,13 @@ export async function authFetch(path: string, opts: FetchOpts = {}) {
   }
 
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithRetry(url, {
       ...opts,
       headers,
       cache: "no-store",
       credentials: "include",
       mode: "cors",
-    });
+    }, MAX_RETRIES);
     if (!res.ok) {
       const raw = await res.text().catch(() => "");
       let detail = raw;
@@ -82,3 +137,4 @@ export async function authFetch(path: string, opts: FetchOpts = {}) {
     throw err;
   }
 }
+
