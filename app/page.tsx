@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useCallback } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Bell, ScanBarcode, Sparkles, Clock } from "lucide-react"
 import { useUnreadCount } from "@/hooks/use-notifications"
@@ -32,8 +32,21 @@ export default function HomePage() {
   const { isFavorite, toggleFavorite } = useFavorites()
   const { toast } = useToast()
   const { data: unreadCount = 0 } = useUnreadCount()
-  const { activeMemberId, setActiveMember } = useActiveMember()
+  const { activeMemberId, setActiveMember, setUserId, clearActiveMember } = useActiveMember()
   const { members: householdMembers = [] } = useHouseholdMembers()
+
+  // Scope member storage per authenticated user
+  useEffect(() => {
+    if (user?.$id) setUserId(user.$id);
+  }, [user?.$id, setUserId]);
+
+  // Auto-clear stale member ID if it doesn't match any loaded household members
+  useEffect(() => {
+    if (activeMemberId && householdMembers.length > 0) {
+      const found = householdMembers.some((m: any) => m.id === activeMemberId);
+      if (!found) clearActiveMember();
+    }
+  }, [activeMemberId, householdMembers, clearActiveMember]);
 
   const [logRecipe, setLogRecipe] = useState<Recipe | null>(null)
   const [logOpen, setLogOpen] = useState(false)
