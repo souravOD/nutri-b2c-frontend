@@ -245,7 +245,7 @@ export default function ProfilePage() {
               <div className="nav-link-text">
                 <span className="nav-link-title">Notifications</span>
                 <span className="nav-link-subtitle">
-                  {unreadCount ? `${unreadCount} unread` : "All caught up"}
+                  {unreadCount > 5 ? "5+ unread" : unreadCount ? `${unreadCount} unread` : "All caught up"}
                 </span>
               </div>
               <ChevronRight size={18} color="#CCC" />

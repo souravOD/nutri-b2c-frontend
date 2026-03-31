@@ -242,7 +242,7 @@ function FigmaTopBar() {
               className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white"
               style={{ background: "#EF4444", lineHeight: 1, fontFamily: "Inter, sans-serif" }}
             >
-              {unreadCount > 99 ? "99+" : unreadCount}
+              {unreadCount > 5 ? "5+" : unreadCount}
             </span>
           )}
         </Link>
