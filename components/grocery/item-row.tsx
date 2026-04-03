@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useMemo, useState } from "react";
 import { Check, Loader2, MoreVertical } from "lucide-react";
@@ -89,6 +89,17 @@ export function ItemRow({
               {item.substitutedProductId ? "🔄 " : ""}
               {item.currentProductBrand ? `${item.currentProductBrand} ` : ""}
               {item.currentProductName}
+              {item.currentProductUrl && (
+                <a
+                  href={item.currentProductUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-1.5 text-[#99CC33] hover:text-[#88BB22] hover:underline transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  View →
+                </a>
+              )}
             </p>
           )}
         </div>

@@ -508,6 +508,7 @@ export interface ShoppingListItem {
   currentProductId?: string | null;
   currentProductName?: string | null;
   currentProductBrand?: string | null;
+  currentProductUrl?: string | null;
 }
 
 export interface GroceryListSummary {
