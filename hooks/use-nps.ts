@@ -15,13 +15,13 @@ export function useNps() {
     if (typeof window === "undefined") return;
     if (sessionStorage.getItem("nps_checked")) return;
 
-    sessionStorage.setItem("nps_checked", "1");
     checkNpsEligibility()
       .then((eligible) => {
+        sessionStorage.setItem("nps_checked", "1");
         if (eligible) setShowNps(true);
       })
       .catch(() => {
-        // Silently fail — never block UX
+        // Don't set marker — allow retry on next navigation
       });
   }, []);
 

@@ -5,6 +5,7 @@
 
 const COOKIE_NAME = "b2c_authed";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days (matches Appwrite session TTL)
+const SECURE_FLAG = typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : "";
 
 /**
  * Set the auth signal cookie after successful login.
@@ -12,7 +13,7 @@ const MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days (matches Appwrite session 
  */
 export function setAuthCookie(): void {
   if (typeof document === "undefined") return;
-  document.cookie = `${COOKIE_NAME}=1; path=/; max-age=${MAX_AGE_SECONDS}; SameSite=Lax`;
+  document.cookie = `${COOKIE_NAME}=1; path=/; max-age=${MAX_AGE_SECONDS}; SameSite=Lax${SECURE_FLAG}`;
 }
 
 /**
@@ -21,7 +22,7 @@ export function setAuthCookie(): void {
  */
 export function clearAuthCookie(): void {
   if (typeof document === "undefined") return;
-  document.cookie = `${COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax`;
+  document.cookie = `${COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax${SECURE_FLAG}`;
 }
 
 /** Cookie name — exported for middleware to reference */

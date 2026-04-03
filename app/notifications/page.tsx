@@ -12,7 +12,7 @@ export default function NotificationsPage() {
   const [activeFilter, setActiveFilter] = useState("");
   const { data, isLoading } = useNotifications({
     type: activeFilter || undefined,
-    limit: 10,
+    limit: 50,
   });
   const markRead = useMarkAsRead();
   const markAllRead = useMarkAllAsRead();
