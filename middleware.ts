@@ -49,7 +49,7 @@ function isProtectedRoute(pathname: string): boolean {
 }
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
 
   // Skip non-page routes: Next.js internals, API routes, static assets
   if (
@@ -71,7 +71,7 @@ export function middleware(request: NextRequest) {
 
   if (!hasAuth) {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("redirect", pathname);
+    loginUrl.searchParams.set("redirect", `${pathname}${search}`);
     return NextResponse.redirect(loginUrl);
   }
 
