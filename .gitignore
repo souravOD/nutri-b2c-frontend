@@ -34,3 +34,7 @@ pnpm-debug.log*
 # OS
 Thumbs.db
 .vercel
+*.dump
+*.sql
+supabase_dump.sql
+full.dump
