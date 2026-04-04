@@ -18,14 +18,16 @@ export default function NotificationsPage() {
   const markAllRead = useMarkAllAsRead();
 
   const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-  const notifications = (data?.notifications ?? []).filter((n) => {
-    // Always show unread
-    if (!n.isRead) return true;
-    // Keep read notifications for 2 hours after they were read
-    if (n.readAt) return Date.now() - new Date(n.readAt).getTime() < TWO_HOURS_MS;
-    // Fallback: keep if created within the last 2 hours
-    return Date.now() - new Date(n.createdAt).getTime() < TWO_HOURS_MS;
-  });
+  const notifications = (data?.notifications ?? [])
+    .filter((n) => {
+      // Always show unread
+      if (!n.isRead) return true;
+      // Keep read notifications for 2 hours after they were read
+      if (n.readAt) return Date.now() - new Date(n.readAt).getTime() < TWO_HOURS_MS;
+      // Fallback: keep if created within the last 2 hours
+      return Date.now() - new Date(n.createdAt).getTime() < TWO_HOURS_MS;
+    })
+    .slice(0, 10);
   const hasUnread = notifications.some((n) => !n.isRead);
 
   return (

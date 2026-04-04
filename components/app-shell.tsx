@@ -41,6 +41,8 @@ import {
 import { useUser } from "@/hooks/use-user"
 import { useUnreadCount, useAutoEvaluate } from "@/hooks/use-notifications"
 import { useRealtimeNotifications } from "@/hooks/use-realtime-notifications"
+import { useNps } from "@/hooks/use-nps"
+import { NpsSurveyModal } from "@/components/nps/nps-survey-modal"
 
 interface AppShellProps {
   children: React.ReactNode
@@ -240,7 +242,7 @@ function FigmaTopBar() {
               className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold text-white"
               style={{ background: "#EF4444", lineHeight: 1, fontFamily: "Inter, sans-serif" }}
             >
-              {unreadCount > 99 ? "99+" : unreadCount}
+              {unreadCount > 5 ? "5+" : unreadCount}
             </span>
           )}
         </Link>
@@ -294,6 +296,7 @@ export function AppShell({ children }: AppShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const pathname = usePathname()
+  const { showNps, setShowNps } = useNps()
 
   const isAuthPage = AUTH_PREFIXES.some((p) => pathname === p || pathname?.startsWith(p + "/"))
   const isAdminRoute = pathname?.startsWith("/admin")
@@ -339,6 +342,9 @@ export function AppShell({ children }: AppShellProps) {
 
         {/* Mobile/tablet bottom nav (hidden on lg+) */}
         <BottomNav />
+
+        {/* B2C-026: NPS survey modal */}
+        <NpsSurveyModal open={showNps} onOpenChange={setShowNps} />
       </div>
     )
   }

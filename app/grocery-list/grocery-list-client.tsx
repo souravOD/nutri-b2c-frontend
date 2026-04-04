@@ -390,6 +390,9 @@ export default function GroceryListPage() {
               <p className="text-[12px] text-[#64748B] mt-0.5" style={{ fontFamily: "Inter, sans-serif" }}>
                 Estimated Total
               </p>
+              <p className="text-[10px] text-[#94A3B8] mt-0.5" style={{ fontFamily: "Inter, sans-serif" }}>
+                Prices are estimates and may vary by ±$10
+              </p>
             </div>
           </div>
         </section>
@@ -503,6 +506,9 @@ export default function GroceryListPage() {
                   </p>
                   <p className="text-[20px] font-bold text-white" style={{ fontFamily: "Inter, sans-serif" }}>
                     ${n(estimatedTotal).toFixed(2)}
+                  </p>
+                  <p className="text-[10px] text-[#64748B]" style={{ fontFamily: "Inter, sans-serif" }}>
+                    Prices are estimates and may vary by ±$10
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

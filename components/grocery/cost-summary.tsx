@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { GroceryListSummary } from "@/lib/types";
@@ -27,6 +27,7 @@ export function CostSummary({ estimatedTotal, summary }: CostSummaryProps) {
         <div>
           <p className="text-xs text-muted-foreground">Estimated Total</p>
           <p className="text-lg font-semibold">${estimatedTotal.toFixed(2)}</p>
+          <p className="text-[10px] text-muted-foreground/60 mt-0.5">Prices are estimates and may vary by ±$10</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Actual Purchased</p>
