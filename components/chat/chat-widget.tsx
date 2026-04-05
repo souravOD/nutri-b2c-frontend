@@ -105,7 +105,7 @@ export function ChatWidget() {
                 <button
                     type="button"
                     onClick={() => setIsOpen(true)}
-                    className="fixed bottom-[88px] lg:bottom-6 right-4 lg:right-6 z-50 w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-[#538100] text-white shadow-lg hover:bg-[#466e00] active:scale-95 transition-all flex items-center justify-center"
+                    className="fixed bottom-[88px] lg:bottom-6 right-4 lg:right-6 z-50 w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-all flex items-center justify-center"
                     aria-label="Open chat"
                     style={{ boxShadow: "0 4px 14px rgba(83,129,0,0.35)" }}
                 >
