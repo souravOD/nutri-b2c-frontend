@@ -63,7 +63,7 @@ const nextConfig = {
 
   // Keep the HTTP agent alive so long-running proxied requests don't get dropped
   httpAgentOptions: {
-    keepAliveMsecs: 10_000,
+    keepAlive: true,
   },
 
   // Keep TS checks enabled, but don't block Vercel deploys on existing lint debt.
