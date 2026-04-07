@@ -1,0 +1,41 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: ConferInc/CI-Pipeline/.github/workflows/reusable-next-ci.yml@main
+    with:
+      node-version: "20"
+      working-directory: .
+      run-tests: false
+    secrets: inherit
+
+  docker-validate:
+    needs: [ci]
+    uses: ConferInc/CI-Pipeline/.github/workflows/reusable-docker-validate.yml@main
+    with:
+      context: .
+      dockerfile: Dockerfile
+      # Placeholder values so `docker build` succeeds in CI. Replace with secrets or real staging values later.
+      build-args: |
+        API_BASE_URL=https://ci-placeholder.invalid
+        NEXT_PUBLIC_API_BASE_URL=https://ci-placeholder.invalid
+        NEXT_PUBLIC_APPWRITE_PROJECT=ci-placeholder
+        NEXT_PUBLIC_APPWRITE_ENDPOINT=https://ci-placeholder.invalid
+        NEXT_PUBLIC_APPWRITE_DATABASE_ID=ci-placeholder
+        NEXT_PUBLIC_APPWRITE_PROFILES_COLLECTION_ID=ci-placeholder
+        NEXT_PUBLIC_APPWRITE_HEALTH_COLLECTION_ID=ci-placeholder
+        NEXT_PUBLIC_APPWRITE_ADMINS_TEAM_ID=ci-placeholder
+        NEXT_PUBLIC_SUPABASE_URL=https://ci-placeholder.invalid
+        NEXT_PUBLIC_SUPABASE_ANON_KEY=ci-placeholder
+    secrets: inherit
