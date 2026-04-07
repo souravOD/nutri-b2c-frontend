@@ -36,7 +36,7 @@ function LoginInner() {
     setIsLoading(true)
     try {
       await account.createEmailPasswordSession(email.trim(), password)
-      setAuthCookie() // B2C-032: Signal auth state to Next.js middleware
+      await setAuthCookie() // B2C-032: HttpOnly auth signal cookie
       await refresh()
       const dest = next ?? (isAdmin() ? "/admin" : "/")
       router.replace(dest)

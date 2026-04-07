@@ -24,6 +24,9 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("")
   const [showPw, setShowPw] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [consent, setConsent] = useState(false)
+
+  const marketingUrl = process.env.NEXT_PUBLIC_MARKETING_URL || ""
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
@@ -129,6 +132,30 @@ export default function RegisterPage() {
                 </button>
               </div>
             </div>
+
+            {/* ── Consent ── */}
+            <label className="reg-consent">
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                required
+                className="reg-consent-check"
+              />
+              <span className="reg-consent-text">
+                I agree to the{" "}
+                <a href={`${marketingUrl}/terms`} target="_blank" rel="noopener noreferrer"
+                   className="reg-consent-link" style={{ color: "var(--nutri-link)" }}>
+                  Terms of Service
+                </a>{" "}
+                and{" "}
+                <a href={`${marketingUrl}/privacy`} target="_blank" rel="noopener noreferrer"
+                   className="reg-consent-link" style={{ color: "var(--nutri-link)" }}>
+                  Privacy Policy
+                </a>
+              </span>
+            </label>
+
             <button type="submit" disabled={isLoading} className="reg-cta">
               {isLoading ? "Creating account..." : "Continue"}
             </button>
@@ -322,6 +349,22 @@ export default function RegisterPage() {
             border-radius: 12px; max-width: 340px; margin: 0 auto;
           }
         }
+
+        /* ── Consent ── */
+        .reg-consent {
+          display: flex; align-items: flex-start; gap: 12px;
+          cursor: pointer; padding: 4px 0;
+        }
+        .reg-consent-check {
+          width: 20px; height: 20px; margin-top: 2px;
+          accent-color: var(--nutri-green);
+          flex-shrink: 0;
+        }
+        .reg-consent-text {
+          font-size: 13px; line-height: 18px;
+          color: var(--nutri-body);
+        }
+        .reg-consent-link { text-decoration: underline; font-weight: 600; }
       `}</style>
     </div>
   )

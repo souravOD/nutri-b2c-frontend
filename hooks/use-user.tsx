@@ -12,7 +12,7 @@ import {
 import { account, databases, teams } from "@/lib/appwrite"
 import { clearAuthCookie } from "@/lib/auth-cookie"
 import { Permission, Query, Role, type Models } from "appwrite"
-import { syncHealth } from "@/lib/api";
+import { authFetch, syncHealth } from "@/lib/api";
 import type { HealthProfile, UserProfile } from "@/lib/api";
 
 type UserPrefs = Record<string, string | undefined> & {
@@ -208,10 +208,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, [load])
 
   const signOut = useCallback(async () => {
+    // B2C-COMPLIANCE: Log logout event before destroying session (fire-and-forget)
+    try { await authFetch("/api/v1/me/logout", { method: "POST" }) } catch {}
     try {
       await account.deleteSession("current")
     } finally {
-      clearAuthCookie() // B2C-032: Clear auth signal cookie
+      await clearAuthCookie() // B2C-032: HttpOnly auth signal cookie
       if (typeof window !== "undefined") window.location.href = "/login"
     }
   }, [])
