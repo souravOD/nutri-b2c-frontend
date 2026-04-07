@@ -3,6 +3,7 @@
 import { ChevronLeft, ArrowRight, Search, Check, Plus, Minus } from "lucide-react"
 import { useOnboarding, TOTAL_STEPS } from "../onboarding-context"
 import { useState } from "react"
+import { displayLabel } from "@/lib/taxonomy"
 
 function toggleArray(arr: string[], val: string) {
     return arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val]
@@ -126,7 +127,7 @@ export default function HealthPage() {
                                     }}
                                 >
                                     {selected && <Check className="w-3.5 h-3.5" />}
-                                    {a}
+                                    {displayLabel(a)}
                                 </button>
                             )
                         })}
@@ -172,7 +173,7 @@ export default function HealthPage() {
                                     }}
                                 >
                                     {selected && <Check className="w-3.5 h-3.5" />}
-                                    {c}
+                                    {displayLabel(c)}
                                 </button>
                             )
                         })}

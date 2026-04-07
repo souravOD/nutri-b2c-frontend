@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authFetch } from "@/lib/api";
+import { displayLabel } from "@/lib/taxonomy";
 import { ArrowLeft, Save, X } from "lucide-react";
 
 interface HealthForm {
@@ -206,7 +207,7 @@ export default function EditHealthPage() {
                                 className={`tag-pill ${currentAllergens.includes(a.code) ? "active" : ""}`}
                                 onClick={() => toggleTag(currentAllergens, setCurrentAllergens, a.code)}
                             >
-                                {a.name}
+                                {displayLabel(a.name)}
                                 {currentAllergens.includes(a.code) && <X size={12} />}
                             </button>
                         ))}
@@ -224,7 +225,7 @@ export default function EditHealthPage() {
                                 className={`tag-pill ${currentDiets.includes(d.code) ? "active" : ""}`}
                                 onClick={() => toggleTag(currentDiets, setCurrentDiets, d.code)}
                             >
-                                {d.name}
+                                {displayLabel(d.name)}
                                 {currentDiets.includes(d.code) && <X size={12} />}
                             </button>
                         ))}
@@ -242,7 +243,7 @@ export default function EditHealthPage() {
                                 className={`tag-pill ${currentConditions.includes(c.code) ? "active" : ""}`}
                                 onClick={() => toggleTag(currentConditions, setCurrentConditions, c.code)}
                             >
-                                {c.name}
+                                {displayLabel(c.name)}
                                 {currentConditions.includes(c.code) && <X size={12} />}
                             </button>
                         ))}

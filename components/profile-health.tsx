@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast"
 import { StickySaveBar } from "@/components/sticky-save-bar"
 import { UnsavedChangesPrompt } from "@/components/unsaved-changes-prompt"
 import type { User } from "@/lib/mock-auth"
+import { displayLabel } from "@/lib/taxonomy"
 
 interface ProfileHealthProps {
   user: User
@@ -349,7 +350,7 @@ export function ProfileHealth({ user }: ProfileHealthProps) {
                           updateFormData({ diets: updated })
                         }}
                       >
-                        {diet}
+                        {displayLabel(diet)}
                       </Badge>
                     ))}
                   </div>
@@ -358,7 +359,7 @@ export function ProfileHealth({ user }: ProfileHealthProps) {
                     {user.diets && user.diets.length > 0 ? (
                       user.diets.map((diet) => (
                         <Badge key={diet} variant="secondary" className="text-xs">
-                          {diet}
+                          {displayLabel(diet)}
                         </Badge>
                       ))
                     ) : (
@@ -385,7 +386,7 @@ export function ProfileHealth({ user }: ProfileHealthProps) {
                           updateFormData({ allergens: updated })
                         }}
                       >
-                        {allergen}
+                        {displayLabel(allergen)}
                       </Badge>
                     ))}
                   </div>
@@ -394,7 +395,7 @@ export function ProfileHealth({ user }: ProfileHealthProps) {
                     {user.allergens && user.allergens.length > 0 ? (
                       user.allergens.map((allergen) => (
                         <Badge key={allergen} variant="destructive" className="text-xs">
-                          {allergen}
+                          {displayLabel(allergen)}
                         </Badge>
                       ))
                     ) : (

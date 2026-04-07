@@ -6,6 +6,7 @@ import { ArrowLeft, Save } from "lucide-react";
 import { useHouseholdMembers, useUpdateMemberHealth } from "@/hooks/use-household";
 import { useTaxonomyAllergens, useTaxonomyDiets, useTaxonomyConditions } from "@/hooks/use-taxonomy";
 import { useToast } from "@/hooks/use-toast";
+import { displayLabel } from "@/lib/taxonomy";
 
 export default function EditHealthPage() {
   const params = useParams();
@@ -159,7 +160,7 @@ export default function EditHealthPage() {
                   border: selected ? "1px solid #99CC33" : "1px solid #E0E0E0",
                 }}
               >
-                {a.name}
+                {displayLabel(a.name)}
               </button>
             );
           })}
@@ -185,7 +186,7 @@ export default function EditHealthPage() {
                   border: selected ? "1px solid #99CC33" : "1px solid #E0E0E0",
                 }}
               >
-                {d.name}
+                {displayLabel(d.name)}
               </button>
             );
           })}
@@ -211,7 +212,7 @@ export default function EditHealthPage() {
                   border: selected ? "1px solid #99CC33" : "1px solid #E0E0E0",
                 }}
               >
-                {c.name}
+                {displayLabel(c.name)}
               </button>
             );
           })}
