@@ -77,13 +77,15 @@ export default function ProfilePage() {
   }, []);
 
   const handleLogout = async () => {
+    // B2C-COMPLIANCE: Log logout event before destroying Appwrite session
+    try { await authFetch("/api/v1/me/logout", { method: "POST" }) } catch {}
     try {
       const { account: appwriteAccount } = await import("@/lib/appwrite");
       await appwriteAccount.deleteSession("current");
     } catch {
       // Session may already be expired — continue to redirect
     } finally {
-      clearAuthCookie(); // B2C-032: Clear auth signal cookie
+      await clearAuthCookie(); // B2C-032: HttpOnly auth signal cookie
       window.location.href = "/login";
     }
   };
@@ -98,7 +100,7 @@ export default function ProfilePage() {
       } catch {
         // Session cleanup is best-effort since user is already deleted server-side
       }
-      clearAuthCookie(); // B2C-032: Clear auth signal cookie
+      await clearAuthCookie(); // B2C-032: HttpOnly auth signal cookie
       window.location.href = "/login";
     } catch (err) {
       console.error("Delete account failed", err);

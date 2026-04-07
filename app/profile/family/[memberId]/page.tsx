@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Save, Heart } from "lucide-react";
 import { useHouseholdMembers, useUpdateMemberBasicInfo } from "@/hooks/use-household";
 import { useToast } from "@/hooks/use-toast";
+import { displayLabel } from "@/lib/taxonomy";
 
 // primary_adult is excluded — it can only be set via admin reassignment
 const ROLE_OPTIONS = [
@@ -240,7 +241,7 @@ export default function MemberDetailPage() {
                 <div style={sectionLabel}>Allergens</div>
                 <div style={chipContainerStyle}>
                   {hp.allergens.map((a) => (
-                    <span key={a.id} style={chipStyle}>{a.name}</span>
+                    <span key={a.id} style={chipStyle}>{displayLabel(a.name)}</span>
                   ))}
                 </div>
               </div>
@@ -252,7 +253,7 @@ export default function MemberDetailPage() {
                 <div style={sectionLabel}>Dietary Preferences</div>
                 <div style={chipContainerStyle}>
                   {hp.diets.map((d) => (
-                    <span key={d.id} style={chipGreenStyle}>{d.name}</span>
+                    <span key={d.id} style={chipGreenStyle}>{displayLabel(d.name)}</span>
                   ))}
                 </div>
               </div>
@@ -264,7 +265,7 @@ export default function MemberDetailPage() {
                 <div style={sectionLabel}>Health Conditions</div>
                 <div style={chipContainerStyle}>
                   {hp.conditions.map((c) => (
-                    <span key={c.id} style={chipStyle}>{c.name}</span>
+                    <span key={c.id} style={chipStyle}>{displayLabel(c.name)}</span>
                   ))}
                 </div>
               </div>

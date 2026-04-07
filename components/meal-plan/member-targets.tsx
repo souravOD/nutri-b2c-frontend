@@ -4,6 +4,7 @@ import { AlertTriangle, User } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { HouseholdMember } from "@/lib/types";
+import { displayLabel } from "@/lib/taxonomy";
 
 interface MemberTargetsProps {
   members: HouseholdMember[];
@@ -69,12 +70,12 @@ export function MemberTargets({ members, selectedIds, onToggle }: MemberTargetsP
                     <div className="flex flex-wrap gap-1">
                       {hp.allergens.map((a) => (
                         <Badge key={a.id} variant="destructive" className="text-[10px] h-4">
-                          {a.name}
+                          {displayLabel(a.name)}
                         </Badge>
                       ))}
                       {hp.diets.map((d) => (
                         <Badge key={d.id} variant="secondary" className="text-[10px] h-4">
-                          {d.name}
+                          {displayLabel(d.name)}
                         </Badge>
                       ))}
                     </div>

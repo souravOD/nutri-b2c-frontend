@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAddMember, useUpdateMemberHealth } from "@/hooks/use-household";
 import { useTaxonomyAllergens, useTaxonomyDiets, useTaxonomyConditions, useTaxonomyCuisines } from "@/hooks/use-taxonomy";
 import { useToast } from "@/hooks/use-toast";
+import { displayLabel } from "@/lib/taxonomy";
 import { ArrowLeft, UserPlus, Heart, Check, X } from "lucide-react";
 
 const HEALTH_GOALS = [
@@ -329,7 +330,7 @@ export default function AddFamilyMemberPage() {
                     onClick={() => toggleItem(selectedAllergens, setSelectedAllergens, id)}
                   >
                     {selected && <Check size={14} strokeWidth={3} />}
-                    {a.name}
+                    {a.name && displayLabel(a.name)}
                   </button>
                 );
               })}
@@ -352,7 +353,7 @@ export default function AddFamilyMemberPage() {
                     onClick={() => toggleItem(selectedDiets, setSelectedDiets, id)}
                   >
                     {selected && <Check size={14} strokeWidth={3} />}
-                    {d.name}
+                    {d.name && displayLabel(d.name)}
                   </button>
                 );
               })}
@@ -375,7 +376,7 @@ export default function AddFamilyMemberPage() {
                     onClick={() => toggleItem(selectedConditions, setSelectedConditions, id)}
                   >
                     {selected && <Check size={14} strokeWidth={3} />}
-                    {c.name}
+                    {c.name && displayLabel(c.name)}
                   </button>
                 );
               })}
