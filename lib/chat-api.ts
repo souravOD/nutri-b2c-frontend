@@ -10,7 +10,7 @@ export interface ChatMessage {
     actionRequired?: boolean
     confirmationPrompt?: string
     recipes?: { id: string; title: string; score?: number }[]
-    nutritionData?: any
+    nutritionData?: unknown
     timestamp: number
 }
 
@@ -21,7 +21,7 @@ export interface ChatApiResponse {
     actionRequired: boolean
     confirmationPrompt?: string
     recipes?: { id: string; title: string; score?: number }[]
-    nutritionData?: any
+    nutritionData?: unknown
 }
 
 export async function sendChatMessage(
