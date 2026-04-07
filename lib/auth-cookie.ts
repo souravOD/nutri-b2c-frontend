@@ -16,14 +16,18 @@ export async function setAuthCookie(): Promise<void> {
   try {
     // Get a short-lived JWT from the current Appwrite session
     const { jwt } = await account.createJWT();
-    await fetch("/api/auth/session", {
+    const res = await fetch("/api/auth/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ jwt }),
     });
+    if (!res.ok) {
+      throw new Error(`Auth signal API failed with status ${res.status}`);
+    }
   } catch {
-    // Fallback: set non-HttpOnly cookie if API route fails
-    document.cookie = `${COOKIE_NAME}=1; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+    // Fallback: set client cookie if API route fails
+    const secureFlag = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `${COOKIE_NAME}=1; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${secureFlag}`;
   }
 }
 

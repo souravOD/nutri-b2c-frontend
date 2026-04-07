@@ -146,15 +146,21 @@ export default function RegisterPage() {
               />
               <span className="reg-consent-text">
                 I agree to the{" "}
-                <a href={`${marketingUrl}/terms`} target="_blank" rel="noopener noreferrer"
-                   className="reg-consent-link" style={{ color: "var(--nutri-link)" }}>
-                  Terms of Service
-                </a>{" "}
-                and{" "}
-                <a href={`${marketingUrl}/privacy`} target="_blank" rel="noopener noreferrer"
-                   className="reg-consent-link" style={{ color: "var(--nutri-link)" }}>
-                  Privacy Policy
-                </a>
+                {marketingUrl ? (
+                  <>
+                    <a href={`${marketingUrl}/terms`} target="_blank" rel="noopener noreferrer"
+                       className="reg-consent-link" style={{ color: "var(--nutri-link)" }}>
+                      Terms of Service
+                    </a>{" "}
+                    and{" "}
+                    <a href={`${marketingUrl}/privacy`} target="_blank" rel="noopener noreferrer"
+                       className="reg-consent-link" style={{ color: "var(--nutri-link)" }}>
+                      Privacy Policy
+                    </a>
+                  </>
+                ) : (
+                  "Terms of Service and Privacy Policy"
+                )}
               </span>
             </label>
 
