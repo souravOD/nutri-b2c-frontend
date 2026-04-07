@@ -8,7 +8,6 @@ export interface NutritionData {
     proteinG?: number
     carbsG?: number
     fatG?: number
-    [key: string]: unknown
 }
 
 export interface ChatMessage {
