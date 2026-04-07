@@ -8,6 +8,7 @@ import { useUser } from "@/hooks/use-user"
 import { useToast } from "@/hooks/use-toast"
 import { apiPatchSettings } from "@/lib/api"
 import type { TaxonomyOption } from "@/lib/api"
+import { displayLabel } from "@/lib/taxonomy"
 
 function resolveCodes(selected: string[], options: TaxonomyOption[]): string[] {
     return selected.map((name) => {
@@ -170,7 +171,7 @@ export default function ReviewPage() {
                         <div className="flex flex-wrap gap-2">
                             {[...data.allergens, ...data.healthConditions].map((tag) => (
                                 <span key={tag} className="px-3 py-1 rounded-full text-[13px] font-medium border" style={{ background: "var(--nutri-green-5)", borderColor: "var(--nutri-green-10)", color: "var(--nutri-green-dark)" }}>
-                                    {tag}
+                                    {displayLabel(tag)}
                                 </span>
                             ))}
                         </div>

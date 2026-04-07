@@ -17,6 +17,7 @@ import {
   apiGetHealthConditions,
 } from "@/lib/api"
 import type { TaxonomyOption } from "@/lib/api"
+import { displayLabel } from "@/lib/taxonomy"
 
 type Step = 1 | 2 | 3 | 4
 const toggleArray = (arr: string[], val: string) =>
@@ -333,7 +334,7 @@ export default function HealthOnboardingWizard() {
                       className="rounded-full"
                       size="sm"
                     >
-                      {d.name || d.code}
+                      {displayLabel(d.name || d.code || "")}
                     </Button>
                   ))}
                 </div>
@@ -351,7 +352,7 @@ export default function HealthOnboardingWizard() {
                       className="rounded-full"
                       size="sm"
                     >
-                      {a.name || a.code}
+                      {displayLabel(a.name || a.code || "")}
                     </Button>
                   ))}
                 </div>
@@ -369,7 +370,7 @@ export default function HealthOnboardingWizard() {
                       className="rounded-full"
                       size="sm"
                     >
-                      {c.name || c.code}
+                      {displayLabel(c.name || c.code || "")}
                     </Button>
                   ))}
                 </div>

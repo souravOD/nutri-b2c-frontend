@@ -34,10 +34,10 @@ export function QuickActionCard({
                 <div
                     className={`w-12 h-12 rounded-[12px] flex items-center justify-center mb-4 ${isGreen
                             ? "bg-white/20"
-                            : "bg-[#99CC33]/20"
+                            : "bg-accent/20"
                         }`}
                 >
-                    <Icon className={`w-6 h-6 ${isGreen ? "text-white" : "text-[#538100]"}`} />
+                    <Icon className={`w-6 h-6 ${isGreen ? "text-white" : "text-primary"}`} />
                 </div>
 
                 {/* Title */}
@@ -61,7 +61,7 @@ export function QuickActionCard({
             {/* Arrow */}
             <div className="flex justify-end pt-4">
                 <ArrowRight
-                    className={`w-4 h-4 ${isGreen ? "text-white" : "text-[#538100]"}`}
+                    className={`w-4 h-4 ${isGreen ? "text-white" : "text-primary"}`}
                 />
             </div>
         </Link>

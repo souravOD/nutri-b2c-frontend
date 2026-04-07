@@ -22,9 +22,9 @@ export function MemberSwitcher({ members, activeId, onChange }: MemberSwitcherPr
             onClick={() => onChange(member.id)}
             style={{
               ...chipStyle,
-              background: isActive ? "#99CC33" : "#F5F5F5",
-              color: isActive ? "white" : "#666",
-              border: isActive ? "2px solid #99CC33" : "2px solid transparent",
+              background: isActive ? "var(--nutri-green, #99CC33)" : "#F5F5F5",
+              color: isActive ? "#FFFFFF" : "#666",
+              border: isActive ? "2px solid var(--nutri-green, #99CC33)" : "2px solid transparent",
               fontWeight: isActive ? 700 : 500,
             }}
           >

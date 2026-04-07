@@ -42,14 +42,15 @@ export function BottomNav() {
                 aria-current={active ? "page" : undefined}
               >
                 <Icon
-                  className={`w-[18px] h-[18px] ${active ? "text-[#538100]" : "text-[#94A3B8]"}`}
+                  className={`w-[18px] h-[18px] ${active ? "" : "text-[#94A3B8]"}`}
                   strokeWidth={active ? 2.5 : 2}
                   aria-hidden="true"
+                  style={active ? { color: "var(--nutri-green-dark, #6B8F24)" } : undefined}
                 />
                 <span
-                  className={`text-[10px] leading-[15px] ${active ? "font-bold text-[#538100]" : "font-medium text-[#94A3B8]"
+                  className={`text-[10px] leading-[15px] ${active ? "font-bold" : "font-medium text-[#94A3B8]"
                     }`}
-                  style={{ fontFamily: "Inter, sans-serif" }}
+                  style={{ fontFamily: "Inter, sans-serif", ...(active ? { color: "var(--nutri-green-dark, #6B8F24)" } : {}) }}
                 >
                   {item.label}
                 </span>

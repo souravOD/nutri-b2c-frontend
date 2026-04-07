@@ -147,6 +147,31 @@ function FigmaSidebar({ pathname }: { pathname: string }) {
         {BOTTOM_NAV.map((item) => (
           <NavItem key={item.href} item={item} />
         ))}
+
+        {/* B2C-COMPLIANCE: Legal links footer — only shown when marketing URL is configured */}
+        {process.env.NEXT_PUBLIC_MARKETING_URL && (
+        <div className="mt-3 pt-3 flex flex-wrap gap-x-3 gap-y-1 px-4" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+          {[
+            { label: "Privacy", href: "/privacy" },
+            { label: "Terms", href: "/terms" },
+            { label: "Cookies", href: "/cookies" },
+            { label: "Help", href: "/help" },
+          ].map((link) => (
+            <a
+              key={link.label}
+              href={`${process.env.NEXT_PUBLIC_MARKETING_URL}${link.href}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] transition-colors"
+              style={{ color: "#6B7280", fontFamily: "Inter, sans-serif" }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "#FFFFFF" }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "#6B7280" }}
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
+        )}
       </div>
     </aside>
   )

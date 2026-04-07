@@ -1,28 +1,42 @@
 // lib/auth-cookie.ts — B2C-032: Same-origin auth signal cookie for Next.js middleware
-// Appwrite session cookies are scoped to appwrite.io domain and invisible to
-// Next.js middleware on localhost/our domain. This lightweight cookie signals
-// "user is logged in" so middleware can gate protected routes.
+// B2C-COMPLIANCE: Uses server-set HttpOnly cookie via API route with JWT verification.
+// Falls back to client-side cookie if API route is unavailable.
+
+import { account } from "@/lib/appwrite";
 
 const COOKIE_NAME = "b2c_authed";
-const MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days (matches Appwrite session TTL)
-const SECURE_FLAG = typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : "";
 
 /**
  * Set the auth signal cookie after successful login.
- * Call this on the client after `account.createEmailPasswordSession()` succeeds.
+ * Fetches a fresh Appwrite JWT and sends it to the server-side API route
+ * which validates the JWT before setting the HttpOnly cookie.
  */
-export function setAuthCookie(): void {
-  if (typeof document === "undefined") return;
-  document.cookie = `${COOKIE_NAME}=1; path=/; max-age=${MAX_AGE_SECONDS}; SameSite=Lax${SECURE_FLAG}`;
+export async function setAuthCookie(): Promise<void> {
+  if (typeof window === "undefined") return;
+  try {
+    // Get a short-lived JWT from the current Appwrite session
+    const { jwt } = await account.createJWT();
+    await fetch("/api/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jwt }),
+    });
+  } catch {
+    // Fallback: set non-HttpOnly cookie if API route fails
+    document.cookie = `${COOKIE_NAME}=1; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+  }
 }
 
 /**
  * Clear the auth signal cookie on logout.
- * Call this on the client before/after `account.deleteSession("current")`.
  */
-export function clearAuthCookie(): void {
-  if (typeof document === "undefined") return;
-  document.cookie = `${COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax${SECURE_FLAG}`;
+export async function clearAuthCookie(): Promise<void> {
+  if (typeof window === "undefined") return;
+  try {
+    await fetch("/api/auth/session", { method: "DELETE" });
+  } catch {
+    document.cookie = `${COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax`;
+  }
 }
 
 /** Cookie name — exported for middleware to reference */

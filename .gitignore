@@ -3,6 +3,9 @@ node_modules/
 .pnp
 .pnp.js
 
+# TypeScript build info
+tsconfig.tsbuildinfo
+
 # Testing
 coverage/
 
@@ -34,3 +37,7 @@ pnpm-debug.log*
 # OS
 Thumbs.db
 .vercel
+*.dump
+*.sql
+supabase_dump.sql
+full.dump
