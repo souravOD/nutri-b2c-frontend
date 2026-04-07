@@ -10,6 +10,7 @@ import { useUser } from "@/hooks/use-user"
 import { useToast } from "@/hooks/use-toast"
 import { Eye, EyeOff, ChevronLeft, Shield } from "lucide-react"
 import { syncProfile } from "@/lib/api"
+import { setAuthCookie } from "@/lib/auth-cookie"
 
 const DB_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID as string
 const PROFILE_COLL = process.env.NEXT_PUBLIC_APPWRITE_PROFILES_COLLECTION_ID as string
@@ -56,6 +57,7 @@ export default function RegisterPage() {
       } catch (syncErr) {
         console.warn("[register] Sync to Supabase failed — will auto-provision on next request:", syncErr)
       }
+      await setAuthCookie() // B2C-032: HttpOnly auth signal cookie
       await refresh()
       router.replace(needsHealthOnboarding ? "/onboarding" : "/")
     } catch (err: unknown) {
