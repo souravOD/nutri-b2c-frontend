@@ -195,7 +195,7 @@ export default function BudgetSetupPage() {
                         {/* Household sharing note */}
                         <div className="bg-[#F0F9FF] rounded-[12px] border border-[#BAE6FD] p-3 mb-5">
                             <p className="text-[12px] text-[#0284C7] leading-4" style={{ fontFamily: "Inter, sans-serif" }}>
-                                💡 This budget is shared across your household. All members' purchases will be tracked against this amount.
+                                💡 This budget is shared across your household. All members&apos; purchases will be tracked against this amount.
                             </p>
                         </div>
 

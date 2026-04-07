@@ -2,6 +2,15 @@
 
 import { authFetch } from "./api"
 
+export interface NutritionData {
+    name?: string
+    calories?: number
+    proteinG?: number
+    carbsG?: number
+    fatG?: number
+    [key: string]: unknown
+}
+
 export interface ChatMessage {
     id: string
     role: "user" | "bot"
@@ -10,7 +19,7 @@ export interface ChatMessage {
     actionRequired?: boolean
     confirmationPrompt?: string
     recipes?: { id: string; title: string; score?: number }[]
-    nutritionData?: unknown
+    nutritionData?: NutritionData
     timestamp: number
 }
 
@@ -21,7 +30,7 @@ export interface ChatApiResponse {
     actionRequired: boolean
     confirmationPrompt?: string
     recipes?: { id: string; title: string; score?: number }[]
-    nutritionData?: unknown
+    nutritionData?: NutritionData
 }
 
 export async function sendChatMessage(
