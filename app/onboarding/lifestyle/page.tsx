@@ -92,7 +92,7 @@ export default function LifestylePage() {
                             <a href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/privacy`} target="_blank" rel="noopener noreferrer" className="underline">Privacy Policy</a>.
                         </>
                     ) : (
-                        "Terms of Service and Privacy Policy."
+                        <><a href="/terms" target="_blank" rel="noopener noreferrer" className="underline">Terms of Service</a> and <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline">Privacy Policy</a>.</>
                     )}
                 </p>
             </div>

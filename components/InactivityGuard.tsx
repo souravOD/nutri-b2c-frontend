@@ -12,7 +12,7 @@ const TIMEOUT_MS = TIMEOUT_MINUTES * 60 * 1000;
 
 export function InactivityGuard() {
   const router = useRouter();
-  const timerRef = useRef<NodeJS.Timeout>(undefined);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const logout = useCallback(async () => {
     try {
@@ -26,7 +26,7 @@ export function InactivityGuard() {
     } catch {
       // Session may already be expired — proceed to login
     }
-    router.push("/login?reason=timeout");
+    router.replace("/login?reason=timeout");
   }, [router]);
 
   useEffect(() => {
