@@ -17,6 +17,11 @@ export function InactivityGuard() {
   const logout = useCallback(async () => {
     try {
       await fetch("/api/auth/session", { method: "DELETE" });
+    } catch {
+      // Safe to ignore — HttpOnly cookie clear failed (network issue),
+      // we still want to delete the Appwrite session.
+    }
+    try {
       await account.deleteSession("current");
     } catch {
       // Session may already be expired — proceed to login

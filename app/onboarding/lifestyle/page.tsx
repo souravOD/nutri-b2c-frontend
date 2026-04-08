@@ -86,8 +86,14 @@ export default function LifestylePage() {
                 </button>
                 <p className="ob-terms text-center text-[12px] leading-[16px] mt-4" style={{ color: "var(--nutri-placeholder)", fontFamily: "Inter, sans-serif" }}>
                     By continuing, you agree to our{" "}
-                    <a href={`${process.env.NEXT_PUBLIC_MARKETING_URL || ""}/terms`} target="_blank" rel="noopener noreferrer" className="underline">Terms of Service</a>{" "}and{" "}
-                    <a href={`${process.env.NEXT_PUBLIC_MARKETING_URL || ""}/privacy`} target="_blank" rel="noopener noreferrer" className="underline">Privacy Policy</a>.
+                    {process.env.NEXT_PUBLIC_MARKETING_URL ? (
+                        <>
+                            <a href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/terms`} target="_blank" rel="noopener noreferrer" className="underline">Terms of Service</a>{" "}and{" "}
+                            <a href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/privacy`} target="_blank" rel="noopener noreferrer" className="underline">Privacy Policy</a>.
+                        </>
+                    ) : (
+                        "Terms of Service and Privacy Policy."
+                    )}
                 </p>
             </div>
 
