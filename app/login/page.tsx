@@ -22,6 +22,7 @@ function LoginInner() {
   const router = useRouter()
   const search = useSearchParams()
   const next = search?.get("next") || search?.get("redirect") || null
+  const timeoutReason = search?.get("reason")
 
   const { refresh, isAdmin } = useUser()
   const { toast } = useToast()
@@ -89,6 +90,13 @@ function LoginInner() {
             <p className="login-mobile-sub">Sign in to continue your nutrition journey.</p>
           </div>
 
+          {/* ── Timeout banner ── */}
+          {timeoutReason === "timeout" && (
+            <div className="login-timeout-banner" role="alert">
+              <p>You were logged out due to inactivity. Please sign in again.</p>
+            </div>
+          )}
+
           {/* ── Form (inlined) ── */}
           <form onSubmit={handleLogin} className="login-form">
             <div>
@@ -141,7 +149,7 @@ function LoginInner() {
           <div className="login-trust">
             <div className="login-trust-badge">
               <Shield className="w-4 h-4 shrink-0" style={{ color: "var(--nutri-green-dark)" }} />
-              <p className="login-trust-text">Your privacy is our priority. Your data is encrypted and secure.</p>
+              <p className="login-trust-text">We protect your data with industry-standard security practices.</p>
             </div>
             <p className="login-link-text">
               Don&apos;t have an account?{" "}
@@ -154,6 +162,11 @@ function LoginInner() {
       <style jsx>{`
         .login-page {
           min-height: 100vh; background: var(--nutri-bg, #F5F5F0);
+        }
+        .login-timeout-banner {
+          background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px;
+          padding: 12px 16px; margin-bottom: 16px; color: #92400e;
+          font-size: 14px; text-align: center; font-family: Inter, sans-serif;
         }
 
         /* Mobile header */

@@ -11,6 +11,7 @@ import { LeftSidebar } from "@/components/left-sidebar"
 import { BottomNav } from "@/components/bottom-nav"
 import AdminAppShell from "@/components/admin/app-shell"
 import { cn } from "@/lib/utils"
+import { InactivityGuard } from "@/components/InactivityGuard"
 import {
   Home,
   Search,
@@ -355,6 +356,7 @@ export function AppShell({ children }: AppShellProps) {
   if (useFigmaNav) {
     return (
       <div className="min-h-screen bg-white">
+        <InactivityGuard />
         {/* Desktop sidebar (lg+) — dark, fixed */}
         <FigmaSidebar pathname={pathname} />
 
@@ -377,6 +379,7 @@ export function AppShell({ children }: AppShellProps) {
   // Legacy shell for pages not yet migrated to Figma design
   return (
     <div className="flex h-screen overflow-hidden">
+      <InactivityGuard />
       <aside
         className={cn(
           "hidden md:flex transition-all duration-300 ease-in-out",

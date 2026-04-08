@@ -91,7 +91,15 @@ export default function GoalsPage() {
                     Continue <ArrowRight className="w-4 h-4" />
                 </button>
                 <p className="ob-terms text-center text-[12px] leading-[16px] mt-4" style={{ color: "var(--nutri-placeholder)", fontFamily: "Inter, sans-serif" }}>
-                    By continuing, you agree to our <span className="underline">Terms of Service</span> and <span className="underline">Privacy Policy</span>.
+                    By continuing, you agree to our{" "}
+                    {process.env.NEXT_PUBLIC_MARKETING_URL ? (
+                        <>
+                            <a href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/terms`} target="_blank" rel="noopener noreferrer" className="underline">Terms of Service</a>{" "}and{" "}
+                            <a href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/privacy`} target="_blank" rel="noopener noreferrer" className="underline">Privacy Policy</a>.
+                        </>
+                    ) : (
+                        <><a href="/terms" target="_blank" rel="noopener noreferrer" className="underline">Terms of Service</a> and <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline">Privacy Policy</a>.</>
+                    )}
                 </p>
             </div>
 

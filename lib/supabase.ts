@@ -1,6 +1,6 @@
 // lib/supabase.ts
 // Supabase client for Realtime subscriptions (PRD-29 Phase 7)
-// Uses anon key — all access is controlled by RLS policies
+// Uses anon key — RLS policies MUST be enabled on accessed tables
 // ─────────────────────────────────────────────────────────
 
 import { createClient } from "@supabase/supabase-js";
