@@ -147,7 +147,9 @@ export default function PersonalInfoPage() {
                     Continue <ArrowRight className="w-4 h-4" />
                 </button>
                 <p className="text-center text-[12px] leading-[16px]" style={{ color: "var(--nutri-placeholder)", fontFamily: "Inter, sans-serif" }}>
-                    By continuing, you agree to our <span className="underline">Terms of Service</span> and <span className="underline">Privacy Policy</span>.
+                    By continuing, you agree to our{" "}
+                    <a href={`${process.env.NEXT_PUBLIC_MARKETING_URL || ""}/terms`} target="_blank" rel="noopener noreferrer" className="underline">Terms of Service</a>{" "}and{" "}
+                    <a href={`${process.env.NEXT_PUBLIC_MARKETING_URL || ""}/privacy`} target="_blank" rel="noopener noreferrer" className="underline">Privacy Policy</a>.
                 </p>
             </div>
 

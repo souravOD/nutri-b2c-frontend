@@ -188,7 +188,7 @@ export default function RegisterPage() {
           <div className="reg-trust">
             <div className="reg-trust-badge">
               <Shield className="w-4 h-4 shrink-0" style={{ color: "var(--nutri-green-dark)" }} />
-              <p className="reg-trust-text">Your privacy is our priority. Your data is encrypted and secure.</p>
+              <p className="reg-trust-text">We protect your data with industry-standard security practices.</p>
             </div>
             <p className="reg-login-link">
               Already have an account?{" "}
