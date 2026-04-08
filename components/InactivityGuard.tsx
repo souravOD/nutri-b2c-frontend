@@ -12,7 +12,7 @@ const TIMEOUT_MS = TIMEOUT_MINUTES * 60 * 1000;
 
 export function InactivityGuard() {
   const router = useRouter();
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const logout = useCallback(async () => {
     try {
