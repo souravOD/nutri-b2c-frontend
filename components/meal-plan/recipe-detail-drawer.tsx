@@ -62,7 +62,7 @@ async function logMealFromPlan(planId: string, itemId: string): Promise<void> {
     });
     if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error((data as any)?.error || `Log meal failed: ${res.status}`);
+        throw new Error(String((data as Record<string, unknown>)?.error ?? `Log meal failed: ${res.status}`));
     }
 }
 
@@ -323,7 +323,7 @@ export function RecipeDetailDrawer({ recipeId, planId, mealPlanItemId, onClose }
                                             </span>
                                         </div>
                                         <p className="text-sm text-slate-700 leading-relaxed pt-0.5" style={{ fontFamily: "Inter, sans-serif" }}>
-                                            {typeof step === "string" ? step : (step as any)?.text ?? JSON.stringify(step)}
+                                            {typeof step === "string" ? step : String((step as Record<string, unknown>)?.text ?? JSON.stringify(step))}
                                         </p>
                                     </li>
                                 ))}
