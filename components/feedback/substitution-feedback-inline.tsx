@@ -29,14 +29,9 @@ const QUALITY_OPTIONS = [
 export function SubstitutionFeedbackInline({
   itemName,
 }: SubstitutionFeedbackInlineProps) {
-  const [selected, setSelected] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
-  // Don't render if feedback is disabled
-  if (!isFeedbackEnabled()) return null;
-
   const handleSelect = useCallback(async (value: string) => {
-    setSelected(value);
     setSubmitted(true);
     try {
       await submitBetaFeedback({
@@ -49,6 +44,9 @@ export function SubstitutionFeedbackInline({
       // Best-effort
     }
   }, [itemName]);
+
+  // Don't render if feedback is disabled
+  if (!isFeedbackEnabled()) return null;
 
   if (submitted) {
     return (
@@ -85,3 +83,4 @@ export function SubstitutionFeedbackInline({
     </div>
   );
 }
+

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { MessageCircle, X, Loader2, Sparkles } from "lucide-react"
+import { MessageCircle, X, Sparkles } from "lucide-react"
 import { ChatBubble } from "./chat-bubble"
 import { ChatInput } from "./chat-input"
 import { ActionConfirmation } from "./action-confirmation"
