@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Check, Loader2, MoreVertical } from "lucide-react";
 import { useGrocerySubstitutions } from "@/hooks/use-grocery-list";
+import { SubstitutionFeedbackInline } from "@/components/feedback/substitution-feedback-inline";
 import type { ShoppingListItem } from "@/lib/types";
 
 interface ItemRowProps {
@@ -208,6 +209,11 @@ export function ItemRow({
                 </div>
               ))}
             </div>
+          )}
+
+          {/* Beta feedback — inline after substitutions */}
+          {sortedSubs.length > 0 && (
+            <SubstitutionFeedbackInline itemName={item.itemName} />
           )}
         </div>
       )}

@@ -203,7 +203,7 @@ export default function GroceryListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F8F6] pb-[100px] lg:pb-10">
+    <div className="min-h-screen bg-[#F7F8F6] pb-[140px] lg:pb-[100px]">
       <div className="w-full max-w-[600px] lg:max-w-[960px] mx-auto px-4 lg:px-6">
 
         {/* ═══ Header ══════════════════════════════════════════════════════ */}
@@ -494,7 +494,7 @@ export default function GroceryListPage() {
 
         {/* Floating total bar */}
         {list && list.status === "active" && (
-          <div className="fixed bottom-[72px] lg:bottom-4 left-0 right-0 z-40 px-4 lg:px-0">
+          <div className="fixed bottom-[72px] lg:bottom-4 left-0 right-0 lg:left-[256px] z-40 px-4 lg:px-6">
             <div className="max-w-[600px] lg:max-w-[960px] mx-auto">
               <div
                 className="bg-[#0F172A] rounded-[16px] px-5 py-3 flex items-center justify-between"

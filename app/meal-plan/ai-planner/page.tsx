@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,7 +13,9 @@ import { AiPromptInput } from "@/components/meal-plan/ai-prompt-input";
 import { PersonalizationCard } from "@/components/meal-plan/personalization-card";
 import { PlanRecommendationCard } from "@/components/meal-plan/plan-recommendation-card";
 import { useToast } from "@/hooks/use-toast";
+import { useBetaFeedback } from "@/hooks/use-beta-feedback";
 import type { MealPlanGenerateParams } from "@/lib/types";
+import { MealPlanFeedbackSheet } from "@/components/feedback/meal-plan-feedback-sheet";
 
 export default function AiPlannerPage() {
     const router = useRouter();
@@ -26,6 +28,13 @@ export default function AiPlannerPage() {
     const activatePlan = useActivatePlan();
     const generatePlan = useGeneratePlan();
     const deletePlan = useDeletePlan();
+
+    // Beta feedback — trigger after plan is generated
+    const [planGenerated, setPlanGenerated] = useState(false);
+    const mealPlanFeedback = useBetaFeedback("meal_plan", {
+        delay: 2000,
+        enabled: planGenerated,
+    });
 
     const { data: profile } = useQuery({
         queryKey: ["me-profile"],
@@ -95,6 +104,7 @@ export default function AiPlannerPage() {
 
             try {
                 await generatePlan.mutateAsync(params);
+                setPlanGenerated(true);
                 toast({ title: "Plan generated!", description: "Your AI meal plan is ready." });
                 router.push("/meal-plan/weekly");
             } catch {
@@ -291,6 +301,14 @@ export default function AiPlannerPage() {
                     </div>
                 </section>
             </div>
+
+            {/* ═══ Beta Feedback ════════════════════════════════════════ */}
+            <MealPlanFeedbackSheet
+                open={mealPlanFeedback.show}
+                onOpenChange={mealPlanFeedback.setShow}
+                onSubmit={mealPlanFeedback.submit}
+                onDismiss={mealPlanFeedback.dismiss}
+            />
         </div>
     );
 }
