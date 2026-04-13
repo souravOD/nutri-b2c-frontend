@@ -149,7 +149,7 @@ function LoginInner() {
           <div className="login-trust">
             <div className="login-trust-badge">
               <Shield className="w-4 h-4 shrink-0" style={{ color: "var(--nutri-green-dark)" }} />
-              <p className="login-trust-text">We protect your data with industry-standard security practices.</p>
+              <p className="login-trust-text">See our Privacy Policy for how we handle your data.</p>
             </div>
             <p className="login-link-text">
               Don&apos;t have an account?{" "}
