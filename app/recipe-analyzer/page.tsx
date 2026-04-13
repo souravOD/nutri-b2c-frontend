@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button"
 import { AnalyzerProvider, useAnalyzer } from "@/components/analyzer/analyzer-context"
 import { AnalyzerResult } from "@/components/analyzer/analyzer-result"
 import type { SourceType } from "@/components/analyzer/analyzer-context"
+import { useBetaFeedback } from "@/hooks/use-beta-feedback"
+import { AnalyzerFeedbackSheet } from "@/components/feedback/analyzer-feedback-sheet"
 
 // ── Inner component ────────────────────────────────────────────────────────
 
@@ -28,6 +30,13 @@ function RecipeAnalyzerInner() {
     memberId, setMemberId,
     runAnalysis, handleClear,
   } = useAnalyzer()
+
+  // Beta feedback — trigger after analysis result is shown
+  const analyzerFeedback = useBetaFeedback("recipe_analyzer", {
+    delay: 2000,
+    enabled: step === "result" && result !== null,
+    context: { source_type: source.type },
+  })
 
   const [showMemberSelector, setShowMemberSelector] = useState(false)
   const [recentScans, setRecentScans] = useState<ScanHistoryItem[]>([])
@@ -562,6 +571,13 @@ function RecipeAnalyzerInner() {
     <>
       {renderMobile()}
       {renderDesktop()}
+      {/* Beta Feedback — rendered OUTSIDE both trees (portal-based Sheet) */}
+      <AnalyzerFeedbackSheet
+        open={analyzerFeedback.show}
+        onOpenChange={analyzerFeedback.setShow}
+        onSubmit={analyzerFeedback.submit}
+        onDismiss={analyzerFeedback.dismiss}
+      />
     </>
   )
 }

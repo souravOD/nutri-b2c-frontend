@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Bell, CalendarDays, AlertCircle } from "lucide-react";
 import { useUnreadCount } from "@/hooks/use-notifications";
+import { useBetaFeedback } from "@/hooks/use-beta-feedback";
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell,
 } from "recharts";
@@ -18,6 +19,7 @@ import { FocusAreaCardFromGap, FocusAreaCardFromAlert } from "@/components/nutri
 
 // Shared components
 import { QuickScanFAB } from "@/components/layout/quick-scan-fab";
+import { NutritionFeedbackSheet } from "@/components/feedback/nutrition-feedback-sheet";
 
 import { useHouseholdMembers } from "@/hooks/use-household";
 import { useSelectedMember } from "@/hooks/use-selected-member";
@@ -90,6 +92,12 @@ export default function NutritionPage() {
   const { user } = useUser();
   const { data: unreadCount = 0 } = useUnreadCount();
   const firstName = user?.name?.split(" ")[0] ?? "there";
+
+  // Beta feedback — trigger after 3s on daily mode
+  const nutritionFeedback = useBetaFeedback("nutrition", {
+    delay: 3000,
+    enabled: mode === "daily",
+  });
 
   const { members } = useHouseholdMembers();
   const defaultMember = useMemo(
@@ -771,6 +779,14 @@ export default function NutritionPage() {
       <div className="lg:hidden">
         <QuickScanFAB />
       </div>
+
+      {/* ═══ Beta Feedback ════════════════════════════════════════════════ */}
+      <NutritionFeedbackSheet
+        open={nutritionFeedback.show}
+        onOpenChange={nutritionFeedback.setShow}
+        onSubmit={nutritionFeedback.submit}
+        onDismiss={nutritionFeedback.dismiss}
+      />
     </div>
   );
 }

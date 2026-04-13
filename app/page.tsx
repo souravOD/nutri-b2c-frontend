@@ -18,6 +18,8 @@ import { QuickActionCard } from "@/components/home/quick-action-card"
 import { LogMealModal } from "@/components/meal/log-meal-modal"
 import { QuickScanFAB } from "@/components/layout/quick-scan-fab"
 import { useToast } from "@/hooks/use-toast"
+import { useBetaFeedback } from "@/hooks/use-beta-feedback"
+import { FeedFeedbackSheet } from "@/components/feedback/feed-feedback-sheet"
 import type { Recipe, MealType } from "@/lib/types"
 
 function getSubtitle(): string {
@@ -53,6 +55,7 @@ export default function HomePage() {
   const [logLoading, setLogLoading] = useState(false)
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
 
+
   const { data: nutrition } = useQuery({
     queryKey: ["nutrition-daily"],
     queryFn: () => apiGetNutritionDaily(),
@@ -63,6 +66,12 @@ export default function HomePage() {
     queryKey: ["home-feed", activeMemberId],
     queryFn: () => apiGetFeed(activeMemberId ?? undefined),
     staleTime: 120_000,
+  })
+
+  // Beta feedback — trigger after feed results load
+  const feedFeedback = useBetaFeedback("feed", {
+    delay: 3000,
+    enabled: !isLoading,
   })
 
   // Grocery list data for desktop footer preview
@@ -427,6 +436,14 @@ export default function HomePage() {
         onOpenChange={setLogOpen}
         onConfirm={handleConfirmLog}
         loading={logLoading}
+      />
+
+      {/* ═══ Beta Feedback ════════════════════════════════════════════════ */}
+      <FeedFeedbackSheet
+        open={feedFeedback.show}
+        onOpenChange={feedFeedback.setShow}
+        onSubmit={feedFeedback.submit}
+        onDismiss={feedFeedback.dismiss}
       />
     </div>
   )

@@ -39,6 +39,38 @@ function timeAgo(dateStr: string): string {
     return new Date(dateStr).toLocaleDateString();
 }
 
+/**
+ * Correct known bad action_url values from old notifications stored in DB.
+ * Maps invalid routes (e.g., /recipes?meal=breakfast) to valid ones.
+ */
+const URL_CORRECTIONS: Record<string, string> = {
+    "/recipes?meal=breakfast": "/search?q=breakfast",
+    "/recipes?meal=lunch": "/search?q=lunch",
+    "/recipes?meal=dinner": "/search?q=dinner",
+    "/recipes?diet=low-fat": "/search?q=low+fat",
+    "/recipes?diet=high-protein": "/search?q=high+protein",
+    "/recipes": "/search",
+};
+
+function correctActionUrl(url: string): string {
+    // 1. Exact match against known bad URLs
+    if (URL_CORRECTIONS[url]) return URL_CORRECTIONS[url];
+
+    // 2. Catch-all: /recipes?... (no index route exists) → redirect to /search
+    if (url === "/recipes" || (url.startsWith("/recipes?") && !url.startsWith("/recipes/"))) {
+        // Extract any query param value and pass it to search
+        try {
+            const params = new URLSearchParams(url.split("?")[1] || "");
+            const firstValue = params.values().next().value;
+            return firstValue ? `/search?q=${encodeURIComponent(firstValue)}` : "/search";
+        } catch {
+            return "/search";
+        }
+    }
+
+    return url;
+}
+
 export function NotificationItem({
     notification,
     onMarkRead,
@@ -53,11 +85,12 @@ export function NotificationItem({
 
         // Navigate to action URL if present
         if (notification.actionUrl) {
+            const correctedUrl = correctActionUrl(notification.actionUrl);
             // Internal paths start with /
-            if (notification.actionUrl.startsWith("/")) {
-                router.push(notification.actionUrl);
+            if (correctedUrl.startsWith("/")) {
+                router.push(correctedUrl);
             } else {
-                window.open(notification.actionUrl, "_blank");
+                window.open(correctedUrl, "_blank");
             }
         }
     };

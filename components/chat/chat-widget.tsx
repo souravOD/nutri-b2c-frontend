@@ -7,7 +7,10 @@ import { ChatInput } from "./chat-input"
 import { ActionConfirmation } from "./action-confirmation"
 import { RecipeResultCard } from "./recipe-result-card"
 import { NutritionMiniCard } from "./nutrition-mini-card"
+import { ChatSessionFeedback } from "@/components/feedback/chat-session-feedback"
 import { sendChatMessage, type ChatMessage } from "@/lib/chat-api"
+import { isFeedbackEnabled } from "@/lib/feedback-config"
+import { checkFeedbackEligibility, submitBetaFeedback } from "@/lib/feedback-api"
 import { useActiveMember } from "@/contexts/member-context"
 import { useHouseholdMembers } from "@/hooks/use-household"
 
@@ -16,6 +19,7 @@ export function ChatWidget() {
     const [messages, setMessages] = useState<ChatMessage[]>([])
     const [sessionId, setSessionId] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
+    const [showSessionFeedback, setShowSessionFeedback] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
     const { activeMemberId } = useActiveMember()
     const { members: householdMembers = [] } = useHouseholdMembers()
@@ -147,7 +151,22 @@ export function ChatWidget() {
                         </div>
                         <button
                             type="button"
-                            onClick={() => setIsOpen(false)}
+                            onClick={() => {
+                            // Check if we should show session feedback
+                            const botCount = messages.filter(m => m.role === "bot").length
+                            if (botCount >= 3 && isFeedbackEnabled()) {
+                                // Check eligibility (best-effort, async)
+                                checkFeedbackEligibility("ai_chat").then(eligible => {
+                                    if (eligible) {
+                                        setShowSessionFeedback(true)
+                                    } else {
+                                        setIsOpen(false)
+                                    }
+                                }).catch(() => setIsOpen(false))
+                            } else {
+                                setIsOpen(false)
+                            }
+                        }}
                             className="w-8 h-8 rounded-full hover:bg-[#F1F5F9] flex items-center justify-center transition-colors shrink-0"
                             aria-label="Close chat"
                         >
@@ -155,6 +174,25 @@ export function ChatWidget() {
                         </button>
                     </div>
 
+                    {/* ─── Messages OR Session Feedback ─── */}
+                    {showSessionFeedback ? (
+                        <ChatSessionFeedback
+                            onSubmit={async (data) => {
+                                await submitBetaFeedback({
+                                    flow: "ai_chat",
+                                    ...data,
+                                    contextMetadata: { sessionId, messageCount: messages.length },
+                                })
+                                setShowSessionFeedback(false)
+                                setIsOpen(false)
+                            }}
+                            onDismiss={() => {
+                                setShowSessionFeedback(false)
+                                setIsOpen(false)
+                            }}
+                        />
+                    ) : (
+                        <>
                     {/* ─── Messages ─── */}
                     <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
                         {messages.length === 0 && (
@@ -230,6 +268,8 @@ export function ChatWidget() {
 
                     {/* ─── Input ─── */}
                     <ChatInput onSend={handleSend} disabled={loading} />
+                        </>
+                    )}
                 </div>
             )}
         </>

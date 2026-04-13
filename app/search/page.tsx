@@ -23,6 +23,8 @@ import { FiltersPanel, type SearchFilterState, EMPTY_FILTERS } from "@/component
 import { SearchSuggestions } from "@/components/search/search-suggestions"
 import { RecipeCardSearch } from "@/components/search/recipe-card-search"
 import { LogMealModal } from "@/components/meal/log-meal-modal"
+import { SearchFeedbackSheet } from "@/components/feedback/search-feedback-sheet"
+import { useBetaFeedback } from "@/hooks/use-beta-feedback"
 import type { MealType } from "@/lib/types"
 import { apiAddMealItem } from "@/lib/api"
 
@@ -187,6 +189,13 @@ export default function SearchPage() {
       return rawResults.map((r) => ({ ...r, score: 0 }))
     },
     enabled: committed || hasFilters,
+  })
+
+  // Beta feedback — trigger after search results load
+  const searchFeedback = useBetaFeedback("search", {
+    delay: 5000,
+    enabled: committed && searchResults.length > 0 && !isLoading,
+    context: { query, resultCount: searchResults.length },
   })
 
   // Suggestions from debounced query
@@ -599,6 +608,14 @@ export default function SearchPage() {
           open={logOpen}
           onOpenChange={setLogOpen}
           onConfirm={handleLogConfirm}
+        />
+
+        {/* ═══ Beta Feedback ══════════════════════════════════════════ */}
+        <SearchFeedbackSheet
+          open={searchFeedback.show}
+          onOpenChange={searchFeedback.setShow}
+          onSubmit={searchFeedback.submit}
+          onDismiss={searchFeedback.dismiss}
         />
       </div>
     </div>
