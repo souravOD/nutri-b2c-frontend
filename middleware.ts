@@ -55,10 +55,19 @@ export function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
-    pathname.startsWith("/mock-api") ||
-    pathname.startsWith("/_mock") ||
     pathname.includes(".")
   ) {
+    return NextResponse.next();
+  }
+
+  // Block mock routes in production — return 404
+  if (
+    pathname.startsWith("/mock-api") ||
+    pathname.startsWith("/_mock")
+  ) {
+    if (process.env.NODE_ENV === "production") {
+      return new NextResponse("Not Found", { status: 404 });
+    }
     return NextResponse.next();
   }
 
