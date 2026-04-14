@@ -6,7 +6,7 @@ import { authFetch } from "./core";
 import type { SearchFilters } from "./types";
 import { toRecipe, normalizeRecipeFromApi } from "./normalizers";
 
-export type FeedSource = "rag" | "personalized_sql" | "relaxed_sql" | "trending";
+export type FeedSource = "rag" | "rag_plus_sql" | "personalized_sql" | "relaxed_sql" | "trending";
 
 export interface FeedApiResult {
   recipes: Recipe[];
