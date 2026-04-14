@@ -40,12 +40,13 @@ export function QuickAddSheet({
     const [searchQuery, setSearchQuery] = useState("")
 
     // Feed-based suggestions (when no search query)
-    const { data: suggestions = [] } = useQuery({
+    const { data: feedResult } = useQuery({
         queryKey: ["home-feed"],
         queryFn: () => apiGetFeed(),
         staleTime: 120_000,
         enabled: open,
     })
+    const suggestions = feedResult?.recipes ?? []
 
     // Debounced search query for the API call
     const [debouncedQuery, setDebouncedQuery] = useState("")
