@@ -62,11 +62,13 @@ export default function HomePage() {
     staleTime: 60_000,
   })
 
-  const { data: recipes = [], isLoading } = useQuery({
+  const { data: feedResult, isLoading } = useQuery({
     queryKey: ["home-feed", activeMemberId],
     queryFn: () => apiGetFeed(activeMemberId ?? undefined),
     staleTime: 120_000,
   })
+  const recipes = feedResult?.recipes ?? []
+  const feedSource = feedResult?.source ?? "personalized_sql"
 
   // Beta feedback — trigger after feed results load
   const feedFeedback = useBetaFeedback("feed", {
@@ -324,9 +326,17 @@ export default function HomePage() {
         {/* ── Recommended Recipes ─────────────────────────────────── */}
         <section className="pt-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-[20px] lg:text-[24px] font-bold text-[#0F172A] leading-7 lg:leading-8" style={{ fontFamily: "Inter, sans-serif" }}>
-              Recommended for you
-            </h3>
+            <div>
+              <h3 className="text-[20px] lg:text-[24px] font-bold text-[#0F172A] leading-7 lg:leading-8" style={{ fontFamily: "Inter, sans-serif" }}>
+                {feedSource === "trending" ? "Trending Now" : "Recommended for you"}
+              </h3>
+              {feedSource === "relaxed_sql" && (
+                <p className="text-[12px] text-[#94A3B8] mt-0.5" style={{ fontFamily: "Inter, sans-serif" }}>Showing broader results</p>
+              )}
+              {feedSource === "trending" && (
+                <p className="text-[12px] text-[#94A3B8] mt-0.5" style={{ fontFamily: "Inter, sans-serif" }}>Explore what&apos;s popular</p>
+              )}
+            </div>
             <Link href="/search" className="text-[14px] font-semibold lg:font-bold text-[#99CC33] lg:text-[#538100] leading-5" style={{ fontFamily: "Inter, sans-serif" }}>
               View all
             </Link>

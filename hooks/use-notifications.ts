@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useUser } from "@/hooks/use-user";
 import {
     fetchNotifications,
     fetchUnreadCount,
@@ -22,19 +23,23 @@ export function useNotifications(params?: {
     limit?: number;
     offset?: number;
 }) {
+    const { isAuthed } = useUser();
     return useQuery({
         queryKey: [...NOTIFICATIONS_KEY, params],
         queryFn: () => fetchNotifications(params),
         staleTime: 30_000,
+        enabled: isAuthed,
     });
 }
 
 export function useUnreadCount() {
+    const { isAuthed } = useUser();
     return useQuery({
         queryKey: UNREAD_COUNT_KEY,
         queryFn: fetchUnreadCount,
-        refetchInterval: 30_000, // Poll every 30 seconds
+        refetchInterval: isAuthed ? 60_000 : false, // Poll every 60s only when authed; Realtime handles instant updates
         staleTime: 10_000,
+        enabled: isAuthed, // Disable entirely when not authenticated to prevent 401 spam
     });
 }
 

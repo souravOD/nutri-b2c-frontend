@@ -6,14 +6,29 @@ import { authFetch } from "./core";
 import type { SearchFilters } from "./types";
 import { toRecipe, normalizeRecipeFromApi } from "./normalizers";
 
-export async function apiGetFeed(memberId?: string): Promise<Recipe[]> {
+export type FeedSource = "rag" | "personalized_sql" | "relaxed_sql" | "trending";
+
+export interface FeedApiResult {
+  recipes: Recipe[];
+  source: FeedSource;
+}
+
+export async function apiGetFeed(memberId?: string): Promise<FeedApiResult> {
   const params = new URLSearchParams();
   if (memberId) params.set("memberId", memberId);
   const qs = params.toString();
   const res = await authFetch(`/api/v1/feed${qs ? `?${qs}` : ""}`);
   const data = await res.json().catch(() => []);
-  const arr = Array.isArray(data) ? data : [];
-  return arr.map((it: unknown) => toRecipe(it));
+
+  // Support both old (array) and new ({ recipes, source }) response shapes
+  if (Array.isArray(data)) {
+    return { recipes: data.map((it: unknown) => toRecipe(it)), source: "personalized_sql" };
+  }
+  const arr = Array.isArray(data?.recipes) ? data.recipes : [];
+  return {
+    recipes: arr.map((it: unknown) => toRecipe(it)),
+    source: data?.source ?? "personalized_sql",
+  };
 }
 
 export async function apiSearchRecipes(args: { q?: string; filters: SearchFilters; sort?: string; memberId?: string }): Promise<Recipe[]> {
