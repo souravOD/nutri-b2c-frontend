@@ -13,6 +13,36 @@ import { isFeedbackEnabled } from "@/lib/feedback-config"
 import { checkFeedbackEligibility, submitBetaFeedback } from "@/lib/feedback-api"
 import { useActiveMember } from "@/contexts/member-context"
 import { useHouseholdMembers } from "@/hooks/use-household"
+import { useFabPositions } from "@/contexts/fab-stack-context"
+
+/** Chatbot FAB — reads position from FabStackContext */
+function ChatFAB({ onClick }: { onClick: () => void }) {
+    const pos = useFabPositions();
+    return (
+        <>
+            {/* Mobile */}
+            <button
+                type="button"
+                onClick={onClick}
+                className="fixed lg:hidden z-50 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-all flex items-center justify-center right-4"
+                aria-label="Open chat"
+                style={{ bottom: pos.chatbotMobile, boxShadow: "0 4px 14px rgba(83,129,0,0.35)" }}
+            >
+                <MessageCircle className="w-5 h-5" />
+            </button>
+            {/* Desktop */}
+            <button
+                type="button"
+                onClick={onClick}
+                className="fixed hidden lg:flex z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-all items-center justify-center right-6"
+                aria-label="Open chat"
+                style={{ bottom: pos.chatbotDesktop, boxShadow: "0 4px 14px rgba(83,129,0,0.35)" }}
+            >
+                <MessageCircle className="w-6 h-6" />
+            </button>
+        </>
+    );
+}
 
 export function ChatWidget() {
     const [isOpen, setIsOpen] = useState(false)
@@ -106,15 +136,7 @@ export function ChatWidget() {
         <>
             {/* ─── Floating Action Button ─── */}
             {!isOpen && (
-                <button
-                    type="button"
-                    onClick={() => setIsOpen(true)}
-                    className="fixed bottom-[88px] lg:bottom-6 right-4 lg:right-6 z-50 w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-all flex items-center justify-center"
-                    aria-label="Open chat"
-                    style={{ boxShadow: "0 4px 14px rgba(83,129,0,0.35)" }}
-                >
-                    <MessageCircle className="w-5 h-5 lg:w-6 lg:h-6" />
-                </button>
+                <ChatFAB onClick={() => setIsOpen(true)} />
             )}
 
             {/* ─── Chat Panel ─── */}
