@@ -55,7 +55,7 @@ const ROUTE_MAP: Array<{ pattern: string; exact?: boolean; feature: PageFeature 
   { pattern: "/search", exact: true, feature: { code: "search", label: "Recipe Search" } },
   { pattern: "/favorites", exact: true, feature: { code: "favorites", label: "Favorites" } },
   { pattern: "/saved", exact: true, feature: { code: "saved_recipes", label: "Saved Recipes" } },
-  { pattern: "/scan", exact: true, feature: { code: "barcode_scanner", label: "Barcode Scanner" } },
+  { pattern: "/scan", feature: { code: "barcode_scanner", label: "Barcode Scanner" } },
   { pattern: "/settings", exact: true, feature: { code: "settings", label: "Settings" } },
   { pattern: "/notifications", exact: true, feature: { code: "notifications", label: "Notifications" } },
   { pattern: "/history", exact: true, feature: { code: "history", label: "History" } },

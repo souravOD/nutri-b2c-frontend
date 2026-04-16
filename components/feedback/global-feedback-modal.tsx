@@ -35,6 +35,7 @@ export function GlobalFeedbackModal({ open, onOpenChange }: GlobalFeedbackModalP
   const [comments, setComments] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -92,11 +93,12 @@ export function GlobalFeedbackModal({ open, onOpenChange }: GlobalFeedbackModalP
   const handleSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
+    setSubmitError(false);
     try {
       await submitBetaFeedback({
         flow: "user_initiated",
         questionKey: "global_feedback",
-        responseValue: String(rating || 0),
+        responseValue: rating ? String(rating) : undefined,
         followUpText: comments || undefined,
         rating: rating || undefined,
         feedbackType,
@@ -110,6 +112,7 @@ export function GlobalFeedbackModal({ open, onOpenChange }: GlobalFeedbackModalP
       setTimeout(() => onOpenChange(false), 1800);
     } catch (err) {
       console.error("[GlobalFeedback] submit failed:", err);
+      setSubmitError(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -174,6 +177,9 @@ export function GlobalFeedbackModal({ open, onOpenChange }: GlobalFeedbackModalP
   // ── Main form ─────────────────────────────────────────────────
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="feedback-modal-title"
       className="fixed inset-0 z-[60] flex items-center justify-center px-4"
       style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
       onClick={handleOverlayClick}
@@ -207,6 +213,7 @@ export function GlobalFeedbackModal({ open, onOpenChange }: GlobalFeedbackModalP
           </button>
 
           <h2
+            id="feedback-modal-title"
             className="text-[20px] font-extrabold pr-10"
             style={{ color: "#18181B", letterSpacing: "-0.5px", lineHeight: "28px" }}
           >
@@ -427,6 +434,22 @@ export function GlobalFeedbackModal({ open, onOpenChange }: GlobalFeedbackModalP
           className="px-6 pb-8 pt-4 sm:px-8"
           style={{ borderTop: "1px solid #F4F4F5" }}
         >
+          {submitError && (
+            <div
+              className="mb-3 flex items-center gap-2 px-4 py-3 text-[13px] font-semibold"
+              style={{
+                borderRadius: 12,
+                background: "#FEF2F2",
+                color: "#DC2626",
+                border: "1px solid #FECACA",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+              Something went wrong. Please try again.
+            </div>
+          )}
           <button
             type="button"
             onClick={handleSubmit}
