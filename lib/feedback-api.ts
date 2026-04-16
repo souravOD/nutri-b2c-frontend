@@ -11,7 +11,8 @@ export type FeedbackFlow =
   | "ai_chat"
   | "recipe_analyzer"
   | "search"
-  | "grocery_substitutions";
+  | "grocery_substitutions"
+  | "user_initiated";
 
 /**
  * Check if the current user is eligible for a feedback prompt on the given flow.
@@ -38,6 +39,9 @@ export async function submitBetaFeedback(payload: {
   followUpTags?: string[];
   isSafetyFlag?: boolean;
   contextMetadata?: Record<string, unknown>;
+  rating?: number;
+  feedbackType?: string;
+  feature?: string;
 }): Promise<void> {
   await authFetch("/api/v1/feedback", {
     method: "POST",
