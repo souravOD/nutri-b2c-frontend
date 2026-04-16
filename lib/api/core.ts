@@ -8,6 +8,11 @@ type JsonRecord = Record<string, unknown>;
 
 let cachedJwt: { token: string; exp: number } | null = null;
 
+/** Clear the in-memory JWT cache. Call on logout/session expiry. */
+export function clearJwtCache(): void {
+  cachedJwt = null;
+}
+
 function makeIdemKey() {
   try { return crypto.randomUUID(); } catch { return `${Date.now()}-${Math.random().toString(36).slice(2)}`; }
 }
@@ -28,6 +33,7 @@ async function getJwt(): Promise<string | null> {
     cachedJwt = { token: jwt, exp };
     return jwt;
   } catch {
+    cachedJwt = null; // Clear stale cache on failure (session expired/revoked)
     return null;
   }
 }
@@ -112,6 +118,10 @@ export async function authFetch(path: string, opts: FetchOpts = {}) {
       mode: "cors",
     }, MAX_RETRIES);
     if (!res.ok) {
+      // Auto-clear JWT cache on 401 so next request gets a fresh token
+      if (res.status === 401) {
+        cachedJwt = null;
+      }
       const raw = await res.text().catch(() => "");
       let detail = raw;
       if (raw) {
