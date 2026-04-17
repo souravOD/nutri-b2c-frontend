@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Copy, Check, Trash2, UserPlus, Clock } from "lucide-react";
+import { ArrowLeft, Copy, Check, Trash2, UserPlus, Clock, Share2, Download, Mail } from "lucide-react";
 import { useCreateInvitation, useListInvitations, useRevokeInvitation } from "@/hooks/use-household";
 import { useToast } from "@/hooks/use-toast";
 import { QRCodeSVG } from "qrcode.react";
@@ -24,6 +24,7 @@ export default function InvitePage() {
   const [selectedRole, setSelectedRole] = useState("secondary_adult");
   const [inviteEmail, setInviteEmail] = useState("");
   const [generatedUrl, setGeneratedUrl] = useState("");
+  const [emailWasQueued, setEmailWasQueued] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const handleGenerate = async () => {
@@ -33,7 +34,12 @@ export default function InvitePage() {
         invitedEmail: inviteEmail || undefined,
       });
       setGeneratedUrl(result.inviteUrl);
-      toast({ title: "Invite Created", description: "Share the link below" });
+      const queued = !!(result as any).emailQueued;
+      setEmailWasQueued(queued);
+      const emailMsg = queued
+        ? `Invitation email sent to ${inviteEmail}`
+        : "Share the link below";
+      toast({ title: "Invite Created", description: emailMsg });
     } catch {
       toast({ title: "Error", description: "Failed to create invitation", variant: "destructive" });
     }
@@ -44,6 +50,76 @@ export default function InvitePage() {
     setCopied(true);
     toast({ title: "Copied!", description: "Invite link copied to clipboard" });
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = async () => {
+    if (!navigator.share) {
+      handleCopy();
+      return;
+    }
+
+    // Try to share QR image as a file along with the link
+    try {
+      const svgEl = document.getElementById("invite-qr-svg")?.querySelector("svg");
+      let files: File[] = [];
+      if (svgEl) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          const blob = await new Promise<Blob | null>((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              ctx.fillStyle = "#FFFFFF";
+              ctx.fillRect(0, 0, 512, 512);
+              ctx.drawImage(img, 0, 0, 512, 512);
+              canvas.toBlob((b) => resolve(b), "image/png");
+            };
+            img.onerror = () => resolve(null);
+            img.src = "data:image/svg+xml;base64," + btoa(new XMLSerializer().serializeToString(svgEl));
+          });
+          if (blob) {
+            files = [new File([blob], "nutrismarts-invite-qr.png", { type: "image/png" })];
+          }
+        }
+      }
+
+      const shareData: ShareData = {
+        title: "Join my household on NutriSmarts",
+        text: `You've been invited to join my household on NutriSmarts!\n${generatedUrl}`,
+      };
+      // Attach QR image if browser supports file sharing
+      if (files.length > 0 && navigator.canShare?.({ files })) {
+        shareData.files = files;
+      }
+
+      await navigator.share(shareData);
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") handleCopy();
+    }
+  };
+
+  const handleDownloadQR = () => {
+    const svgEl = document.getElementById("invite-qr-svg")?.querySelector("svg");
+    if (!svgEl) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const img = new Image();
+    img.onload = () => {
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, 512, 512);
+      ctx.drawImage(img, 0, 0, 512, 512);
+      const link = document.createElement("a");
+      link.download = "nutrismarts-invite-qr.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      toast({ title: "Downloaded", description: "QR code saved as PNG" });
+    };
+    img.src = "data:image/svg+xml;base64," + btoa(new XMLSerializer().serializeToString(svgEl));
   };
 
   const handleRevoke = async (id: string) => {
@@ -103,7 +179,7 @@ export default function InvitePage() {
         {generatedUrl && (
           <div style={{ marginTop: 20 }}>
             {/* QR Code Card */}
-            <div style={{ textAlign: "center", padding: "20px 0 12px" }}>
+            <div id="invite-qr-svg" style={{ textAlign: "center", padding: "20px 0 12px" }}>
               <QRCodeSVG
                 value={generatedUrl}
                 size={180}
@@ -116,13 +192,35 @@ export default function InvitePage() {
                 Scan to join · Expires in 7 days
               </p>
             </div>
+
             {/* Link Box */}
             <div style={linkBoxStyle}>
               <code style={{ fontSize: 12, wordBreak: "break-all", flex: 1 }}>{generatedUrl}</code>
-              <button onClick={handleCopy} style={copyBtnStyle}>
+              <button onClick={handleCopy} style={copyBtnStyle} title="Copy link">
                 {copied ? <Check size={16} color="#99CC33" /> : <Copy size={16} />}
               </button>
             </div>
+
+            {/* Share & Download buttons */}
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <button onClick={handleCopy} style={actionBtnStyle}>
+                <Copy size={14} /> Copy Link
+              </button>
+              <button onClick={handleShare} style={actionBtnStyle}>
+                <Share2 size={14} /> Share
+              </button>
+              <button onClick={handleDownloadQR} style={actionBtnStyle}>
+                <Download size={14} /> Save QR
+              </button>
+            </div>
+
+            {/* Email sent confirmation */}
+            {emailWasQueued && inviteEmail && (
+              <div style={emailConfirmStyle}>
+                <Mail size={14} color="#7AB52E" style={{ flexShrink: 0, marginTop: 1 }} />
+                <span>Email invitation sent to <strong>{inviteEmail}</strong></span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -196,4 +294,15 @@ const inviteRowStyle: React.CSSProperties = {
 const revokeBtnStyle: React.CSSProperties = {
   background: "none", border: "1px solid #E74C3C", borderRadius: 8,
   color: "#E74C3C", padding: 6, cursor: "pointer", flexShrink: 0,
+};
+const actionBtnStyle: React.CSSProperties = {
+  flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+  padding: "10px 0", borderRadius: 10, border: "1px solid #E0E0E0",
+  background: "white", fontSize: 13, fontWeight: 500, color: "#444", cursor: "pointer",
+  transition: "border-color 0.15s, background 0.15s",
+};
+const emailConfirmStyle: React.CSSProperties = {
+  display: "flex", alignItems: "flex-start", gap: 8, marginTop: 12,
+  padding: "10px 14px", background: "#F0F9E8", border: "1px solid #D4EDAA",
+  borderRadius: 10, fontSize: 13, color: "#3D6B10", lineHeight: 1.4,
 };

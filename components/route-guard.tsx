@@ -19,6 +19,7 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
   const isPublicPath =
     pathname === "/login" ||
     pathname === "/register" ||
+    pathname === "/join" ||
     pathname === "/welcome" ||
     pathname === "/forgot-password" ||
     pathname === "/reset-password" ||
