@@ -13,6 +13,7 @@ import { account, databases, teams } from "@/lib/appwrite"
 import { clearAuthCookie } from "@/lib/auth-cookie"
 import { Permission, Query, Role, type Models } from "appwrite"
 import { authFetch, syncHealth } from "@/lib/api";
+import { clearJwtCache } from "@/lib/api/core";
 import type { HealthProfile, UserProfile } from "@/lib/api";
 
 type UserPrefs = Record<string, string | undefined> & {
@@ -208,6 +209,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, [load])
 
   const signOut = useCallback(async () => {
+    // Clear cached JWT immediately to prevent stale token reuse after re-login
+    clearJwtCache();
     // B2C-COMPLIANCE: Log logout event before destroying session (fire-and-forget)
     try { await authFetch("/api/v1/me/logout", { method: "POST" }) } catch {}
     try {

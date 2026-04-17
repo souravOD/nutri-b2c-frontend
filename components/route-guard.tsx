@@ -62,5 +62,11 @@ export default function RouteGuard({ children }: { children: React.ReactNode }) 
     lastRedirect.current = null
   }, [loading, isAuthed, pathname, isPublicPath, isOnboardingPath, needsHealthOnboarding, isAdmin, router])
 
+  // Block rendering for protected routes while checking auth state.
+  // This prevents a flash of protected content before the guard can redirect.
+  if (loading && !isPublicPath) {
+    return null;
+  }
+
   return <>{children}</>
 }
