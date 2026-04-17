@@ -34,7 +34,7 @@ function JoinPageContent() {
   const router = useRouter();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { isAuthed, loading: authLoading } = useUser();
+  const { isAuthed, loading: authLoading, signOut } = useUser();
   const token = searchParams.get("token");
 
   const [pageState, setPageState] = useState<PageState>("loading");
@@ -170,8 +170,9 @@ function JoinPageContent() {
   }
 
   if (pageState === "email-mismatch") {
-    const handleSwitchAccount = () => {
-      // Redirect to login with return path so user can sign in with the correct email
+    const handleSwitchAccount = async () => {
+      // Sign out first so RouteGuard doesn't bounce us away from /login
+      try { await signOut(); } catch { /* signOut may do its own redirect */ }
       const returnPath = `/join?token=${token}`;
       window.location.href = `/login?next=${encodeURIComponent(returnPath)}`;
     };

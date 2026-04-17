@@ -15,10 +15,13 @@ export function safeRedirect(url: string | null, fallback: string): string {
   // Block protocol schemes embedded anywhere
   if (url.includes("://")) return fallback
 
+  // Block path traversal sequences
+  if (url.includes("..")) return fallback
+
   // Block encoded variants
   try {
     const decoded = decodeURIComponent(url)
-    if (decoded.includes("://") || decoded.startsWith("//")) return fallback
+    if (decoded.includes("://") || decoded.startsWith("//") || decoded.includes("..")) return fallback
   } catch {
     return fallback
   }

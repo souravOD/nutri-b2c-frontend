@@ -24,6 +24,7 @@ export default function InvitePage() {
   const [selectedRole, setSelectedRole] = useState("secondary_adult");
   const [inviteEmail, setInviteEmail] = useState("");
   const [generatedUrl, setGeneratedUrl] = useState("");
+  const [emailWasQueued, setEmailWasQueued] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const handleGenerate = async () => {
@@ -33,7 +34,9 @@ export default function InvitePage() {
         invitedEmail: inviteEmail || undefined,
       });
       setGeneratedUrl(result.inviteUrl);
-      const emailMsg = result.emailSent
+      const queued = !!(result as any).emailQueued;
+      setEmailWasQueued(queued);
+      const emailMsg = queued
         ? `Invitation email sent to ${inviteEmail}`
         : "Share the link below";
       toast({ title: "Invite Created", description: emailMsg });
@@ -212,7 +215,7 @@ export default function InvitePage() {
             </div>
 
             {/* Email sent confirmation */}
-            {inviteEmail && (
+            {emailWasQueued && inviteEmail && (
               <div style={emailConfirmStyle}>
                 <Mail size={14} color="#7AB52E" style={{ flexShrink: 0, marginTop: 1 }} />
                 <span>Email invitation sent to <strong>{inviteEmail}</strong></span>
