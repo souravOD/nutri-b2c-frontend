@@ -14,6 +14,7 @@ const PUBLIC_ROUTES = new Set([
   "/",
   "/login",
   "/register",
+  "/join",
   "/forgot-password",
   "/reset-password",
   "/verify-email",
@@ -69,6 +70,13 @@ export function middleware(request: NextRequest) {
       return new NextResponse("Not Found", { status: 404 });
     }
     return NextResponse.next();
+  }
+
+  // SEC-6: Prevent invite token leakage via Referrer header
+  if (pathname === "/join") {
+    const response = NextResponse.next();
+    response.headers.set("Referrer-Policy", "no-referrer");
+    return response;
   }
 
   if (!isProtectedRoute(pathname)) {

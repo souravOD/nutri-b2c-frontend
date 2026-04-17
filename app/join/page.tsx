@@ -1,13 +1,15 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiGetInvitationByToken, apiAcceptInvitation } from "@/lib/api";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiGetInvitationPreview, apiAcceptInvitation } from "@/lib/api/household";
+import { useUser } from "@/hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
-import { Users, CheckCircle, XCircle, Clock, AlertTriangle } from "lucide-react";
+import type { InvitationPreview } from "@/lib/types";
+import { Users, CheckCircle, XCircle, Clock, AlertTriangle, LogIn, UserPlus, ShieldAlert } from "lucide-react";
 
-type PageState = "loading" | "valid" | "expired" | "already-accepted" | "revoked" | "error" | "accepted";
+type PageState = "loading" | "valid" | "expired" | "already-accepted" | "revoked" | "email-mismatch" | "error" | "accepted";
 
 // Wrapper with Suspense boundary (required for useSearchParams in Next.js App Router)
 export default function JoinPageWrapper() {
@@ -32,53 +34,28 @@ function JoinPageContent() {
   const router = useRouter();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { isAuthed, loading: authLoading } = useUser();
   const token = searchParams.get("token");
 
   const [pageState, setPageState] = useState<PageState>("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const [preview, setPreview] = useState<InvitationPreview | null>(null);
 
-  const { data: invitation, error: fetchError } = useQuery({
-    queryKey: ["invitation-details", token],
-    queryFn: () => apiGetInvitationByToken(token!),
-    enabled: !!token,
-    retry: false,
-  });
-
-  const acceptMutation = useMutation({
-    mutationFn: () => apiAcceptInvitation(token!),
-    onSuccess: () => {
-      setPageState("accepted");
-      qc.invalidateQueries({ queryKey: ["household-members"] });
-      toast({ title: "Welcome!", description: "You've joined the household" });
-    },
-    onError: (err: any) => {
-      const msg = err?.message || "Failed to accept invitation";
-      if (err?.status === 409 && msg.includes("already a member")) {
-        setPageState("error");
-        setErrorMessage("You are already a member of this household.");
-      } else if (err?.status === 409 && msg.includes("Cannot leave")) {
-        setPageState("error");
-        setErrorMessage(msg);
-      } else {
-        setPageState("error");
-        setErrorMessage(msg);
-      }
-    },
-  });
-
-  useEffect(() => {
+  // ── Phase 1: Unauthenticated preview fetch ────────────────────────────
+  const loadPreview = useCallback(async () => {
     if (!token) {
       setPageState("error");
       setErrorMessage("No invitation token found in the URL.");
       return;
     }
-    if (invitation) {
+    try {
+      const data = await apiGetInvitationPreview(token);
+      setPreview(data);
       setPageState("valid");
-    }
-    if (fetchError) {
-      const err = fetchError as any;
-      const msg = err?.message || "";
-      if (err?.status === 410) {
+    } catch (err: unknown) {
+      const e = err as { message?: string; status?: number };
+      const msg = e?.message || "";
+      if (e?.status === 410) {
         if (msg.includes("already been accepted")) setPageState("already-accepted");
         else if (msg.includes("cancelled")) setPageState("revoked");
         else setPageState("expired");
@@ -87,7 +64,35 @@ function JoinPageContent() {
         setErrorMessage(msg || "Could not load invitation.");
       }
     }
-  }, [token, invitation, fetchError]);
+  }, [token]);
+
+  useEffect(() => { loadPreview(); }, [loadPreview]);
+
+  // ── Phase 2: Authenticated accept ─────────────────────────────────────
+  const acceptMutation = useMutation({
+    mutationFn: () => apiAcceptInvitation(token!),
+    onSuccess: () => {
+      setPageState("accepted");
+      qc.invalidateQueries({ queryKey: ["household-members"] });
+      toast({ title: "Welcome!", description: "You've joined the household" });
+    },
+    onError: (err: unknown) => {
+      const e = err as { message?: string; status?: number };
+      const msg = e?.message || "Failed to accept invitation";
+      if (e?.status === 403) {
+        setPageState("email-mismatch");
+        setErrorMessage(msg);
+      } else {
+        setPageState("error");
+        setErrorMessage(msg);
+      }
+    },
+  });
+
+  // ── Auth navigation helpers ───────────────────────────────────────────
+  const joinPath = `/join?token=${token}`;
+  const goLogin = () => router.push(`/login?next=${encodeURIComponent(joinPath)}`);
+  const goRegister = () => router.push(`/register?next=${encodeURIComponent(joinPath)}`);
 
   // ── Render different states ───────────────────────────────────────────
 
@@ -164,6 +169,40 @@ function JoinPageContent() {
     );
   }
 
+  if (pageState === "email-mismatch") {
+    const handleSwitchAccount = () => {
+      // Redirect to login with return path so user can sign in with the correct email
+      const returnPath = `/join?token=${token}`;
+      window.location.href = `/login?next=${encodeURIComponent(returnPath)}`;
+    };
+    return (
+      <div style={containerStyle}>
+        <div style={cardStyle}>
+          <div style={{ ...iconCircleStyle, background: "#FFF8E1" }}>
+            <ShieldAlert size={40} color="#F59E0B" />
+          </div>
+          <h2 style={titleStyle}>Wrong Account</h2>
+          <p style={{ ...subtitleStyle, marginBottom: 16 }}>
+            This invitation was sent to a specific email address, but you&apos;re signed in with a different account.
+          </p>
+          <div style={emailMismatchTipStyle}>
+            <strong>What to do:</strong>
+            <br />
+            Sign out and sign in (or register) with the email address that received this invitation.
+          </div>
+          <button onClick={handleSwitchAccount} style={primaryBtnStyle}>
+            <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <LogIn size={18} /> Switch Account
+            </span>
+          </button>
+          <button onClick={() => { setPageState("valid"); }} style={{ ...secondaryBtnStyle, marginTop: 8 }}>
+            ← Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (pageState === "error") {
     return (
       <div style={containerStyle}>
@@ -179,7 +218,7 @@ function JoinPageContent() {
     );
   }
 
-  // ── Valid invitation — show accept UI ─────────────────────────────────
+  // ── Valid invitation — show preview + auth-aware CTAs ──────────────────
 
   return (
     <div style={containerStyle}>
@@ -190,44 +229,82 @@ function JoinPageContent() {
 
         <h2 style={titleStyle}>You&apos;re Invited!</h2>
         <p style={subtitleStyle}>
-          <strong>{invitation?.invitedByName}</strong> invited you to join their household.
+          <strong>{preview?.invitedByName}</strong> invited you to join their household.
         </p>
 
+        {/* Invitation details */}
         <div style={detailBoxStyle}>
           <div style={detailRowStyle}>
             <span style={{ color: "#999" }}>Household</span>
-            <span style={{ fontWeight: 600 }}>{invitation?.householdName}</span>
+            <span style={{ fontWeight: 600 }}>{preview?.householdName}</span>
           </div>
           <div style={detailRowStyle}>
             <span style={{ color: "#999" }}>Type</span>
-            <span style={{ textTransform: "capitalize" }}>{invitation?.householdType}</span>
+            <span style={{ textTransform: "capitalize" }}>{preview?.householdType}</span>
           </div>
           <div style={detailRowStyle}>
             <span style={{ color: "#999" }}>Current Members</span>
-            <span>{invitation?.totalMembers}</span>
+            <span>{preview?.totalMembers}</span>
           </div>
           <div style={detailRowStyle}>
             <span style={{ color: "#999" }}>Your Role</span>
-            <span style={{ textTransform: "capitalize" }}>{invitation?.role?.replace(/_/g, " ")}</span>
+            <span style={{ textTransform: "capitalize" }}>{preview?.role?.replace(/_/g, " ")}</span>
           </div>
-          <div style={detailRowStyle}>
+          <div style={{ ...detailRowStyle, borderBottom: "none" }}>
             <span style={{ color: "#999" }}>Expires</span>
-            <span>{invitation?.expiresAt ? new Date(invitation.expiresAt).toLocaleDateString() : "—"}</span>
+            <span>{preview?.expiresAt ? new Date(preview.expiresAt).toLocaleDateString() : "—"}</span>
           </div>
         </div>
 
-        <button
-          disabled={acceptMutation.isPending}
-          onClick={() => acceptMutation.mutate()}
-          style={primaryBtnStyle}
-        >
-          {acceptMutation.isPending ? "Joining…" : "Accept & Join Household"}
-        </button>
+        {/* Email enforcement notice */}
+        {preview?.requiresSpecificEmail && (
+          <div style={emailNoticeStyle}>
+            <AlertTriangle size={14} color="#B8860B" style={{ flexShrink: 0, marginTop: 1 }} />
+            <span>This invitation was sent to a specific email. You must sign in with that email to accept.</span>
+          </div>
+        )}
 
-        <button onClick={() => router.push("/")} style={{ ...secondaryBtnStyle, marginTop: 8 }}>
-          Decline
-        </button>
+        {/* Auth-aware CTAs */}
+        {authLoading ? (
+          <div style={{ padding: "16px 0" }}>
+            <div style={spinnerStyle} />
+          </div>
+        ) : isAuthed ? (
+          /* ── Logged in: show Accept & Decline ── */
+          <>
+            <button
+              disabled={acceptMutation.isPending}
+              onClick={() => acceptMutation.mutate()}
+              style={primaryBtnStyle}
+            >
+              {acceptMutation.isPending ? "Joining…" : "Accept & Join Household"}
+            </button>
+            <button onClick={() => router.push("/")} style={{ ...secondaryBtnStyle, marginTop: 8 }}>
+              Decline
+            </button>
+          </>
+        ) : (
+          /* ── Not logged in: show Sign Up & Log In ── */
+          <>
+            <button onClick={goRegister} style={primaryBtnStyle}>
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <UserPlus size={18} /> Sign Up to Join
+              </span>
+            </button>
+            <button onClick={goLogin} style={{ ...secondaryBtnStyle, marginTop: 8 }}>
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <LogIn size={16} /> Already have an account? Log in
+              </span>
+            </button>
+          </>
+        )}
       </div>
+
+      {/* Branding footer */}
+      <p style={brandingStyle}>
+        <img src="/images/logo.png" alt="" width={20} height={20} style={{ verticalAlign: "middle", marginRight: 6 }} />
+        NutriSmarts
+      </p>
     </div>
   );
 }
@@ -237,10 +314,12 @@ function JoinPageContent() {
 const containerStyle: React.CSSProperties = {
   minHeight: "100vh",
   display: "flex",
+  flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
   padding: 16,
   background: "linear-gradient(135deg, #F0F9E8 0%, #E8F5E0 100%)",
+  fontFamily: "Inter, sans-serif",
 };
 
 const cardStyle: React.CSSProperties = {
@@ -251,6 +330,7 @@ const cardStyle: React.CSSProperties = {
   width: "100%",
   textAlign: "center",
   boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+  color: "#1A1A2E",
 };
 
 const iconCircleStyle: React.CSSProperties = {
@@ -283,6 +363,7 @@ const detailBoxStyle: React.CSSProperties = {
   padding: 16,
   marginBottom: 24,
   textAlign: "left",
+  color: "#1A1A2E",
 };
 
 const detailRowStyle: React.CSSProperties = {
@@ -291,6 +372,7 @@ const detailRowStyle: React.CSSProperties = {
   padding: "8px 0",
   borderBottom: "1px solid #F0F0F0",
   fontSize: 14,
+  color: "#1A1A2E",
 };
 
 const primaryBtnStyle: React.CSSProperties = {
@@ -299,10 +381,12 @@ const primaryBtnStyle: React.CSSProperties = {
   borderRadius: 12,
   border: "none",
   background: "#99CC33",
-  color: "white",
+  color: "#0F172A",
   fontSize: 16,
   fontWeight: 600,
   cursor: "pointer",
+  boxShadow: "0 4px 12px rgba(153,204,51,0.25)",
+  transition: "opacity 0.15s",
 };
 
 const secondaryBtnStyle: React.CSSProperties = {
@@ -311,10 +395,45 @@ const secondaryBtnStyle: React.CSSProperties = {
   borderRadius: 12,
   border: "1px solid #E0E0E0",
   background: "transparent",
-  color: "#999",
+  color: "#666",
   fontSize: 14,
   cursor: "pointer",
   marginTop: 12,
+  transition: "border-color 0.15s",
+};
+
+const emailNoticeStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 8,
+  padding: "10px 14px",
+  background: "#FFF8E1",
+  border: "1px solid #FFE082",
+  borderRadius: 10,
+  marginBottom: 20,
+  fontSize: 12,
+  color: "#8B6914",
+  textAlign: "left",
+  lineHeight: 1.4,
+};
+
+const emailMismatchTipStyle: React.CSSProperties = {
+  padding: "14px 16px",
+  background: "#FFFBEB",
+  border: "1px solid #FDE68A",
+  borderRadius: 12,
+  marginBottom: 20,
+  fontSize: 13,
+  color: "#92400E",
+  textAlign: "left",
+  lineHeight: 1.6,
+};
+
+const brandingStyle: React.CSSProperties = {
+  marginTop: 24,
+  fontSize: 13,
+  color: "#999",
+  fontWeight: 500,
 };
 
 const spinnerStyle: React.CSSProperties = {
