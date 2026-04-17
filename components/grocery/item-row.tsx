@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Loader2, MoreVertical, Package } from "lucide-react";
+import { Loader2, MoreVertical } from "lucide-react";
 import { useGrocerySubstitutions } from "@/hooks/use-grocery-list";
 import { SubstitutionFeedbackInline } from "@/components/feedback/substitution-feedback-inline";
 import type { ShoppingListItem } from "@/lib/types";
@@ -44,6 +44,7 @@ export function ItemRow({
 }: ItemRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showSubs, setShowSubs] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const [priceInput, setPriceInput] = useState(
     item.actualPrice == null ? "" : String(item.actualPrice)
   );
@@ -105,7 +106,7 @@ export function ItemRow({
           </button>
 
           {/* ── Product Image ────────────────────────────────────── */}
-          {imageUrl ? (
+          {imageUrl && !imgError ? (
             <a
               href={productUrl || "#"}
               target="_blank"
@@ -121,11 +122,21 @@ export function ItemRow({
                 src={imageUrl}
                 alt={item.itemName}
                 className="w-10 h-10 rounded-[8px] object-cover border border-[#F1F5F9]"
-                onError={(e) => {
-                  // On image load error, hide the img and show fallback
-                  (e.target as HTMLImageElement).style.display = "none";
-                }}
+                onError={() => setImgError(true)}
               />
+            </a>
+          ) : productUrl ? (
+            <a
+              href={productUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-shrink-0 block"
+              onClick={(e) => e.stopPropagation()}
+              title="View product"
+            >
+              <div className="w-10 h-10 rounded-[8px] bg-[#F7F8F6] flex items-center justify-center flex-shrink-0 border border-[#F1F5F9]">
+                <span className="text-[18px]">{fallbackEmoji}</span>
+              </div>
             </a>
           ) : (
             <div className="w-10 h-10 rounded-[8px] bg-[#F7F8F6] flex items-center justify-center flex-shrink-0 border border-[#F1F5F9]">
