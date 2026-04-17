@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useMemo } from "react";
 import { CategorySection } from "@/components/grocery/category-section";
@@ -22,13 +22,19 @@ export function ListView({
   onDelete,
 }: ListViewProps) {
   const grouped = useMemo(() => {
-    const map = new Map<string, ShoppingListItem[]>();
+    const products: ShoppingListItem[] = [];
+    const ingredients: ShoppingListItem[] = [];
     for (const item of items) {
-      const category = item.category?.trim() || "Other";
-      if (!map.has(category)) map.set(category, []);
-      map.get(category)!.push(item);
+      if (item.productId || item.currentProductId) {
+        products.push(item);
+      } else {
+        ingredients.push(item);
+      }
     }
-    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    const groups: [string, ShoppingListItem[]][] = [];
+    if (products.length > 0) groups.push(["Products", products]);
+    if (ingredients.length > 0) groups.push(["Ingredients", ingredients]);
+    return groups;
   }, [items]);
 
   if (items.length === 0) {

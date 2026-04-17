@@ -509,6 +509,7 @@ export interface ShoppingListItem {
   currentProductName?: string | null;
   currentProductBrand?: string | null;
   currentProductUrl?: string | null;
+  currentProductImageUrl?: string | null;
 }
 
 export interface GroceryListSummary {
