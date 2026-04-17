@@ -33,7 +33,7 @@ async function getJwt(): Promise<string | null> {
     cachedJwt = { token: jwt, exp };
     return jwt;
   } catch {
-    cachedJwt = null; // Clear stale cache on failure (session expired/revoked)
+    clearJwtCache(); // Clear stale cache on failure (session expired/revoked)
     return null;
   }
 }
@@ -120,7 +120,7 @@ export async function authFetch(path: string, opts: FetchOpts = {}) {
     if (!res.ok) {
       // Auto-clear JWT cache on 401 so next request gets a fresh token
       if (res.status === 401) {
-        cachedJwt = null;
+        clearJwtCache();
       }
       const raw = await res.text().catch(() => "");
       let detail = raw;
