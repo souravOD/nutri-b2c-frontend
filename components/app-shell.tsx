@@ -49,7 +49,7 @@ interface AppShellProps {
   children: React.ReactNode
 }
 
-const AUTH_PREFIXES = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email", "/welcome", "/onboarding"]
+const AUTH_PREFIXES = ["/login", "/register", "/join", "/forgot-password", "/reset-password", "/verify-email", "/welcome", "/onboarding"]
 
 // Pages that use the new Figma navigation shell (exact match)
 const FIGMA_NAV_ROUTES = ["/", "/meal-plan", "/search", "/nutrition", "/meal-log", "/grocery-list", "/budget", "/scan", "/recipe-analyzer", "/create", "/favorites", "/history", "/profile", "/settings", "/my-recipes", "/saved", "/notifications"]

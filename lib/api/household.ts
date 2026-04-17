@@ -1,12 +1,10 @@
-// lib/api/household.ts — Household members, invitations, and preferences
-"use client";
-
 import type {
   HouseholdMembersResponse,
   HouseholdMember,
   HouseholdInvitation,
   HouseholdInvitationDetail,
   HouseholdPreference,
+  InvitationPreview,
 } from "../types";
 import { authFetch } from "./core";
 
@@ -83,7 +81,7 @@ export async function apiUpdateMemberBasicInfo(memberId: string, data: {
 export async function apiCreateInvitation(data: {
   role?: string;
   invitedEmail?: string;
-}): Promise<{ invitation: HouseholdInvitation; inviteUrl: string; expiresAt: string }> {
+}): Promise<{ invitation: HouseholdInvitation; inviteUrl: string; expiresAt: string; emailSent: boolean }> {
   const r = await authFetch("/api/v1/households/invitations", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -110,6 +108,22 @@ export async function apiGetInvitationByToken(token: string): Promise<HouseholdI
     throw err;
   }
   return r.json();
+}
+
+/**
+ * Unauthenticated invitation preview — uses plain fetch (no JWT).
+ * Returns display-safe fields only.
+ */
+export async function apiGetInvitationPreview(token: string): Promise<InvitationPreview> {
+  // Use empty string for relative URL — goes through Next.js rewrites (same as authFetch)
+  const res = await fetch(`/api/v1/invitations/${token}/preview`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: `Error ${res.status}` }));
+    const err = new Error(body.detail || `preview ${res.status}`);
+    (err as unknown as Record<string, unknown>).status = res.status;
+    throw err;
+  }
+  return res.json();
 }
 
 export async function apiAcceptInvitation(token: string): Promise<{ success: boolean; householdId: string }> {

@@ -4,30 +4,31 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { account } from "@/lib/appwrite";
+import { useUser } from "@/hooks/use-user";
+import { clearJwtCache } from "@/lib/api/core";
 
 const TIMEOUT_MINUTES = Number(process.env.NEXT_PUBLIC_SESSION_TIMEOUT_MINUTES) || 30;
 const TIMEOUT_MS = TIMEOUT_MINUTES * 60 * 1000;
 
 export function InactivityGuard() {
-  const router = useRouter();
+  const { signOut } = useUser();
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const logout = useCallback(async () => {
+    // Clear cached JWT immediately to prevent stale token reuse after re-login
+    clearJwtCache();
     try {
-      await fetch("/api/auth/session", { method: "DELETE" });
+      await signOut();
     } catch {
-      // Safe to ignore — HttpOnly cookie clear failed (network issue),
-      // we still want to delete the Appwrite session.
+      // signOut() does window.location.href = "/login" internally.
+      // If it throws before the redirect, force a hard navigation here.
     }
-    try {
-      await account.deleteSession("current");
-    } catch {
-      // Session may already be expired — proceed to login
+    // Fallback: if signOut didn't redirect (e.g., error before window.location),
+    // force a hard page load to fully reset React state.
+    if (typeof window !== "undefined") {
+      window.location.href = "/login?reason=timeout";
     }
-    router.replace("/login?reason=timeout");
-  }, [router]);
+  }, [signOut]);
 
   useEffect(() => {
     const reset = () => {

@@ -27,7 +27,7 @@ export async function setAuthCookie(): Promise<void> {
   } catch {
     // Fallback: set client cookie if API route fails
     const secureFlag = window.location.protocol === "https:" ? "; Secure" : "";
-    document.cookie = `${COOKIE_NAME}=1; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${secureFlag}`;
+    document.cookie = `${COOKIE_NAME}=1; path=/; max-age=${60 * 60 * 24}; SameSite=Lax${secureFlag}`;
   }
 }
 
