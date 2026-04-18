@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast"
 import { account } from "@/lib/appwrite"
 import { setAuthCookie } from "@/lib/auth-cookie"
 import { Eye, EyeOff, ChevronLeft, Shield } from "lucide-react"
+import { safeRedirect } from "@/lib/utils/safeRedirect"
 
 export default function LoginPage() {
   return (
@@ -39,7 +40,7 @@ function LoginInner() {
       await account.createEmailPasswordSession(email.trim(), password)
       await setAuthCookie() // B2C-032: HttpOnly auth signal cookie
       await refresh()
-      const dest = next ?? (isAdmin() ? "/admin" : "/")
+      const dest = safeRedirect(next, isAdmin() ? "/admin" : "/")
       router.replace(dest)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Please check your credentials and try again."

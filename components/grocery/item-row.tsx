@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Loader2, MoreVertical } from "lucide-react";
+import { Loader2, MoreVertical } from "lucide-react";
 import { useGrocerySubstitutions } from "@/hooks/use-grocery-list";
 import { SubstitutionFeedbackInline } from "@/components/feedback/substitution-feedback-inline";
 import type { ShoppingListItem } from "@/lib/types";
@@ -21,6 +21,19 @@ function money(v: number | string | null | undefined): string {
   return Number.isFinite(n) ? `$${n.toFixed(2)}` : "-";
 }
 
+// Category-based fallback icons for items without product images
+const CATEGORY_FALLBACK: Record<string, string> = {
+  Produce: "🥬",
+  Dairy: "🧀",
+  Pantry: "🫙",
+  Meat: "🥩",
+  Frozen: "🧊",
+  Bakery: "🍞",
+  Beverages: "🥤",
+  Snacks: "🍿",
+  Other: "📦",
+};
+
 export function ItemRow({
   listId,
   item,
@@ -31,6 +44,7 @@ export function ItemRow({
 }: ItemRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showSubs, setShowSubs] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const [priceInput, setPriceInput] = useState(
     item.actualPrice == null ? "" : String(item.actualPrice)
   );
@@ -52,61 +66,118 @@ export function ItemRow({
     onUpdateActualPrice(item.id, value);
   };
 
+  const imageUrl = item.currentProductImageUrl;
+  const productUrl = item.currentProductUrl;
+  const fallbackEmoji = CATEGORY_FALLBACK[item.category?.trim() || "Other"] ?? "📦";
+
+  // Dynamic border radius: pill when compact, softer when subs are expanded
+  const cardRadius = showSubs ? "rounded-[16px]" : "rounded-[48px]";
+
   return (
     <div
-      className={`bg-white rounded-[12px] border ${item.isPurchased ? "border-[#D1FAE5] bg-[#F0FDF4]" : "border-[#F1F5F9]"
-        } p-3 transition-colors`}
-      style={{ boxShadow: "0px 1px 2px rgba(0,0,0,0.04)" }}
+      className={`bg-white ${cardRadius} border transition-all duration-200 ${
+        item.isPurchased
+          ? "border-transparent bg-[rgba(153,204,51,0.05)] opacity-60"
+          : "border-[rgba(153,204,51,0.05)]"
+      } p-[17px]`}
+      style={{
+        boxShadow: item.isPurchased ? "none" : "0px 1px 2px rgba(0,0,0,0.05)",
+        fontFamily: "Inter, sans-serif",
+      }}
     >
-      <div className="flex items-start gap-3">
-        {/* Checkbox */}
-        <button
-          type="button"
-          onClick={() => onTogglePurchased(item.id, !item.isPurchased)}
-          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ${item.isPurchased
-              ? "bg-[#99CC33] border-[#99CC33]"
-              : "border-[#CBD5E1] hover:border-[#99CC33]"
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4 min-w-0 flex-1 overflow-hidden">
+          {/* ── Checkbox ─────────────────────────────────────────── */}
+          <button
+            type="button"
+            onClick={() => onTogglePurchased(item.id, !item.isPurchased)}
+            className={`w-6 h-6 rounded-[6px] border flex items-center justify-center flex-shrink-0 transition-colors ${
+              item.isPurchased
+                ? "bg-[#99CC33] border-transparent"
+                : "bg-white border-[rgba(153,204,51,0.3)] hover:border-[#99CC33]"
             }`}
-          aria-label={item.isPurchased ? "Uncheck" : "Check"}
-        >
-          {item.isPurchased && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
-        </button>
-
-        {/* Item details */}
-        <div className="flex-1 min-w-0">
-          <p
-            className={`text-[14px] font-medium leading-5 ${item.isPurchased ? "line-through text-[#94A3B8]" : "text-[#0F172A]"
-              }`}
-            style={{ fontFamily: "Inter, sans-serif" }}
+            aria-label={item.isPurchased ? "Uncheck item" : "Check item"}
           >
-            {item.itemName}
-          </p>
-          <p className="text-[12px] text-[#94A3B8] mt-0.5" style={{ fontFamily: "Inter, sans-serif" }}>
-            {item.quantity} {item.unit || ""}{item.category ? ` · ${item.category}` : ""}
-            {item.estimatedPrice != null ? ` · ${money(item.estimatedPrice)}` : ""}
-          </p>
-          {item.currentProductName && (
-            <p className="text-[11px] text-[#64748B] mt-0.5" style={{ fontFamily: "Inter, sans-serif" }}>
-              {item.substitutedProductId ? "🔄 " : ""}
-              {item.currentProductBrand ? `${item.currentProductBrand} ` : ""}
-              {item.currentProductName}
-              {item.currentProductUrl && (
-                <a
-                  href={item.currentProductUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ml-1.5 text-[#99CC33] hover:text-[#88BB22] hover:underline transition-colors"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  View →
-                </a>
+            {item.isPurchased && (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 6L9 17L4 12" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+          </button>
+
+          {/* ── Product Image ────────────────────────────────────── */}
+          {imageUrl && !imgError ? (
+            <a
+              href={productUrl || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-shrink-0 block"
+              onClick={(e) => {
+                if (!productUrl) e.preventDefault();
+                e.stopPropagation();
+              }}
+              title="View product"
+            >
+              <img
+                src={imageUrl}
+                alt={item.itemName}
+                className="w-10 h-10 rounded-[8px] object-cover border border-[#F1F5F9]"
+                onError={() => setImgError(true)}
+              />
+            </a>
+          ) : productUrl ? (
+            <a
+              href={productUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-shrink-0 block"
+              onClick={(e) => e.stopPropagation()}
+              title="View product"
+            >
+              <div className="w-10 h-10 rounded-[8px] bg-[#F7F8F6] flex items-center justify-center flex-shrink-0 border border-[#F1F5F9]">
+                <span className="text-[18px]">{fallbackEmoji}</span>
+              </div>
+            </a>
+          ) : (
+            <div className="w-10 h-10 rounded-[8px] bg-[#F7F8F6] flex items-center justify-center flex-shrink-0 border border-[#F1F5F9]">
+              <span className="text-[18px]">{fallbackEmoji}</span>
+            </div>
+          )}
+
+          {/* ── Item Details (3 lines) ───────────────────────────── */}
+          <div className="min-w-0 flex-1 overflow-hidden">
+            {/* Line 1: Product name */}
+            <p
+              className={`text-[16px] font-medium leading-6 truncate ${
+                item.isPurchased ? "line-through text-[#0F172A]" : "text-[#0F172A]"
+              }`}
+            >
+              {item.itemName}
+            </p>
+
+            {/* Line 2: Quantity • Price */}
+            <p className="text-[14px] leading-5 text-[#64748B]">
+              {item.quantity}{item.unit ? ` ${item.unit}` : ""}
+              {item.estimatedPrice != null && (
+                <>
+                  <span className="text-[#64748B]"> • </span>
+                  <span className="font-medium text-[#99CC33]">{money(item.estimatedPrice)}</span>
+                </>
               )}
             </p>
-          )}
+
+            {/* Line 3: Brand name */}
+            {item.currentProductBrand && (
+              <p className="text-[12px] leading-4 text-[#94A3B8] truncate mt-0.5">
+                {item.substitutedProductId ? "🔄 " : ""}
+                {item.currentProductBrand}
+              </p>
+            )}
+          </div>
         </div>
 
-        {/* 3-dot menu */}
-        <div className="relative">
+        {/* ── 3-dot Menu ─────────────────────────────────────────── */}
+        <div className="relative flex-shrink-0">
           <button
             type="button"
             onClick={() => setMenuOpen(!menuOpen)}
@@ -128,7 +199,6 @@ export function ItemRow({
                     type="button"
                     onClick={() => { setPriceInput(""); setMenuOpen(false); }}
                     className="w-full text-left px-3 py-2 text-[13px] text-[#0F172A] hover:bg-[#F7F8F6] transition-colors"
-                    style={{ fontFamily: "Inter, sans-serif" }}
                   >
                     💰 Set Actual Price
                   </button>
@@ -137,7 +207,6 @@ export function ItemRow({
                   type="button"
                   onClick={() => { setShowSubs(!showSubs); setMenuOpen(false); }}
                   className="w-full text-left px-3 py-2 text-[13px] text-[#0F172A] hover:bg-[#F7F8F6] transition-colors"
-                  style={{ fontFamily: "Inter, sans-serif" }}
                 >
                   🔄 {showSubs ? "Hide" : "View"} Substitutions
                 </button>
@@ -145,7 +214,6 @@ export function ItemRow({
                   type="button"
                   onClick={() => { onDelete(item.id); setMenuOpen(false); }}
                   className="w-full text-left px-3 py-2 text-[13px] text-[#EF4444] hover:bg-[#FEF2F2] transition-colors"
-                  style={{ fontFamily: "Inter, sans-serif" }}
                 >
                   🗑️ Delete Item
                 </button>
@@ -155,10 +223,10 @@ export function ItemRow({
         </div>
       </div>
 
-      {/* Actual price inline input (visible when set price is clicked) */}
+      {/* ── Actual price inline input ──────────────────────────── */}
       {priceInput !== undefined && item.actualPrice != null && (
-        <div className="mt-2 ml-9 flex items-center gap-2">
-          <span className="text-[12px] text-[#64748B]" style={{ fontFamily: "Inter, sans-serif" }}>Actual:</span>
+        <div className="mt-3 ml-[72px] flex items-center gap-2">
+          <span className="text-[12px] text-[#64748B]">Actual:</span>
           <input
             value={priceInput}
             onChange={(e) => setPriceInput(e.target.value)}
@@ -168,20 +236,19 @@ export function ItemRow({
             min="0"
             step="0.01"
             className="h-7 w-20 px-2 rounded-lg border border-[#E2E8F0] bg-white text-[12px] text-[#0F172A] focus:outline-none focus:border-[#99CC33] focus:ring-1 focus:ring-[#99CC33]/20"
-            style={{ fontFamily: "Inter, sans-serif" }}
           />
         </div>
       )}
 
-      {/* Substitutions panel */}
+      {/* ── Substitutions panel ─────────────────────────────────── */}
       {showSubs && (
-        <div className="mt-2 ml-9 rounded-[10px] bg-[#F7F8F6] p-2.5">
+        <div className="mt-3 ml-[72px] rounded-[10px] bg-[#F7F8F6] p-2.5">
           {isLoading ? (
-            <div className="flex items-center gap-2 text-[12px] text-[#64748B]" style={{ fontFamily: "Inter, sans-serif" }}>
+            <div className="flex items-center gap-2 text-[12px] text-[#64748B]">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading substitutions...
             </div>
           ) : sortedSubs.length === 0 ? (
-            <p className="text-[12px] text-[#64748B]" style={{ fontFamily: "Inter, sans-serif" }}>No substitutions available.</p>
+            <p className="text-[12px] text-[#64748B]">No substitutions available.</p>
           ) : (
             <div className="space-y-1.5">
               {sortedSubs.slice(0, 5).map((sub) => (
@@ -190,10 +257,10 @@ export function ItemRow({
                   className="flex items-center justify-between gap-2 rounded-[8px] bg-white border border-[#F1F5F9] px-2.5 py-1.5"
                 >
                   <div>
-                    <p className="text-[12px] font-medium text-[#0F172A]" style={{ fontFamily: "Inter, sans-serif" }}>
+                    <p className="text-[12px] font-medium text-[#0F172A]">
                       {sub.name}
                     </p>
-                    <p className="text-[11px] text-[#64748B]" style={{ fontFamily: "Inter, sans-serif" }}>
+                    <p className="text-[11px] text-[#64748B]">
                       {sub.brand || ""} {sub.category ? `· ${sub.category}` : ""} · {money(sub.price)}
                       {sub.savingsVsCurrent != null ? ` · Save $${sub.savingsVsCurrent.toFixed(2)}` : ""}
                     </p>
@@ -202,7 +269,6 @@ export function ItemRow({
                     type="button"
                     onClick={() => onApplySubstitution(item.id, sub.productId)}
                     className="h-6 px-2.5 rounded-full bg-[#99CC33] text-white text-[11px] font-medium hover:bg-[#88BB22] transition-colors flex-shrink-0"
-                    style={{ fontFamily: "Inter, sans-serif" }}
                   >
                     Apply
                   </button>

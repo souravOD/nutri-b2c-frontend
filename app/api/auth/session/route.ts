@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const COOKIE_NAME = "b2c_authed";
-const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+const MAX_AGE = 60 * 60 * 24; // 24 hours — defense-in-depth for HIPAA inactivity guard
 
 const AW_ENDPOINT = (process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT ?? "").replace(/\/+$/, "");
 const AW_PROJECT = process.env.NEXT_PUBLIC_APPWRITE_PROJECT ?? "";

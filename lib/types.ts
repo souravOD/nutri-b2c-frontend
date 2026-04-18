@@ -509,6 +509,7 @@ export interface ShoppingListItem {
   currentProductName?: string | null;
   currentProductBrand?: string | null;
   currentProductUrl?: string | null;
+  currentProductImageUrl?: string | null;
 }
 
 export interface GroceryListSummary {
@@ -901,6 +902,18 @@ export interface HouseholdInvitationDetail extends HouseholdInvitation {
   householdType: string;
   totalMembers: number;
   invitedByName: string;
+}
+
+/** Display-safe fields returned by the unauthenticated preview endpoint */
+export interface InvitationPreview {
+  status: string;
+  householdName: string;
+  householdType: string;
+  totalMembers: number;
+  invitedByName: string;
+  role: string;
+  expiresAt: string;
+  requiresSpecificEmail: boolean;
 }
 
 export interface HouseholdPreference {

@@ -492,34 +492,46 @@ export default function GroceryListPage() {
           </section>
         )}
 
-        {/* Floating total bar */}
+        {/* Floating total bar — Figma green design */}
         {list && list.status === "active" && (
           <div className="fixed bottom-[72px] lg:bottom-4 left-0 right-0 lg:left-[256px] z-40 px-4 lg:px-6">
             <div className="max-w-[600px] lg:max-w-[960px] mx-auto">
               <div
-                className="bg-[#0F172A] rounded-[16px] px-5 py-3 flex items-center justify-between"
-                style={{ boxShadow: "0px 4px 16px rgba(0,0,0,0.16)" }}
+                className="bg-[#99CC33] rounded-[16px] px-5 py-3 flex items-center justify-between relative"
+                style={{
+                  boxShadow: "0px 25px 50px -12px rgba(153,204,51,0.4)",
+                  fontFamily: "Inter, sans-serif",
+                }}
               >
-                <div>
-                  <p className="text-[13px] text-[#94A3B8]" style={{ fontFamily: "Inter, sans-serif" }}>
-                    Estimated Total
-                  </p>
-                  <p className="text-[20px] font-bold text-white" style={{ fontFamily: "Inter, sans-serif" }}>
-                    ${n(estimatedTotal).toFixed(2)}
-                  </p>
-                  <p className="text-[10px] text-[#64748B]" style={{ fontFamily: "Inter, sans-serif" }}>
-                    Prices are estimates and may vary by ±$10
-                  </p>
+                {/* Left: icon + total */}
+                <div className="flex items-center gap-3">
+                  <div className="bg-[rgba(255,255,255,0.2)] rounded-full p-2 flex items-center justify-center">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M2 7h20M2 7v10a2 2 0 002 2h16a2 2 0 002-2V7M2 7l2-4h16l2 4M7 15h.01M12 15h.01" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[1px] text-black leading-4">
+                      Estimated Total
+                    </p>
+                    <p className="text-[20px] font-bold text-black leading-7">
+                      ${n(estimatedTotal).toFixed(2)}
+                    </p>
+                    <p className="text-[9px] text-black/50 leading-3">
+                      Prices are estimates and may vary by ±$10
+                    </p>
+                  </div>
                 </div>
+
+                {/* Right: progress + complete */}
                 <div className="flex items-center gap-2">
-                  <span className="text-[13px] text-[#94A3B8]" style={{ fontFamily: "Inter, sans-serif" }}>
+                  <span className="text-[12px] font-medium text-black/70">
                     {purchasedItems}/{totalItems} done
                   </span>
                   <button
                     onClick={handleCompleteList}
                     disabled={updateListStatus.isPending}
-                    className="h-9 px-4 rounded-full bg-[#99CC33] text-white text-[13px] font-medium hover:bg-[#88BB22] transition-colors disabled:opacity-50"
-                    style={{ fontFamily: "Inter, sans-serif" }}
+                    className="h-9 px-4 rounded-full bg-black/10 text-black text-[13px] font-medium hover:bg-black/20 transition-colors disabled:opacity-50"
                   >
                     Complete
                   </button>

@@ -3,7 +3,8 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Suspense } from "react"
 import { ID, Permission, Role } from "appwrite"
 import { account, databases } from "@/lib/appwrite"
 import { useUser } from "@/hooks/use-user"
@@ -11,12 +12,22 @@ import { useToast } from "@/hooks/use-toast"
 import { Eye, EyeOff, ChevronLeft, Shield } from "lucide-react"
 import { syncProfile } from "@/lib/api"
 import { setAuthCookie } from "@/lib/auth-cookie"
+import { safeRedirect } from "@/lib/utils/safeRedirect"
 
 const DB_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID as string
 const PROFILE_COLL = process.env.NEXT_PUBLIC_APPWRITE_PROFILES_COLLECTION_ID as string
 
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" style={{ background: "var(--nutri-bg)" }} />}>
+      <RegisterInner />
+    </Suspense>
+  )
+}
+function RegisterInner() {
   const router = useRouter()
+  const search = useSearchParams()
+  const next = search?.get("next") || search?.get("redirect") || null
   const { refresh, needsHealthOnboarding } = useUser()
   const { toast } = useToast()
 
@@ -59,7 +70,11 @@ export default function RegisterPage() {
       }
       await setAuthCookie() // B2C-032: HttpOnly auth signal cookie
       await refresh()
-      router.replace(needsHealthOnboarding ? "/onboarding" : "/")
+      // SEC-2: Redirect to ?next= if present (validated), else default flow
+      const dest = next
+        ? safeRedirect(next, needsHealthOnboarding ? "/onboarding" : "/")
+        : (needsHealthOnboarding ? "/onboarding" : "/")
+      router.replace(dest)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Please check details and try again."
       toast({ title: "Registration failed", description: message, variant: "destructive" })
