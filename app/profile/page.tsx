@@ -20,6 +20,10 @@ import {
   Bell,
   Trash2,
   ShoppingCart,
+  AlertTriangle,
+  Info,
+  CheckCircle2,
+  Loader2,
 } from "lucide-react";
 import { clearAuthCookie } from "@/lib/auth-cookie";
 
@@ -54,6 +58,23 @@ export default function ProfilePage() {
   const { members = [] } = useHouseholdMembers();
   const { data: unreadCount = 0 } = useUnreadCount();
   const { savedRecipes = [] } = useFavorites();
+
+  // ── Deletion modal state ──
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteStep, setDeleteStep] = useState(1); // 1=warning, 2=household-scope, 3=choose-primary, 4=type-DELETE, 5=processing, 6=success
+  const [confirmText, setConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deletionDate, setDeletionDate] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  // Household dissolution
+  const [householdContext, setHouseholdContext] = useState<{
+    isPrimaryAdult: boolean;
+    householdType: string;
+    otherMembers: { id: string; fullName: string; householdRole: string | null }[];
+    secondaryAdults: { id: string; fullName: string; householdRole: string | null }[];
+  } | null>(null);
+  const [deleteScope, setDeleteScope] = useState<"my_account" | "entire_household">("my_account");
+  const [selectedPrimaryId, setSelectedPrimaryId] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -90,21 +111,97 @@ export default function ProfilePage() {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    if (!confirm("Are you sure you want to delete your account? This action cannot be undone.")) return;
+  const openDeleteModal = async () => {
+    setShowDeleteModal(true);
+    setDeleteStep(1);
+    setConfirmText("");
+    setDeleteError(null);
+    setDeleteScope("my_account");
+    setSelectedPrimaryId(null);
+    setHouseholdContext(null);
+
+    // Fetch household context for Phase 3
     try {
-      await authFetch("/api/v1/me/account", { method: "DELETE" });
-      try {
-        const { account: appwriteAccount } = await import("@/lib/appwrite");
-        await appwriteAccount.deleteSession("current");
-      } catch {
-        // Session cleanup is best-effort since user is already deleted server-side
+      const res = await authFetch("/api/v1/me/account/pre-delete-check", { method: "POST" });
+      if (res.ok) {
+        setHouseholdContext(await res.json());
       }
-      await clearAuthCookie(); // B2C-032: HttpOnly auth signal cookie
-      window.location.href = "/login";
-    } catch (err) {
-      console.error("Delete account failed", err);
-      alert("Failed to delete account. Please try again.");
+    } catch {
+      // Non-blocking — household steps will be skipped
+    }
+  };
+
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setDeleteStep(1);
+    setConfirmText("");
+    setDeleteError(null);
+  };
+
+  const proceedFromWarning = () => {
+    // If primary_adult in non-individual household → show household scope step
+    if (householdContext?.isPrimaryAdult && householdContext.householdType !== "individual" && householdContext.otherMembers.length > 0) {
+      setDeleteStep(2); // household scope
+    } else {
+      setDeleteStep(4); // type DELETE
+    }
+  };
+
+  const proceedFromScope = () => {
+    if (deleteScope === "my_account" && householdContext && householdContext.secondaryAdults.length > 1) {
+      setDeleteStep(3); // choose new primary
+    } else if (deleteScope === "my_account" && householdContext && householdContext.secondaryAdults.length === 1) {
+      setSelectedPrimaryId(householdContext.secondaryAdults[0].id);
+      setDeleteStep(4); // type DELETE
+    } else {
+      setDeleteStep(4); // type DELETE
+    }
+  };
+
+  const proceedFromChoosePrimary = () => {
+    if (!selectedPrimaryId) return;
+    setDeleteStep(4); // type DELETE
+  };
+
+  const executeDelete = async () => {
+    if (confirmText !== "DELETE") return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    setDeleteStep(5); // processing
+
+    try {
+      const body: Record<string, string> = { scope: deleteScope };
+      if (selectedPrimaryId) body.newPrimaryId = selectedPrimaryId;
+
+      const res = await authFetch("/api/v1/me/account", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error ?? `Deletion failed (${res.status})`);
+      }
+
+      const data = await res.json();
+      setDeletionDate(data.deletionDate);
+      setDeleteStep(6); // success
+
+      // Clean up session and redirect after 5 seconds
+      setTimeout(async () => {
+        try {
+          const { account: appwriteAccount } = await import("@/lib/appwrite");
+          await appwriteAccount.deleteSession("current");
+        } catch { }
+        await clearAuthCookie();
+        window.location.href = "/login";
+      }, 5000);
+    } catch (err: any) {
+      setDeleteError(err?.message ?? "Failed to delete account. Please try again.");
+      setDeleteStep(4); // back to type DELETE
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -271,7 +368,7 @@ export default function ProfilePage() {
               <LogOut size={18} />
               <span>Log Out</span>
             </button>
-            <button className="action-btn delete" onClick={handleDeleteAccount}>
+            <button className="action-btn delete" onClick={openDeleteModal}>
               <Trash2 size={18} />
               <span>Delete Account</span>
             </button>
@@ -319,19 +416,47 @@ export default function ProfilePage() {
                 <p>Save recipes by tapping the heart icon on any recipe card.</p>
               </div>
             ) : (
-              <div className="liked-grid">
-                {savedRecipes.slice(0, 6).map((recipe) => (
-                  <Link key={recipe.id} href={`/recipes/${recipe.id}`} className="liked-card">
-                    <div className="liked-card-img-wrap">
-                      <img
-                        src={recipe.imageUrl || "/placeholder-recipe.jpg"}
-                        alt={recipe.title}
-                        className="liked-card-img"
-                      />
-                    </div>
-                    <span className="liked-card-name">{recipe.title}</span>
-                  </Link>
-                ))}
+              <div className="liked-scroll">
+                {savedRecipes.slice(0, 6).map((recipe) => {
+                  const title = recipe.title ?? recipe.name ?? "Recipe";
+                  const imgSrc = String(recipe.imageUrl || recipe.image_url || "");
+                  const calories = recipe.calories ?? recipe.nutrition?.calories ?? 0;
+                  const protein = recipe.protein_g ?? recipe.nutrition?.protein_g ?? 0;
+                  return (
+                    <Link key={recipe.id} href={`/recipes/${recipe.id}`} className="liked-mini-card">
+                      <div className="liked-mini-img-wrap">
+                        {imgSrc ? (
+                          <img
+                            src={imgSrc}
+                            alt={title}
+                            className="liked-mini-img"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              const sib = (e.target as HTMLImageElement).nextElementSibling;
+                              if (sib) (sib as HTMLElement).style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div className="liked-mini-img-fallback" style={imgSrc ? { display: 'none' } : undefined}>
+                          <span>No image</span>
+                        </div>
+                      </div>
+                      <div className="liked-mini-body">
+                        <span className="liked-mini-title">{title}</span>
+                        <div className="liked-mini-meta">
+                          <span className="liked-mini-stat">
+                            <svg width="8" height="10" viewBox="0 0 8 10" fill="none" aria-hidden="true"><path d="M4 0C4 0 1 3 1 5.5C1 7.43 2.57 9 4 9C5.43 9 7 7.43 7 5.5C7 3 4 0 4 0Z" fill="#64748B"/></svg>
+                            {Math.round(Number(calories))} kcal
+                          </span>
+                          <span className="liked-mini-stat">
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><circle cx="5" cy="5" r="4" stroke="#64748B" strokeWidth="1.5" fill="none"/><circle cx="5" cy="5" r="1.5" fill="#64748B"/></svg>
+                            {Math.round(Number(protein))}g Protein
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -344,6 +469,184 @@ export default function ProfilePage() {
             <div className="achievements-empty">
               <p>Your recent activity will appear here.</p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Deletion Modal ── */}
+      {showDeleteModal && (
+        <div className="delete-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) closeDeleteModal(); }}>
+          <div className="delete-modal">
+
+            {/* Step 1: Warning */}
+            {deleteStep === 1 && (
+              <div className="delete-modal-content">
+                <div className="delete-modal-icon warning">
+                  <AlertTriangle size={32} />
+                </div>
+                <h2 className="delete-modal-title">Delete Your Account?</h2>
+                <p className="delete-modal-body">
+                  Your account will be scheduled for permanent deletion. After 30 days, the following will be permanently removed:
+                </p>
+                <ul className="delete-modal-list">
+                  <li>All your recipes and meal plans</li>
+                  <li>Health profile and weight history</li>
+                  <li>Shopping lists and scan history</li>
+                  <li>Chat history and notifications</li>
+                  <li>All feedback and preferences</li>
+                </ul>
+                <div className="delete-modal-info">
+                  <Info size={16} />
+                  <span>You can recover your account within 30 days by logging back in.</span>
+                </div>
+                <div className="delete-modal-actions">
+                  <button className="delete-modal-btn cancel" onClick={closeDeleteModal}>Cancel</button>
+                  <button className="delete-modal-btn danger-outline" onClick={proceedFromWarning}>I understand, continue</button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Household scope (Phase 3) */}
+            {deleteStep === 2 && householdContext && (
+              <div className="delete-modal-content">
+                <div className="delete-modal-icon household">
+                  <Users size={32} />
+                </div>
+                <h2 className="delete-modal-title">You own a household</h2>
+                <p className="delete-modal-body">What would you like to do?</p>
+
+                <div className="delete-modal-radio-group">
+                  <label
+                    className={`delete-modal-radio-card${deleteScope === "my_account" ? " selected" : ""}`}
+                    onClick={() => setDeleteScope("my_account")}
+                  >
+                    <input type="radio" name="scope" value="my_account" checked={deleteScope === "my_account"} onChange={() => setDeleteScope("my_account")} />
+                    <div>
+                      <strong>Delete only my account</strong>
+                      <span>Transfer ownership to another member</span>
+                    </div>
+                  </label>
+                  <label
+                    className={`delete-modal-radio-card${deleteScope === "entire_household" ? " selected" : ""}`}
+                    onClick={() => setDeleteScope("entire_household")}
+                  >
+                    <input type="radio" name="scope" value="entire_household" checked={deleteScope === "entire_household"} onChange={() => setDeleteScope("entire_household")} />
+                    <div>
+                      <strong>Delete entire household</strong>
+                      <span>All members will be removed</span>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="delete-modal-actions">
+                  <button className="delete-modal-btn cancel" onClick={() => setDeleteStep(1)}>← Back</button>
+                  <button className="delete-modal-btn danger-outline" onClick={proceedFromScope}>Continue</button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Choose new primary (Phase 3) */}
+            {deleteStep === 3 && householdContext && (
+              <div className="delete-modal-content">
+                <div className="delete-modal-icon household">
+                  <Users size={32} />
+                </div>
+                <h2 className="delete-modal-title">Choose new household owner</h2>
+                <p className="delete-modal-body">Select who will manage the household after you leave:</p>
+
+                <div className="delete-modal-radio-group">
+                  {householdContext.secondaryAdults.map((member) => (
+                    <label
+                      key={member.id}
+                      className={`delete-modal-radio-card member${selectedPrimaryId === member.id ? " selected" : ""}`}
+                      onClick={() => setSelectedPrimaryId(member.id)}
+                    >
+                      <input type="radio" name="primary" value={member.id} checked={selectedPrimaryId === member.id} onChange={() => setSelectedPrimaryId(member.id)} />
+                      <div className="member-avatar">{member.fullName?.charAt(0)?.toUpperCase() ?? "?"}</div>
+                      <div>
+                        <strong>{member.fullName}</strong>
+                        <span>Secondary Adult</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+
+                <div className="delete-modal-actions">
+                  <button className="delete-modal-btn cancel" onClick={() => setDeleteStep(2)}>← Back</button>
+                  <button className="delete-modal-btn danger-outline" onClick={proceedFromChoosePrimary} disabled={!selectedPrimaryId}>Continue</button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Type DELETE */}
+            {deleteStep === 4 && (
+              <div className="delete-modal-content">
+                <div className="delete-modal-icon danger">
+                  <Trash2 size={32} />
+                </div>
+                <h2 className="delete-modal-title">Confirm Account Deletion</h2>
+                <p className="delete-modal-body">
+                  Type <strong>DELETE</strong> below to confirm:
+                </p>
+                <input
+                  className="delete-modal-input"
+                  type="text"
+                  placeholder="Type DELETE"
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  autoFocus
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+                {deleteError && <p className="delete-modal-error">{deleteError}</p>}
+                <div className="delete-modal-actions">
+                  <button className="delete-modal-btn cancel" onClick={() => {
+                    if (householdContext?.isPrimaryAdult && householdContext.householdType !== "individual" && householdContext.otherMembers.length > 0) {
+                      setDeleteStep(2);
+                    } else {
+                      setDeleteStep(1);
+                    }
+                  }}>← Back</button>
+                  <button
+                    className="delete-modal-btn danger"
+                    onClick={executeDelete}
+                    disabled={confirmText !== "DELETE" || isDeleting}
+                  >
+                    Delete My Account
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 5: Processing */}
+            {deleteStep === 5 && (
+              <div className="delete-modal-content center">
+                <div className="delete-modal-spinner">
+                  <Loader2 size={40} className="spinning" />
+                </div>
+                <h2 className="delete-modal-title">Scheduling account deletion…</h2>
+                <p className="delete-modal-body">Please wait while we process your request.</p>
+              </div>
+            )}
+
+            {/* Step 6: Success */}
+            {deleteStep === 6 && (
+              <div className="delete-modal-content center">
+                <div className="delete-modal-icon success">
+                  <CheckCircle2 size={40} />
+                </div>
+                <h2 className="delete-modal-title">Account Scheduled for Deletion</h2>
+                <p className="delete-modal-body">
+                  {deletionDate ? (
+                    <>You have until <strong>{new Date(deletionDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</strong> to recover your account by logging back in.</>
+                  ) : (
+                    <>You have 30 days to recover your account by logging back in.</>
+                  )}
+                </p>
+                <p className="delete-modal-redirect">Redirecting to login in 5 seconds…</p>
+              </div>
+            )}
+
           </div>
         </div>
       )}
@@ -562,6 +865,286 @@ export default function ProfilePage() {
         .action-btn.delete:hover {
           background: #FFE0E0;
         }
+
+        /* ── Deletion Modal ── */
+        .delete-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(4px);
+          z-index: 9999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+        }
+        .delete-modal {
+          background: white;
+          width: 100%;
+          max-width: 480px;
+          border-radius: 24px;
+          overflow: hidden;
+          box-shadow: 0 25px 60px rgba(0, 0, 0, 0.2);
+          animation: modalIn 0.25s ease-out;
+        }
+        @keyframes modalIn {
+          from { opacity: 0; transform: scale(0.95) translateY(10px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .delete-modal-content {
+          padding: 32px 28px;
+        }
+        .delete-modal-content.center {
+          text-align: center;
+        }
+        .delete-modal-icon {
+          width: 56px;
+          height: 56px;
+          border-radius: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 20px;
+        }
+        .delete-modal-content.center .delete-modal-icon {
+          margin: 0 auto 20px;
+        }
+        .delete-modal-icon.warning {
+          background: #FFF3E0;
+          color: #E65100;
+        }
+        .delete-modal-icon.danger {
+          background: #FFEBEE;
+          color: #E74C3C;
+        }
+        .delete-modal-icon.household {
+          background: #E8F5E9;
+          color: #2E7D32;
+        }
+        .delete-modal-icon.success {
+          background: #E8F5E9;
+          color: #2E7D32;
+        }
+        .delete-modal-title {
+          font-size: 22px;
+          font-weight: 700;
+          color: #0F172A;
+          margin: 0 0 8px;
+          line-height: 28px;
+          font-family: Inter, sans-serif;
+        }
+        .delete-modal-body {
+          font-size: 14px;
+          color: #475569;
+          line-height: 22px;
+          margin: 0 0 16px;
+          font-family: Inter, sans-serif;
+        }
+        .delete-modal-list {
+          margin: 0 0 20px;
+          padding-left: 24px;
+          font-size: 14px;
+          color: #475569;
+          line-height: 26px;
+          font-family: Inter, sans-serif;
+        }
+        .delete-modal-list li { margin-bottom: 2px; }
+        .delete-modal-info {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          padding: 12px 16px;
+          background: rgba(153, 204, 51, 0.08);
+          border: 1px solid rgba(153, 204, 51, 0.2);
+          border-radius: 12px;
+          margin-bottom: 24px;
+          font-size: 13px;
+          color: #475569;
+          line-height: 20px;
+          font-family: Inter, sans-serif;
+        }
+        .delete-modal-info svg {
+          flex-shrink: 0;
+          color: #99CC33;
+          margin-top: 2px;
+        }
+        .delete-modal-input {
+          width: 100%;
+          height: 52px;
+          padding: 0 20px;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 16px;
+          font-size: 16px;
+          font-weight: 600;
+          font-family: Inter, sans-serif;
+          color: #0F172A;
+          background: #F8FAFC;
+          outline: none;
+          transition: border-color 0.2s;
+          letter-spacing: 2px;
+          margin-bottom: 16px;
+          box-sizing: border-box;
+        }
+        .delete-modal-input:focus {
+          border-color: #E74C3C;
+          background: white;
+        }
+        .delete-modal-input::placeholder {
+          font-weight: 400;
+          letter-spacing: 0;
+          color: #94A3B8;
+        }
+        .delete-modal-error {
+          font-size: 13px;
+          color: #E74C3C;
+          margin: -8px 0 16px;
+          font-family: Inter, sans-serif;
+        }
+        .delete-modal-actions {
+          display: flex;
+          gap: 12px;
+          margin-top: 8px;
+        }
+        .delete-modal-btn {
+          flex: 1;
+          height: 48px;
+          border-radius: 16px;
+          font-size: 14px;
+          font-weight: 600;
+          font-family: Inter, sans-serif;
+          cursor: pointer;
+          border: none;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .delete-modal-btn.cancel {
+          background: white;
+          border: 1.5px solid #E2E8F0;
+          color: #0F172A;
+        }
+        .delete-modal-btn.cancel:hover { background: #F8FAFC; }
+        .delete-modal-btn.danger {
+          background: #E74C3C;
+          color: white;
+        }
+        .delete-modal-btn.danger:hover { background: #D32F2F; }
+        .delete-modal-btn.danger:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+        .delete-modal-btn.danger-outline {
+          background: #FFF5F5;
+          border: 1.5px solid #FFE0E0;
+          color: #E74C3C;
+        }
+        .delete-modal-btn.danger-outline:hover { background: #FFE0E0; }
+        .delete-modal-btn.danger-outline:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+
+        /* Radio cards */
+        .delete-modal-radio-group {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          margin-bottom: 20px;
+        }
+        .delete-modal-radio-card {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 16px;
+          background: white;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 16px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .delete-modal-radio-card:hover { border-color: #CBD5E1; }
+        .delete-modal-radio-card.selected {
+          border-color: #99CC33;
+          background: rgba(153, 204, 51, 0.05);
+        }
+        .delete-modal-radio-card input[type="radio"] {
+          width: 18px;
+          height: 18px;
+          accent-color: #99CC33;
+          flex-shrink: 0;
+        }
+        .delete-modal-radio-card div {
+          display: flex;
+          flex-direction: column;
+        }
+        .delete-modal-radio-card strong {
+          font-size: 14px;
+          font-weight: 600;
+          color: #0F172A;
+          font-family: Inter, sans-serif;
+        }
+        .delete-modal-radio-card span {
+          font-size: 12px;
+          color: #64748B;
+          font-family: Inter, sans-serif;
+          margin-top: 2px;
+        }
+        .member-avatar {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: rgba(153, 204, 51, 0.12);
+          color: #558B2F;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          font-size: 16px;
+          font-family: Inter, sans-serif;
+          flex-shrink: 0;
+        }
+
+        /* Spinner */
+        .delete-modal-spinner {
+          margin: 0 auto 20px;
+          color: #99CC33;
+        }
+        .spinning {
+          animation: spin 1s linear infinite;
+        }
+        .delete-modal-redirect {
+          font-size: 13px;
+          color: #94A3B8;
+          font-family: Inter, sans-serif;
+        }
+
+        /* Mobile overrides */
+        @media (max-width: 640px) {
+          .delete-modal-overlay {
+            align-items: flex-end;
+          }
+          .delete-modal {
+            max-width: 100%;
+            border-radius: 24px 24px 0 0;
+            max-height: 90vh;
+            overflow-y: auto;
+          }
+          .delete-modal-content {
+            padding: 28px 20px;
+          }
+          .delete-modal-btn {
+            border-radius: 9999px;
+          }
+          .delete-modal-input {
+            border-radius: 9999px;
+          }
+          .delete-modal-radio-card {
+            border-radius: 9999px;
+            padding: 14px 16px;
+          }
+        }
+
         .activity-card {
           display: flex;
           align-items: center;
@@ -622,42 +1205,102 @@ export default function ProfilePage() {
           color: #99CC33 !important;
           white-space: nowrap;
         }
-        .liked-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 12px;
-        }
-        .liked-card {
+        .liked-scroll {
           display: flex;
-          flex-direction: column;
-          gap: 6px;
+          gap: 12px;
+          overflow-x: auto;
+          scroll-snap-type: x mandatory;
+          -webkit-overflow-scrolling: touch;
+          padding-bottom: 4px;
+          margin: 0 -4px;
+          padding-left: 4px;
+          padding-right: 4px;
         }
-        .liked-card-img-wrap {
+        .liked-scroll::-webkit-scrollbar { display: none; }
+        .liked-scroll { scrollbar-width: none; }
+        .liked-mini-card {
+          flex: 0 0 160px;
+          scroll-snap-align: start;
+          background: white;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 24px;
+          padding: 2px;
+          text-decoration: none !important;
+          color: inherit !important;
+          transition: box-shadow 0.2s, transform 0.2s;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .liked-mini-card:hover {
+          box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+          transform: translateY(-2px);
+          border-color: #CBD5E1;
+        }
+        .liked-mini-img-wrap {
           width: 100%;
-          aspect-ratio: 4 / 3;
-          border-radius: 14px;
+          height: 100px;
           overflow: hidden;
+          position: relative;
+          border-radius: 22px 22px 0 0;
         }
-        .liked-card-img {
+        .liked-mini-img {
           width: 100%;
           height: 100%;
           object-fit: cover;
         }
-        .liked-card-name {
+        .liked-mini-img-fallback {
+          position: absolute;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background: #F1F5F9;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .liked-mini-img-fallback span {
+          font-size: 12px;
+          color: #94A3B8;
+          font-weight: 500;
+        }
+        .liked-mini-body {
+          padding: 10px 12px 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .liked-mini-title {
           font-size: 13px;
-          font-weight: 600;
-          color: #1A1A2E;
+          font-weight: 700;
+          color: #0F172A;
+          line-height: 1.3;
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
-          line-height: 1.3;
+          font-family: Inter, sans-serif;
+        }
+        .liked-mini-meta {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .liked-mini-stat {
+          display: flex;
+          align-items: center;
+          gap: 3px;
+          font-size: 11px;
+          color: #64748B;
+          font-family: Inter, sans-serif;
+          white-space: nowrap;
         }
 
         @media (max-width: 480px) {
           .info-grid { grid-template-columns: 1fr; }
           .avatar { width: 60px; height: 60px; font-size: 24px; border-radius: 16px; }
           .user-info h1 { font-size: 18px; }
+          .liked-mini-card { flex: 0 0 140px; }
+          .liked-mini-img-wrap { height: 85px; }
+          .liked-mini-body { padding: 8px 10px 10px; }
+          .liked-mini-title { font-size: 12px; }
+          .liked-mini-stat { font-size: 10px; }
         }
       `}</style>
     </div>
