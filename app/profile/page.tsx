@@ -125,9 +125,14 @@ export default function ProfilePage() {
       const res = await authFetch("/api/v1/me/account/pre-delete-check", { method: "POST" });
       if (res.ok) {
         setHouseholdContext(await res.json());
+      } else {
+        // API returned an error — surface it and close modal
+        setDeleteError("Unable to verify household status. Please try again.");
+        setShowDeleteModal(false);
       }
     } catch {
-      // Non-blocking — household steps will be skipped
+      setDeleteError("Network error checking account status. Please try again.");
+      setShowDeleteModal(false);
     }
   };
 
@@ -154,6 +159,8 @@ export default function ProfilePage() {
       setSelectedPrimaryId(householdContext.secondaryAdults[0].id);
       setDeleteStep(4); // type DELETE
     } else {
+      // entire_household — clear any stale primary selection
+      setSelectedPrimaryId(null);
       setDeleteStep(4); // type DELETE
     }
   };
@@ -171,7 +178,7 @@ export default function ProfilePage() {
 
     try {
       const body: Record<string, string> = { scope: deleteScope };
-      if (selectedPrimaryId) body.newPrimaryId = selectedPrimaryId;
+      if (selectedPrimaryId && deleteScope === "my_account") body.newPrimaryId = selectedPrimaryId;
 
       const res = await authFetch("/api/v1/me/account", {
         method: "DELETE",
@@ -476,7 +483,7 @@ export default function ProfilePage() {
       {/* ── Deletion Modal ── */}
       {showDeleteModal && (
         <div className="delete-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) closeDeleteModal(); }}>
-          <div className="delete-modal">
+          <div className="delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
 
             {/* Step 1: Warning */}
             {deleteStep === 1 && (
@@ -484,7 +491,7 @@ export default function ProfilePage() {
                 <div className="delete-modal-icon warning">
                   <AlertTriangle size={32} />
                 </div>
-                <h2 className="delete-modal-title">Delete Your Account?</h2>
+                <h2 className="delete-modal-title" id="delete-modal-title">Delete Your Account?</h2>
                 <p className="delete-modal-body">
                   Your account will be scheduled for permanent deletion. After 30 days, the following will be permanently removed:
                 </p>
@@ -512,7 +519,7 @@ export default function ProfilePage() {
                 <div className="delete-modal-icon household">
                   <Users size={32} />
                 </div>
-                <h2 className="delete-modal-title">You own a household</h2>
+                <h2 className="delete-modal-title" id="delete-modal-title">You own a household</h2>
                 <p className="delete-modal-body">What would you like to do?</p>
 
                 <div className="delete-modal-radio-group">
@@ -551,7 +558,7 @@ export default function ProfilePage() {
                 <div className="delete-modal-icon household">
                   <Users size={32} />
                 </div>
-                <h2 className="delete-modal-title">Choose new household owner</h2>
+                <h2 className="delete-modal-title" id="delete-modal-title">Choose new household owner</h2>
                 <p className="delete-modal-body">Select who will manage the household after you leave:</p>
 
                 <div className="delete-modal-radio-group">
@@ -584,7 +591,7 @@ export default function ProfilePage() {
                 <div className="delete-modal-icon danger">
                   <Trash2 size={32} />
                 </div>
-                <h2 className="delete-modal-title">Confirm Account Deletion</h2>
+                <h2 className="delete-modal-title" id="delete-modal-title">Confirm Account Deletion</h2>
                 <p className="delete-modal-body">
                   Type <strong>DELETE</strong> below to confirm:
                 </p>
@@ -624,7 +631,7 @@ export default function ProfilePage() {
                 <div className="delete-modal-spinner">
                   <Loader2 size={40} className="spinning" />
                 </div>
-                <h2 className="delete-modal-title">Scheduling account deletion…</h2>
+                <h2 className="delete-modal-title" id="delete-modal-title">Scheduling account deletion…</h2>
                 <p className="delete-modal-body">Please wait while we process your request.</p>
               </div>
             )}
@@ -635,7 +642,7 @@ export default function ProfilePage() {
                 <div className="delete-modal-icon success">
                   <CheckCircle2 size={40} />
                 </div>
-                <h2 className="delete-modal-title">Account Scheduled for Deletion</h2>
+                <h2 className="delete-modal-title" id="delete-modal-title">Account Scheduled for Deletion</h2>
                 <p className="delete-modal-body">
                   {deletionDate ? (
                     <>You have until <strong>{new Date(deletionDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</strong> to recover your account by logging back in.</>
